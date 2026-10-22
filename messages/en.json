@@ -1,0 +1,14 @@
+{
+  "Customer": {
+    "title": "Motorbike rental in Bangkok",
+    "intro": "Find and book bikes from local rental shops. Search is coming soon."
+  },
+  "Vendor": {
+    "title": "Vendor dashboard",
+    "intro": "Manage your bikes, prices and bookings here. Coming soon."
+  },
+  "Admin": {
+    "title": "Admin panel",
+    "intro": "Approve shops, manage rankings and finance. Coming soon."
+  }
+}
