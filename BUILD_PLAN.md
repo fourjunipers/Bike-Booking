@@ -20,7 +20,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 | Service | What to set up | Env vars |
 | --- | --- | --- |
 | GitHub | New private repo | — |
-| Vercel | Project linked to the repo | — |
+| Netlify | Project imported from the GitHub repo (production branch `main`) | Same variables as `.env.local`, entered in the Netlify UI |
 | Supabase | New project (Singapore region). Enable Google, Apple and email (magic link) auth providers | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 | Google Cloud | OAuth client for Google login. Maps JavaScript API + Places API key, restricted to your domains | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` |
 | Apple | Sign in with Apple service ID (can be added later) | (configured in Supabase) |
@@ -44,12 +44,12 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 - Create `lib/money.ts` and `lib/time.ts` (Asia/Bangkok helpers) with unit tests.
 - Create `.env.example` with every variable from **Before you start**.
 - Basic layouts for the three areas: `/` (customer), `/vendor`, `/admin`, each a placeholder page.
-- Deploy to Vercel (preview) and confirm it builds.
+- Deploy to Netlify and confirm it builds.
 
 **Acceptance criteria**
 - `npm run dev`, `npm run build`, `npm run lint`, `npm test` all succeed.
 - `supabase db reset` runs cleanly.
-- The Vercel preview URL shows the three placeholder areas.
+- The Netlify URL shows the three placeholder areas.
 
 **Prompt**
 > Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. We are starting Phase 0: Project setup. Propose a plan for Phase 0 only, then wait for my approval.
@@ -291,7 +291,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - Reply with a confirmation message.
 - **Vendor messages:** build every vendor template from SPEC **Notification templates** as LINE Flex messages in Thai and English (vendor's language). Email copies are sent too.
 - **Customer emails:** build every customer template from SPEC (Resend, simple branded HTML).
-- **Cron jobs** (`vercel.json` + protected routes), exactly as the SPEC **Scheduled jobs** table:
+- **Cron jobs** (Netlify Scheduled Functions in `netlify/functions/` that call protected routes), exactly as the SPEC **Scheduled jobs** table. Netlify cron runs in UTC, so convert Bangkok times (e.g. 00:05 Bangkok = `5 17 * * *`). Confirm the 5-minute schedule works on Netlify before relying on it. Scheduled functions only run on the published production deploy:
   - Request expiry (5 min)
   - Pay-later charges and payment deadlines (hourly)
   - Ready-today reminder at each shop's opening time (hourly job that picks shops opening that hour)
@@ -366,7 +366,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - Cookie notice
 
   Use placeholder text clearly marked for the owner's lawyer to replace.
-- Error monitoring (Sentry) and basic analytics (Vercel Analytics or Plausible). Ask before adding.
+- Error monitoring (Sentry) and basic analytics (Plausible or Netlify's own analytics). Ask before adding.
 - Rate limiting on auth, booking creation and webhook routes.
 - Database backups confirmed (Supabase), and a written restore procedure in `docs/ops.md`.
 - Full Playwright suite passing against a staging deployment.

@@ -33,9 +33,9 @@ Three roles: **customer**, **vendor** (shop owner + staff), **admin** (platform 
 | Vendor messaging | LINE Messaging API (Flex messages, postback buttons) |
 | Customer messaging | Resend (email). WhatsApp Business API is added in Phase 7 |
 | Maps | Google Maps JavaScript API + Places API |
-| Scheduled jobs | Vercel Cron calling protected API routes (`Authorization: Bearer $CRON_SECRET`) |
+| Scheduled jobs | Netlify Scheduled Functions (`netlify/functions/`) calling protected API routes (`Authorization: Bearer $CRON_SECRET`). Cron expressions run in UTC and functions time out after 30 s, so keep the real work in the API route |
 | Tests | Vitest (unit), Playwright (end-to-end for core flows) |
-| Hosting | Vercel |
+| Hosting | Netlify (Next.js via its OpenNext adapter). Free plan: every production deploy costs credits, so work on branches and merge to `main` in batches |
 
 Before relying on any third-party API behaviour (Supabase Auth providers, Stripe PromptPay, LINE Login), check the current official docs. Don't rely on memory.
 

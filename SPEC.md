@@ -313,7 +313,7 @@ Next.js on the front end and Supabase behind it cover the app; everything else i
 
 | Need | Tool |
 | --- | --- |
-| Web app, PWA, SEO pages | Next.js (server-rendered), hosted on Vercel |
+| Web app, PWA, SEO pages | Next.js (server-rendered), hosted on Netlify |
 | Database, auth, file storage | Supabase (Postgres, Auth, Storage) |
 | Logins | Google, Apple, email magic link via Supabase Auth; LINE Login via custom OIDC provider |
 | Cards, saved cards, Apple/Google Pay | Stripe (SetupIntent at booking, off-session charge later) |
