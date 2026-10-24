@@ -379,6 +379,8 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - Switch Stripe to live keys
   - Point the Stripe and LINE webhooks to production
   - Verify the email domain
+  - Hosted Supabase sends auth email through Resend SMTP with our magic-link template (`supabase/templates/magic-link.html`)
+  - Publish the Google OAuth app (Google Auth Platform → Audience). Google requires a homepage URL and a privacy policy URL on the Branding page first; until then it stays in Testing mode and only listed test users can sign in with Google
   - WhatsApp templates approved
   - Seed only BSR as the live vendor
 
