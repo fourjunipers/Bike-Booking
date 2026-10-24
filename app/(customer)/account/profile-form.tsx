@@ -19,6 +19,8 @@ export function ProfileForm(profile: Props) {
     { status: "idle" },
   );
   const errors = state.status === "invalid" ? state.errors : {};
+  // After a submit, show what was submitted (React resets the form fields).
+  const values = ("values" in state && state.values) || profile;
 
   return (
     <form action={action} className="space-y-5" noValidate>
@@ -27,7 +29,7 @@ export function ProfileForm(profile: Props) {
           id="name"
           name="name"
           autoComplete="name"
-          defaultValue={profile.name}
+          defaultValue={values.name}
           aria-invalid={!!errors.name}
           aria-describedby={errors.name ? "name-error" : undefined}
           className={inputClass}
@@ -54,7 +56,7 @@ export function ProfileForm(profile: Props) {
           name="whatsapp"
           type="tel"
           autoComplete="tel"
-          defaultValue={profile.whatsapp}
+          defaultValue={values.whatsapp}
           aria-invalid={!!errors.whatsapp}
           aria-describedby={
             errors.whatsapp ? "whatsapp-error" : "whatsapp-hint"
@@ -70,7 +72,7 @@ export function ProfileForm(profile: Props) {
             type="radio"
             name="notify"
             value="email"
-            defaultChecked={profile.notify === "email"}
+            defaultChecked={values.notify !== "email_whatsapp"}
           />
           Email only
         </label>
@@ -79,7 +81,7 @@ export function ProfileForm(profile: Props) {
             type="radio"
             name="notify"
             value="email_whatsapp"
-            defaultChecked={profile.notify === "email_whatsapp"}
+            defaultChecked={values.notify === "email_whatsapp"}
           />
           Email and WhatsApp
         </label>

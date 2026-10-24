@@ -7,36 +7,16 @@ test("customer home renders", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("vendor dashboard renders in English by default", async ({ page }) => {
-  await page.goto("/vendor");
-  await expect(
-    page.getByRole("heading", { name: "Vendor dashboard" }),
-  ).toBeVisible();
-});
+for (const path of ["/vendor", "/admin", "/account"]) {
+  test(`${path} sends signed-out visitors to sign in`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page).toHaveURL(`/login?next=${encodeURIComponent(path)}`);
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  });
+}
 
-test("vendor dashboard renders in Thai from the locale cookie", async ({
-  page,
-  context,
-  baseURL,
-}) => {
-  await context.addCookies([{ name: "locale", value: "th", url: baseURL! }]);
-  await page.goto("/vendor");
-  await expect(
-    page.getByRole("heading", { name: "แดชบอร์ดร้านค้า" }),
-  ).toBeVisible();
-});
-
-test("admin panel renders", async ({ page }) => {
-  await page.goto("/admin");
-  await expect(
-    page.getByRole("heading", { name: "Admin panel" }),
-  ).toBeVisible();
-});
-
-test("area links navigate between the three areas", async ({ page }) => {
+test("area links lead to sign-in for protected areas", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Admin" }).click();
-  await expect(page).toHaveURL(/\/admin$/);
-  await page.getByRole("link", { name: "Vendor" }).click();
-  await expect(page).toHaveURL(/\/vendor$/);
+  await page.getByRole("link", { name: "Vendor", exact: true }).click();
+  await expect(page).toHaveURL(/\/login\?next=%2Fvendor$/);
 });

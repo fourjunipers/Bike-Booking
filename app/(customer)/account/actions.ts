@@ -1,40 +1,47 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { notifyChannels, profileFormSchema } from "@/lib/validation/profile";
 
+type Field = "name" | "whatsapp" | "notify";
+
+/**
+ * `values` echoes what was submitted: React resets a form after its action
+ * runs, and the inputs fall back to these instead of the original profile.
+ */
 export type ProfileFormState =
   | { status: "idle" }
-  | { status: "saved" }
+  | { status: "saved"; values: Record<Field, string> }
   | {
       status: "invalid";
-      errors: Partial<Record<"name" | "whatsapp" | "notify", string>>;
+      values: Record<Field, string>;
+      errors: Partial<Record<Field, string>>;
     }
-  | { status: "error" };
+  | { status: "error"; values?: Record<Field, string> };
 
 export async function updateProfile(
   _prev: ProfileFormState,
   formData: FormData,
 ): Promise<ProfileFormState> {
+  const values = {
+    name: String(formData.get("name") ?? ""),
+    whatsapp: String(formData.get("whatsapp") ?? ""),
+    notify: String(formData.get("notify") ?? ""),
+  };
+
   // Re-check the session here: actions are callable directly, not only from the page.
   const user = await getCurrentUser();
-  if (!user) return { status: "error" };
+  if (!user) return { status: "error", values };
 
-  const parsed = profileFormSchema.safeParse({
-    name: formData.get("name") ?? "",
-    whatsapp: formData.get("whatsapp") ?? "",
-    notify: formData.get("notify"),
-  });
+  const parsed = profileFormSchema.safeParse(values);
   if (!parsed.success) {
-    const errors: Extract<ProfileFormState, { status: "invalid" }>["errors"] =
-      {};
+    const errors: Partial<Record<Field, string>> = {};
     for (const issue of parsed.error.issues) {
-      const field = issue.path[0] as keyof typeof errors;
+      const field = issue.path[0] as Field;
       errors[field] ??= issue.message;
     }
-    return { status: "invalid", errors };
+    return { status: "invalid", values, errors };
   }
 
   const supabase = await createClient();
@@ -46,8 +53,15 @@ export async function updateProfile(
       notify_channels: notifyChannels(parsed.data.notify),
     })
     .eq("id", user.id);
-  if (error) return { status: "error" };
+  if (error) return { status: "error", values };
 
-  revalidatePath("/account");
-  return { status: "saved" };
+  // No revalidation needed: /account renders per request.
+  return {
+    status: "saved",
+    values: {
+      name: parsed.data.name,
+      whatsapp: parsed.data.whatsapp ?? "",
+      notify: parsed.data.notify,
+    },
+  };
 }

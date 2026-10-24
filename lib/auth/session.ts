@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -11,6 +12,9 @@ import { createClient } from "@/lib/supabase/server";
 export type CurrentUser = { id: string; email: string | null };
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+  // Session checks compare token expiry with the clock, so they must run per
+  // request, never in a prerender (Next.js rejects Date.now() there).
+  await connection();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
@@ -40,7 +44,12 @@ export const getMyProfile = cache(async () => {
   return data;
 });
 
-/** Admin pages: anyone without the admin role gets a 404, not a hint. */
+/**
+ * Admin pages: anyone without the admin role gets a 404, not a hint.
+ * Call this in every admin page and action, not only the layout: Next.js
+ * renders a page in parallel with its layout, so a layout check alone does not
+ * stop the page's code (and its service-role queries) from running.
+ */
 export async function requireAdmin() {
   await requireUser("/admin");
   const profile = await getMyProfile();
@@ -62,3 +71,15 @@ export const getMyShops = cache(async () => {
     m.shop ? [{ role: m.role, ...m.shop }] : [],
   );
 });
+
+/**
+ * The shop a vendor page works on, or null for someone in no shop (the layout
+ * then shows "create your shop"). Like requireAdmin, call it in every vendor
+ * page: the layout's check does not stop a page from running.
+ * TODO(phase-2): shop switcher for people in more than one shop.
+ */
+export async function requireVendorShop() {
+  await requireUser("/vendor");
+  const [shop] = await getMyShops();
+  return shop ?? null;
+}
