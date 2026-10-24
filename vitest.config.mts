@@ -7,7 +7,8 @@ export default defineConfig({
   },
   test: {
     include: ["**/*.test.ts", "**/*.test.tsx"],
-    exclude: ["node_modules/**", ".next/**", "e2e/**"],
+    // tests/db needs local Supabase: run it with `npm run test:db`.
+    exclude: ["node_modules/**", ".next/**", "e2e/**", "tests/db/**"],
     environment: "node",
   },
 });
