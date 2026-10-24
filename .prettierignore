@@ -6,3 +6,4 @@ playwright-report
 test-results
 *.md
 lib/supabase/database.types.ts
+supabase/templates
