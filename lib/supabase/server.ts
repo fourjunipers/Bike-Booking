@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { Database } from "./database.types";
 import { supabaseAnonKey, supabaseUrl } from "./env";
 
 /**
@@ -9,7 +10,7 @@ import { supabaseAnonKey, supabaseUrl } from "./env";
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(supabaseUrl(), supabaseAnonKey(), {
+  return createServerClient<Database>(supabaseUrl(), supabaseAnonKey(), {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -21,7 +22,7 @@ export async function createClient() {
           }
         } catch {
           // Called from a Server Component, where cookies are read-only.
-          // TODO(phase-1): refresh the session in proxy.ts so this is safe to ignore.
+          // Safe to ignore: proxy.ts refreshes the session on every request.
         }
       },
     },
