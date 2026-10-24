@@ -157,11 +157,16 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# 3100 is the Playwright server.
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "http://127.0.0.1:3000/**",
+  "http://localhost:3100/**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -197,7 +202,7 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+email_sent = 200
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -243,6 +248,18 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Magic links verify on our server (/auth/confirm) with a token hash rather than
+# the PKCE code flow, so a link opened in a different browser or device (e.g.
+# a mail app's built-in browser) still signs the user in. Apply the same two
+# templates to the hosted project in the Supabase dashboard.
+[auth.email.template.magic_link]
+subject = "Your sign-in link"
+content_path = "./supabase/templates/magic-link.html"
+
+[auth.email.template.confirmation]
+subject = "Your sign-in link"
+content_path = "./supabase/templates/magic-link.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -320,6 +337,19 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# Google: set enabled = true locally once the OAuth client exists, with the IDs
+# in supabase/.env (git-ignored). Redirect URI: http://127.0.0.1:54321/auth/v1/callback
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+skip_nonce_check = true
+
+# LINE is a custom OIDC provider ("custom:line"). This CLI version has no
+# config.toml section for custom providers, so it is configured on the hosted
+# project (dashboard) and tested there.
+
+# TODO(owner): Apple sign-in once the Apple service ID exists.
 [auth.external.apple]
 enabled = false
 client_id = ""

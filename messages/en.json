@@ -5,10 +5,17 @@
   },
   "Vendor": {
     "title": "Vendor dashboard",
-    "intro": "Manage your bikes, prices and bookings here. Coming soon."
+    "intro": "Manage your bikes, prices and bookings here. Coming soon.",
+    "shopLine": "{shop} · {role}",
+    "roleOwner": "Owner",
+    "roleStaff": "Staff",
+    "createShopTitle": "Create your shop",
+    "createShopIntro": "You're not part of a shop yet. Shop sign-up opens soon. If you work at a shop, ask the owner to add you.",
+    "signOut": "Sign out"
   },
   "Admin": {
     "title": "Admin panel",
-    "intro": "Approve shops, manage rankings and finance. Coming soon."
+    "intro": "Approve shops, manage rankings and finance. Coming soon.",
+    "signedInAs": "Signed in as {email}"
   }
 }

@@ -4,6 +4,7 @@ const areas = [
   { href: "/", label: "Customer" },
   { href: "/vendor", label: "Vendor" },
   { href: "/admin", label: "Admin" },
+  { href: "/account", label: "Account" },
 ] as const;
 
 /** Placeholder chrome shared by the three areas until each gets real navigation. */
@@ -22,7 +23,7 @@ export function AreaShell({
           className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-3 text-sm"
         >
           <span className="font-semibold">{area}</span>
-          <ul className="ml-auto flex gap-4">
+          <ul className="ml-auto flex flex-wrap justify-end gap-x-3 gap-y-1">
             {areas.map((a) => (
               <li key={a.href}>
                 <Link
