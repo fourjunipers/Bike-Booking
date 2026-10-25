@@ -25,10 +25,24 @@ const IDENTIFIER = "custom:line";
 const local = process.argv.includes("--local");
 const { url, serviceKey } = local ? localProject() : hostedProject();
 
-const clientSecret = await askHidden("LINE Channel secret: ");
-if (!clientSecret) {
-  console.error("No secret entered. Nothing changed.");
+// Terminals can wrap pasted text in invisible control sequences (bracketed
+// paste, e.g. "\x1b[200~...\x1b[201~"), which silently corrupts the secret.
+// A LINE Channel secret is always 32 hex characters, so keep only those and
+// check the shape before saving anything.
+const raw = await askHidden("LINE Channel secret: ");
+const clientSecret = raw
+  .replace(/\x1b\[20[01]~/g, "")
+  .replace(/[^0-9a-fA-F]/g, "")
+  .toLowerCase();
+if (!/^[0-9a-f]{32}$/.test(clientSecret)) {
+  console.error(
+    `That doesn't look like a LINE Channel secret (expected 32 letters a-f and digits, ` +
+      `got ${clientSecret.length} after removing other characters). Nothing changed.`,
+  );
   process.exit(1);
+}
+if (clientSecret !== raw.trim()) {
+  console.log("Removed extra characters from the pasted secret.");
 }
 
 const providers = createClient(url, serviceKey, {
