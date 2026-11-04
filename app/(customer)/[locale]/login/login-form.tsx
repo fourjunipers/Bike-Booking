@@ -1,26 +1,31 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { isCustomerLocale, localePath } from "@/i18n/config";
 import { providerOrder, type OAuthProvider } from "@/lib/auth/providers";
 import { safeNextPath } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/client";
 
-const providerLabels: Record<OAuthProvider, string> = {
-  google: "Continue with Google",
-  "custom:line": "Continue with LINE",
-  apple: "Continue with Apple",
-};
+const providerLabels = {
+  google: "google",
+  "custom:line": "line",
+  apple: "apple",
+} as const satisfies Record<OAuthProvider, string>;
 
-const errorMessages: Record<string, string> = {
-  signin: "Sign-in didn't complete. Please try again.",
-  link: "That sign-in link is invalid or has expired. Request a new one below.",
+const errorMessages: Record<string, "errorSignin" | "errorLink"> = {
+  signin: "errorSignin",
+  link: "errorLink",
 };
 
 export function LoginForm({ providers }: { providers: OAuthProvider[] }) {
+  const t = useTranslations("Login");
+  const locale = useLocale();
   const searchParams = useSearchParams();
-  const next = safeNextPath(searchParams.get("next"));
+  const home = isCustomerLocale(locale) ? localePath(locale, "/") : "/";
+  const next = safeNextPath(searchParams.get("next"), home);
   const error = errorMessages[searchParams.get("error") ?? ""];
   const forVendor = next.startsWith("/vendor");
 
@@ -58,17 +63,13 @@ export function LoginForm({ providers }: { providers: OAuthProvider[] }) {
 
   return (
     <div className="space-y-6">
-      {forVendor && (
-        <p className="text-muted-foreground">
-          Shop owners and staff: sign in with LINE or Google.
-        </p>
-      )}
+      {forVendor && <p className="text-muted-foreground">{t("vendorHint")}</p>}
       {error && (
         <p
           role="alert"
           className="rounded-md border border-destructive/40 p-3 text-sm"
         >
-          {error}
+          {t(error)}
         </p>
       )}
 
@@ -83,7 +84,7 @@ export function LoginForm({ providers }: { providers: OAuthProvider[] }) {
               className="h-11"
               onClick={() => signInWith(provider)}
             >
-              {providerLabels[provider]}
+              {t(providerLabels[provider])}
             </Button>
           ))}
         </div>
@@ -91,14 +92,13 @@ export function LoginForm({ providers }: { providers: OAuthProvider[] }) {
 
       {state === "sent" ? (
         <p role="status" className="rounded-md border p-3 text-sm">
-          Check your email for a sign-in link. It works once and expires in 1
-          hour.
+          {t("sent")}
         </p>
       ) : (
         <form onSubmit={sendLink} className="space-y-3">
           <div className="space-y-1">
             <label htmlFor="email" className="text-sm font-medium">
-              Email
+              {t("email")}
             </label>
             <input
               id="email"
@@ -116,11 +116,11 @@ export function LoginForm({ providers }: { providers: OAuthProvider[] }) {
             className="h-11 w-full"
             disabled={state === "sending"}
           >
-            {state === "sending" ? "Sending…" : "Email me a sign-in link"}
+            {state === "sending" ? t("sending") : t("send")}
           </Button>
           {state === "error" && (
             <p role="alert" className="text-sm text-destructive">
-              Couldn&apos;t send the link. Check the address and try again.
+              {t("sendFailed")}
             </p>
           )}
         </form>

@@ -14,7 +14,7 @@ A web-based marketplace where foreign customers find and book motorbikes from re
 
 | | Customer | Vendor | Admin |
 | --- | --- | --- | --- |
-| Access | Public website, English | /vendor dashboard, Thai/English toggle | /admin panel |
+| Access | Public website in 10 languages (English, Thai, Chinese, Russian, German, French, Spanish, Italian, Japanese, Korean) | /vendor dashboard, Thai/English toggle | /admin panel |
 | Login | Google, LINE, Apple, email | LINE or Google; staff accounts under one shop | Google, restricted |
 | Main jobs | Search, book, pay, contact shop, review | Bikes, availability, pricing, extras, promos, delivery, bookings, stats | Approve shops, bike catalog, ranking, refunds, finance, referral partners |
 | Notified via | Email + WhatsApp | LINE + email | LINE |

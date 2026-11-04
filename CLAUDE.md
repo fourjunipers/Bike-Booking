@@ -28,7 +28,7 @@ Three roles: **customer**, **vendor** (shop owner + staff), **admin** (platform 
 | Styling / UI | Tailwind CSS + shadcn/ui |
 | Database / auth / storage | Supabase (Postgres, Auth, Storage), with PostGIS for distance search |
 | Migrations | Supabase CLI migrations in `supabase/migrations/`, never edit the DB by hand |
-| i18n | `next-intl`. Customer site is English only. Vendor dashboard is Thai + English |
+| i18n | `next-intl`. Customer site: English, Thai, Chinese, Russian, German, French, Spanish, Italian, Japanese, Korean (English at `/`, others prefixed, e.g. `/ja/…`). Vendor dashboard is Thai + English. Admin is English |
 | Payments | Stripe (cards, saved cards via SetupIntent, Apple Pay / Google Pay, PromptPay) |
 | Vendor messaging | LINE Messaging API (Flex messages, postback buttons) |
 | Customer messaging | Resend (email). WhatsApp Business API is added in Phase 7 |

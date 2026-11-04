@@ -1,7 +1,55 @@
 {
   "Customer": {
     "title": "Motorbike rental in Bangkok",
-    "intro": "Find and book bikes from local rental shops. Search is coming soon."
+    "intro": "Find and book bikes from local rental shops. Search is coming soon.",
+    "metaDescription": "Book motorbikes from local rental shops in Bangkok."
+  },
+  "Language": {
+    "label": "Language",
+    "dismiss": "No thanks"
+  },
+  "Login": {
+    "title": "Sign in",
+    "vendorHint": "Shop owners and staff: sign in with LINE or Google.",
+    "google": "Continue with Google",
+    "line": "Continue with LINE",
+    "apple": "Continue with Apple",
+    "errorSignin": "Sign-in didn't complete. Please try again.",
+    "errorLink": "That sign-in link is invalid or has expired. Request a new one below.",
+    "sent": "Check your email for a sign-in link. It works once and expires in 1 hour.",
+    "email": "Email",
+    "send": "Email me a sign-in link",
+    "sending": "Sending…",
+    "sendFailed": "Couldn't send the link. Check the address and try again."
+  },
+  "Account": {
+    "title": "Your account",
+    "loading": "Loading…",
+    "name": "Name",
+    "email": "Email",
+    "whatsapp": "WhatsApp number",
+    "whatsappHint": "International format, e.g. +66 81 234 5678",
+    "updates": "Booking updates",
+    "emailOnly": "Email only",
+    "emailWhatsapp": "Email and WhatsApp",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved.",
+    "saveFailed": "Couldn't save. Please try again.",
+    "signOut": "Sign out",
+    "nameRequired": "Enter your name",
+    "nameTooLong": "Name is too long",
+    "whatsappFormat": "Use international format, e.g. +66 81 234 5678",
+    "whatsappNeeded": "Add a WhatsApp number to get WhatsApp messages"
+  },
+  "Join": {
+    "title": "Join a shop team",
+    "loading": "Loading…",
+    "incomplete": "This invite link is incomplete. Ask the shop owner for a new one.",
+    "intro": "You've been invited to help manage a rental shop's bookings and fleet.",
+    "join": "Join the team",
+    "joining": "Joining…",
+    "expired": "This invite has expired or was already used. Ask the shop owner for a new link."
   },
   "Vendor": {
     "title": "Vendor dashboard",

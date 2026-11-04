@@ -1,17 +1,12 @@
 import Link from "next/link";
 
-const areas = [
-  { href: "/", label: "Customer" },
-  { href: "/vendor", label: "Vendor" },
-  { href: "/admin", label: "Admin" },
-  { href: "/account", label: "Account" },
-] as const;
-
 /** Placeholder chrome shared by the three areas until each gets real navigation. */
 export function AreaShell({
   area,
   wide = false,
   nav,
+  homeHref = "/",
+  accountHref = "/account",
   children,
 }: {
   area: string;
@@ -19,9 +14,18 @@ export function AreaShell({
   wide?: boolean;
   /** Area navigation shown under the header. */
   nav?: React.ReactNode;
+  /** Customer pages keep their language prefix on these links. */
+  homeHref?: string;
+  accountHref?: string;
   children: React.ReactNode;
 }) {
   const width = wide ? "max-w-6xl" : "max-w-3xl";
+  const areas = [
+    { href: homeHref, label: "Customer" },
+    { href: "/vendor", label: "Vendor" },
+    { href: "/admin", label: "Admin" },
+    { href: accountHref, label: "Account" },
+  ];
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b">

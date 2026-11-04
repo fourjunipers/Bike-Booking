@@ -1,0 +1,54 @@
+{
+  "Customer": {
+    "title": "曼谷摩托车租赁",
+    "intro": "查找并预订当地租车行的摩托车。搜索功能即将上线。",
+    "metaDescription": "在曼谷向当地租车行预订摩托车。"
+  },
+  "Language": {
+    "label": "语言",
+    "dismiss": "不用了"
+  },
+  "Login": {
+    "title": "登录",
+    "vendorHint": "车行老板和员工：请使用 LINE 或 Google 登录。",
+    "google": "使用 Google 继续",
+    "line": "使用 LINE 继续",
+    "apple": "使用 Apple 继续",
+    "errorSignin": "登录未完成，请重试。",
+    "errorLink": "该登录链接无效或已过期。请在下方重新获取。",
+    "sent": "请查收邮件中的登录链接。该链接仅可使用一次，1 小时后失效。",
+    "email": "电子邮箱",
+    "send": "通过邮件发送登录链接",
+    "sending": "正在发送…",
+    "sendFailed": "无法发送链接。请检查邮箱地址后重试。"
+  },
+  "Account": {
+    "title": "我的账户",
+    "loading": "加载中…",
+    "name": "姓名",
+    "email": "电子邮箱",
+    "whatsapp": "WhatsApp 号码",
+    "whatsappHint": "国际格式，例如 +66 81 234 5678",
+    "updates": "预订通知",
+    "emailOnly": "仅邮件",
+    "emailWhatsapp": "邮件和 WhatsApp",
+    "save": "保存",
+    "saving": "正在保存…",
+    "saved": "已保存。",
+    "saveFailed": "保存失败，请重试。",
+    "signOut": "退出登录",
+    "nameRequired": "请输入您的姓名",
+    "nameTooLong": "姓名过长",
+    "whatsappFormat": "请使用国际格式，例如 +66 81 234 5678",
+    "whatsappNeeded": "如需接收 WhatsApp 消息，请填写 WhatsApp 号码"
+  },
+  "Join": {
+    "title": "加入车行团队",
+    "loading": "加载中…",
+    "incomplete": "此邀请链接不完整。请向车行老板索取新链接。",
+    "intro": "您已受邀协助管理一家租车行的预订和车辆。",
+    "join": "加入团队",
+    "joining": "正在加入…",
+    "expired": "此邀请已过期或已被使用。请向车行老板索取新链接。"
+  }
+}
