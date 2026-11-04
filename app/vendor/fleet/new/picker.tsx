@@ -19,7 +19,6 @@ type Entry = {
   label: string;
   make: string;
   model: string;
-  generation: string | null;
   year_from: number | null;
   year_to: number | null;
   cc: number;
@@ -100,11 +99,6 @@ export function RequestModelForm() {
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField name="make" label={t("make")} placeholder="Honda" />
         <TextField name="model" label={t("model")} placeholder="PCX 160" />
-        <TextField
-          name="generation"
-          label={t("generation")}
-          hint={t("generationHint")}
-        />
         <NumberField name="cc" label={t("cc")} />
         <NumberField name="year_from" label={t("yearFrom")} />
         <NumberField name="year_to" label={t("yearTo")} />

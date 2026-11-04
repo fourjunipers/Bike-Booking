@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import {
   ActionForm,
+  CheckboxField,
   FormSection,
   inputClass,
   NumberField,
@@ -179,6 +180,11 @@ export function ClosureForm() {
         name="note"
         label={t("closureNote")}
         placeholder={t("closureNoteHint")}
+      />
+      <CheckboxField
+        name="repeats_yearly"
+        label={t("repeatsYearly")}
+        hint={t("repeatsYearlyHint")}
       />
     </ActionForm>
   );

@@ -27,10 +27,12 @@ export function PriceEditor({
   action,
   initialAnchors,
   initialManual,
+  initialDailyAfter30,
 }: {
   action: Action;
   initialAnchors: Anchors;
   initialManual: ManualDays;
+  initialDailyAfter30: number | null;
 }) {
   const t = useTranslations("Pricing");
   const [anchors, setAnchors] = useState<Record<AnchorDay, string>>(
@@ -39,6 +41,7 @@ export function PriceEditor({
         ANCHOR_DAYS.map((d) => [d, initialAnchors[d]?.toString() ?? ""]),
       ) as Record<AnchorDay, string>,
   );
+  const [after30, setAfter30] = useState(initialDailyAfter30?.toString() ?? "");
   const [manual, setManual] = useState<Record<number, number>>(
     Object.fromEntries(
       Object.entries(initialManual).filter(([, v]) => v !== undefined),
@@ -84,6 +87,13 @@ export function PriceEditor({
     }
   }, [parsedAnchors, table]);
 
+  const dailyAfter30 = useMemo(() => {
+    const n = Number(after30.replace(/[,\s฿]/g, ""));
+    return after30.trim() !== "" && Number.isSafeInteger(n) && n > 0
+      ? n
+      : undefined;
+  }, [after30]);
+
   const warnings = table ? pricingWarnings(table) : [];
   const warnDays = new Set(warnings.map((w) => w.day));
 
@@ -104,6 +114,14 @@ export function PriceEditor({
           ))}
         </div>
       </fieldset>
+
+      <PriceInput
+        name="price_after_30"
+        label={`${t("after30")} (${t("required")})`}
+        hint={t("after30Hint")}
+        value={after30}
+        onChange={setAfter30}
+      />
 
       {Object.entries(activeManual).map(([day, v]) => (
         <input key={day} type="hidden" name={`manual_${day}`} value={v} />
@@ -170,9 +188,14 @@ export function PriceEditor({
               </li>
             ))}
           </ol>
-          <p className="text-sm text-muted-foreground">
-            {t("over30", { price: formatBaht(priceForDays(table, 45)) })}
-          </p>
+          {dailyAfter30 !== undefined && (
+            <p className="text-sm text-muted-foreground">
+              {t("over30", {
+                price45: formatBaht(priceForDays(table, 45, dailyAfter30)),
+                price60: formatBaht(priceForDays(table, 60, dailyAfter30)),
+              })}
+            </p>
+          )}
           {warnings.length > 0 && (
             <ul role="alert" className="space-y-1 text-sm text-destructive">
               {warnings.map((w) => (
@@ -204,26 +227,57 @@ function AnchorInput({
   onChange: (v: string) => void;
 }) {
   const t = useTranslations("Pricing");
+  return (
+    <PriceInput
+      name={`anchor_${day}`}
+      label={`${t("days", { n: day })}${required ? ` (${t("required")})` : ""}`}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+function PriceInput({
+  name,
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  name: string;
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   const tErrors = useTranslations("Errors");
-  const error = useFieldError(`anchor_${day}`);
+  const error = useFieldError(name);
+  const describedBy =
+    [hint && `${name}-hint`, error && `${name}-error`]
+      .filter(Boolean)
+      .join(" ") || undefined;
   return (
     <div className="space-y-1">
-      <label htmlFor={`anchor_${day}`} className="text-sm font-medium">
-        {t("days", { n: day })}
-        {required ? ` (${t("required")})` : ""}
+      <label htmlFor={name} className="text-sm font-medium">
+        {label}
       </label>
       <input
-        id={`anchor_${day}`}
-        name={`anchor_${day}`}
+        id={name}
+        name={name}
         inputMode="numeric"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={!!error}
-        aria-describedby={error ? `anchor_${day}-error` : undefined}
+        aria-describedby={describedBy}
         className={inputClass}
       />
+      {hint && (
+        <p id={`${name}-hint`} className="text-sm text-muted-foreground">
+          {hint}
+        </p>
+      )}
       {error && (
-        <p id={`anchor_${day}-error`} className="text-sm text-destructive">
+        <p id={`${name}-error`} className="text-sm text-destructive">
           {tErrors(error)}
         </p>
       )}

@@ -13,7 +13,7 @@ export default async function AdminCatalogPage({
   const { data: entries } = await createAdminClient()
     .from("bike_catalog")
     .select(
-      "id, make, model, generation, year_from, year_to, cc, type, stock_photo, abs, key_type, bike_models (id)",
+      "id, make, model, year_from, year_to, cc, type, stock_photo, abs, key_type, bike_models (id)",
     )
     .eq("status", filter)
     .order("make")

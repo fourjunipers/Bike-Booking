@@ -21,7 +21,7 @@ export default async function NewModelPage({
   const { data: catalog } = await supabase
     .from("bike_catalog")
     .select(
-      "id, make, model, generation, year_from, year_to, cc, type, transmission, status",
+      "id, make, model, year_from, year_to, cc, type, transmission, status",
     )
     .neq("status", "rejected")
     .order("make")

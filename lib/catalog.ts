@@ -5,7 +5,6 @@
 export type CatalogEntryLabel = {
   make: string;
   model: string;
-  generation: string | null;
   year_from: number | null;
   year_to: number | null;
 };
@@ -18,12 +17,11 @@ export function yearRange(from: number | null, to: number | null): string {
   return from === to ? String(from) : `${from}–${to}`;
 }
 
-/** "Honda Scoopy (New Gen) 2025–2026". */
+/** "Honda Scoopy 2025–2026". */
 export function catalogLabel(entry: CatalogEntryLabel): string {
   const name = `${entry.make} ${entry.model}`;
-  const gen = entry.generation ? ` (${entry.generation})` : "";
   const years = yearRange(entry.year_from, entry.year_to);
-  return `${name}${gen}${years ? ` ${years}` : ""}`;
+  return `${name}${years ? ` ${years}` : ""}`;
 }
 
 function normalise(value: string): string {

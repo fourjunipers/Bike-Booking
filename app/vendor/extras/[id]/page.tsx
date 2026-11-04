@@ -34,9 +34,7 @@ export default async function ExtraPage({
           .maybeSingle(),
     supabase
       .from("bike_models")
-      .select(
-        "id, catalog:bike_catalog (make, model, generation, year_from, year_to, cc)",
-      )
+      .select("id, catalog:bike_catalog (make, model, year_from, year_to, cc)")
       .eq("shop_id", shop.id),
   ]);
   if (!isNew && !extra) notFound();

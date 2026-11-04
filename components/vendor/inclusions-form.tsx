@@ -16,7 +16,6 @@ import type { ActionState } from "@/lib/forms";
 import {
   DEPOSIT_METHODS,
   GEAR_OPTIONS,
-  HELMET_SIZES,
   HELMET_TYPES,
   LICENCE_TYPES,
   PASSPORT_POLICIES,
@@ -134,33 +133,18 @@ export function InclusionsForm({
   return (
     <ActionForm action={action} className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <FormSection title={t("helmets")}>
+        <FormSection title={t("helmetsSection")}>
           {num("helmets")}
-          <SelectField
-            name="helmet_type"
-            label={t("helmet_type")}
-            options={
-              model
-                ? opts(HELMET_TYPES, (v) => te(`helmet.${v}`), shop.helmet_type)
-                : [
-                    { value: "", label: t("notSet") },
-                    ...HELMET_TYPES.map((v) => ({
-                      value: v,
-                      label: te(`helmet.${v}`),
-                    })),
-                  ]
-            }
-            defaultValue={
-              model ? (o.helmet_type ?? "") : (shop.helmet_type ?? "")
-            }
-          />
           <ArrayOverride
             enabled={model}
-            name="helmet_sizes"
-            legend={t("helmet_sizes")}
-            options={HELMET_SIZES.map((v) => ({ value: v, label: v }))}
-            shopValues={shop.helmet_sizes}
-            values={o.helmet_sizes ?? null}
+            name="helmet_types"
+            legend={t("helmet_types")}
+            options={HELMET_TYPES.map((v) => ({
+              value: v,
+              label: te(`helmet.${v}`),
+            }))}
+            shopValues={shop.helmet_types}
+            values={o.helmet_types ?? null}
           />
         </FormSection>
 
@@ -282,7 +266,7 @@ function ArrayOverride({
   values,
 }: {
   enabled: boolean;
-  name: "helmet_sizes" | "deposit_methods";
+  name: "helmet_types" | "deposit_methods";
   legend: string;
   options: { value: string; label: string }[];
   shopValues: readonly string[];

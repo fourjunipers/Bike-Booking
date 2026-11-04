@@ -161,6 +161,7 @@ export async function addClosure(
     start_date: parsed.data.start_date,
     end_date: parsed.data.end_date,
     note: parsed.data.note ?? null,
+    repeats_yearly: parsed.data.repeats_yearly,
   });
   if (error) return failed;
   refresh();
@@ -228,7 +229,7 @@ export async function saveShopInclusions(
   if (!shop) return failed;
   const parsed = shopInclusionsSchema.safeParse({
     ...formObject(formData),
-    helmet_sizes: formData.getAll("helmet_sizes"),
+    helmet_types: formData.getAll("helmet_types"),
     deposit_methods: formData.getAll("deposit_methods"),
   });
   if (!parsed.success) return invalid(fieldErrors(parsed.error));

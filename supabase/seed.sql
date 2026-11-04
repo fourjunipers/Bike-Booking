@@ -118,31 +118,31 @@ insert into public.shop_policies (
 -- left blank for admin to fill in. No stock photos yet: the app shows a
 -- neutral placeholder.
 insert into public.bike_catalog (
-  id, make, model, generation, year_from, year_to, cc, type, transmission, status, reviewed_at
-) values  ('e0000000-0000-4000-8000-000000000010', 'Honda', 'Click 125i', null, 2019, 2022, 125, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000011', 'Yamaha', 'Grand Filano', null, 2018, 2022, 125, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000012', 'Honda', 'Scoopy', null, 2021, 2023, 110, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000013', 'Honda', 'Lead', null, 2023, 2023, 125, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000014', 'Yamaha', 'Fazzio', null, 2025, 2026, 125, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000015', 'Honda', 'Click 150i', null, 2019, 2022, 150, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000016', 'Honda', 'Scoopy', 'New Gen', 2025, 2026, 110, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000017', 'Honda', 'Giorno', null, 2025, 2026, 125, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000018', 'Honda', 'Lead', 'New Gen', 2026, 2026, 125, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000019', 'Yamaha', 'Aerox 155', '1st Gen', 2018, 2020, 155, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000020', 'Honda', 'Click 160', null, 2023, 2025, 160, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000021', 'Yamaha', 'Aerox 155', '2nd Gen', 2024, 2026, 155, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000022', 'Yamaha', 'NMAX', null, 2026, 2026, 155, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000023', 'Benelli', 'Leoncino 250', null, 2022, 2024, 250, 'city_scooter', 'manual', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000024', 'Honda', 'PCX 160', null, 2026, 2026, 160, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000025', 'Honda', 'ADV 160', null, 2026, 2026, 160, 'city_scooter', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000026', 'Honda', 'NX500', null, 2025, 2025, 471, 'adventure', 'manual', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000027', 'Honda', 'CB500X', null, 2022, 2023, 471, 'adventure', 'manual', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000028', 'Honda', 'CB500X', null, 2019, 2021, 471, 'adventure', 'manual', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000029', 'Honda', 'CB500X', null, 2016, 2018, 471, 'adventure', 'manual', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000030', 'Honda', 'Forza 350', null, null, null, 330, 'touring', 'automatic', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000031', 'Honda', 'CB300R', null, null, null, 286, 'sport', 'manual', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000032', 'Honda', 'CRF300L', null, null, null, 286, 'off_road', 'manual', 'approved', now()),
-  ('e0000000-0000-4000-8000-000000000033', 'Yamaha', 'WR155', null, null, null, 155, 'off_road', 'manual', 'approved', now());
+  id, make, model, year_from, year_to, cc, type, transmission, status, reviewed_at
+) values  ('e0000000-0000-4000-8000-000000000010', 'Honda', 'Click 125i', 2019, 2022, 125, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000011', 'Yamaha', 'Grand Filano', 2018, 2022, 125, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000012', 'Honda', 'Scoopy', 2021, 2023, 110, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000013', 'Honda', 'Lead', 2023, 2023, 125, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000014', 'Yamaha', 'Fazzio', 2025, 2026, 125, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000015', 'Honda', 'Click 150i', 2019, 2022, 150, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000016', 'Honda', 'Scoopy', 2025, 2026, 110, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000017', 'Honda', 'Giorno', 2025, 2026, 125, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000018', 'Honda', 'Lead', 2026, 2026, 125, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000019', 'Yamaha', 'Aerox 155', 2018, 2020, 155, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000020', 'Honda', 'Click 160', 2023, 2025, 160, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000021', 'Yamaha', 'Aerox 155', 2024, 2026, 155, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000022', 'Yamaha', 'NMAX', 2026, 2026, 155, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000023', 'Benelli', 'Leoncino 250', 2022, 2024, 250, 'city_scooter', 'manual', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000024', 'Honda', 'PCX 160', 2026, 2026, 160, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000025', 'Honda', 'ADV 160', 2026, 2026, 160, 'city_scooter', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000026', 'Honda', 'NX500', 2025, 2025, 471, 'adventure', 'manual', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000027', 'Honda', 'CB500X', 2022, 2023, 471, 'adventure', 'manual', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000028', 'Honda', 'CB500X', 2019, 2021, 471, 'adventure', 'manual', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000029', 'Honda', 'CB500X', 2016, 2018, 471, 'adventure', 'manual', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000030', 'Honda', 'Forza 350', null, null, 330, 'touring', 'automatic', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000031', 'Honda', 'CB300R', null, null, 286, 'sport', 'manual', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000032', 'Honda', 'CRF300L', null, null, 286, 'off_road', 'manual', 'approved', now()),
+  ('e0000000-0000-4000-8000-000000000033', 'Yamaha', 'WR155', null, null, 155, 'off_road', 'manual', 'approved', now());
 
 -- BSR fleet ----------------------------------------------------------------
 -- Every model on Request, quantity 1 (owner adjusts). Touring models override
@@ -337,6 +337,13 @@ cross join lateral (
   where bike_model_id = d.bike_model_id and day >= d.day
   order by day asc limit 1
 ) b;
+
+-- Price per day after 30 days. PLACEHOLDER for the owner to replace with BSR's
+-- real rates: the 30-day price / 30, rounded to 10 baht.
+update public.bike_models m
+set price_after_30 = (round(p.total / 30.0 / 10) * 10)::int
+from public.price_days p
+where p.bike_model_id = m.id and p.day = 30;
 
 -- Extras (paid at the shop) ------------------------------------------------
 insert into public.shop_extras (

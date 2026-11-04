@@ -105,7 +105,6 @@ export async function saveCatalogEntry(
   const row = {
     make: v.make,
     model: v.model,
-    generation: v.generation ?? null,
     year_from: v.year_from ?? null,
     year_to: v.year_to ?? null,
     cc: v.cc,

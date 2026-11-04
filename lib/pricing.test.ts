@@ -95,6 +95,32 @@ describe("priceForDays", () => {
     expect(priceForDays(SPEC_TABLE, 45)).toBe(8870);
   });
 
+  describe("with a daily price after 30 days (bike models)", () => {
+    it.each([
+      [1, 300],
+      [30, 5500],
+      [31, 5650],
+      [45, 7750], // 5,500 + 15 × 150
+      [60, 10000], // 5,500 + 30 × 150
+      [75, 12250],
+      [90, 14500],
+    ])("%i days = ฿%i at ฿150/day", (days, expected) => {
+      expect(priceForDays(table, days, 150)).toBe(expected);
+    });
+
+    it("never charges more than the 30-day price for a further month", () => {
+      // 30 × 250 = 7,500 > 5,500, so each further month costs 5,500.
+      expect(priceForDays(table, 60, 250)).toBe(11000);
+      expect(priceForDays(table, 59, 250)).toBe(5500 + 5500);
+      expect(priceForDays(table, 40, 250)).toBe(5500 + 2500);
+    });
+
+    it("rejects a bad daily price", () => {
+      expect(() => priceForDays(table, 40, 0)).toThrow(RangeError);
+      expect(() => priceForDays(table, 40, 12.5)).toThrow();
+    });
+  });
+
   it("rejects bad lengths", () => {
     expect(() => priceForDays(table, 0)).toThrow();
     expect(() => priceForDays(table, 1.5)).toThrow();

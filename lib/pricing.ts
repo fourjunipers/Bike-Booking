@@ -161,13 +161,21 @@ function totalsOf(table: readonly (DayPrice | number)[]): number[] {
 }
 
 /**
- * Total for a rental of `days` days. Over 30 days: full months × the 30-day
- * price, plus the remaining days from the table, capped at the 30-day price.
- * Example (SPEC): 45 days = 5,500 + 3,370 = 8,870.
+ * Total for a rental of `days` days.
+ *
+ * Bike models pass `dailyAfter30` (required for bikes, owner decision
+ * 2026-11-04): days 31+ cost that much each, and each further 30 days never
+ * costs more than the 30-day price. Example: 30 days ฿5,500 and ฿150/day after
+ * → 45 days = 5,500 + 15 × 150 = 7,750.
+ *
+ * Without it (time-based extras): full months × the 30-day price, plus the
+ * remaining days from the table, capped at the 30-day price.
+ * Example: 45 days = 5,500 + 3,370 = 8,870.
  */
 export function priceForDays(
   table: readonly (DayPrice | number)[],
   days: number,
+  dailyAfter30?: number,
 ): number {
   if (!Number.isInteger(days) || days < 1) {
     throw new RangeError(
@@ -176,6 +184,19 @@ export function priceForDays(
   }
   const totals = totalsOf(table);
   const month = totals[TABLE_DAYS - 1];
+  if (dailyAfter30 !== undefined) {
+    assertPrice(dailyAfter30, "Daily price after 30 days");
+    if (days <= TABLE_DAYS) return totals[days - 1];
+    const extra = days - TABLE_DAYS;
+    const extraMonths = Math.floor(extra / TABLE_DAYS);
+    const extraRest = extra % TABLE_DAYS;
+    const fullExtraMonth = Math.min(TABLE_DAYS * dailyAfter30, month);
+    return (
+      month +
+      extraMonths * fullExtraMonth +
+      Math.min(extraRest * dailyAfter30, month)
+    );
+  }
   const fullMonths = Math.floor(days / TABLE_DAYS);
   const rest = days % TABLE_DAYS;
   const restTotal = rest === 0 ? 0 : Math.min(totals[rest - 1], month);
