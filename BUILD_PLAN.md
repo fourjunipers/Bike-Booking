@@ -97,7 +97,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 **Tasks**
 - **Onboarding:** create shop → profile → policies ("What's included", deposit and documents) → at least one bike model → submit for review (status `pending`).
 - **Master bike catalog** (`bike_catalog`):
-  - One entry per make / model / generation: stock photo, cc, transmission, type, ABS, under-seat storage, USB charger, key type (keyless / keyed), description, year range.
+  - One entry per make / model / year range: stock photo, cc, transmission, type, ABS, under-seat storage, USB charger, key type (keyless / keyed), description, year range.
   - Admin catalog screen: add, edit, upload stock photo. Until a stock photo exists, show a neutral placeholder image. Never copy manufacturer or third-party images without a licence.
   - Vendors add a bike by **picking a catalog entry** (search by make/model). `bike_models.catalog_id` replaces the vendor typing make, model, type, transmission and cc.
   - Missing model: vendor submits a catalog request. Admin approves (adds stock photo) or rejects it from the approval queue.
@@ -115,9 +115,9 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 - **Pricing autofill** (`lib/pricing.ts`, pure functions + unit tests):
   - Anchors: day 1 and day 30 required; days 7, 14, 21 optional.
   - Fill rule: linear between consecutive set anchors, rounded to nearest ฿10. Manual day edits are flagged `is_manual` and never overwritten when anchors change.
-  - Over 30 days: `floor(d/30) × price(30) + min(price(d mod 30), price(30))`.
+  - Over 30 days (owner decision 2026-11-04): a required price per day after 30 days. `price(30) + floor(e/30) × min(30 × rate, price(30)) + min((e mod 30) × rate, price(30))` with `e = d − 30`. Time-based extras keep `floor(d/30) × price(30) + min(price(d mod 30), price(30))`.
   - Validation warnings: a longer rental cheaper than a shorter one, or any day below the day-1 price.
-  - **Tests must include the SPEC example:** anchors 300 / 1,800 / 3,200 / 4,400 / 5,500 produce exactly the table in SPEC, and 45 days = 8,870.
+  - **Tests must include the SPEC example:** anchors 300 / 1,800 / 3,200 / 4,400 / 5,500 produce exactly the table in SPEC; with ฿150/day after 30 days, 45 days = 7,750.
   - UI: anchors at top, 30-day grid below, edited cells highlighted, "reset to autofill" per cell.
 - **Staff:** owner can invite staff by email or LINE. Staff can manage bookings and fleet but not shop ownership or team.
 - **Vendor dashboard language toggle** Thai/English. All vendor UI strings go through `next-intl`.
@@ -174,7 +174,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 
 **Acceptance criteria**
 - Searching from Phra Khanong BTS shows BSR first among equal shops when boosted, and sorting by price works.
-- Prices for 1, 7, 10, 30 and 45 days match the pricing function.
+- Prices for 1, 7, 10, 30, 45 and 60 days match the pricing function, including the price per day after 30 days.
 - A model offered by two shops shows one search card with the lower "From" price and "2 shops near you"; its model page lists both shops.
 - The availability function has unit tests covering buffers, down time and overlapping bookings.
 - Lighthouse mobile performance ≥ 85 on home and search.
@@ -220,7 +220,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - Shown in the price breakdown under "Pay at shop"; the amount to collect includes them. The vendor's booking notice lists them.
 - **Modes:**
   - **Instant:** confirms immediately → `confirmed_unpaid` (or straight to paid flow if pickup within 3 days. Simulated in this phase).
-  - **Request:** → `pending_vendor` with `request_expires_at` = now + shop response window. Vendor Accept/Decline in the dashboard (LINE buttons come in Phase 6).
+  - **Request:** → `pending_vendor` with `request_expires_at` = now + shop response window, counted in opening hours only (a request outside hours starts counting at the next opening). Vendor Accept/Decline in the dashboard (LINE buttons come in Phase 6).
   - **Get your bike now:** only when the ready-today rules from Phase 3 pass. Confirms instantly, payment required at booking, and decrements `ready_today_count` in the same transaction (auto-Out at 0).
   - **Abuse guard:** reject a new booking if the customer already has an unpaid booking (`confirmed_unpaid` or `pending_vendor`) whose dates overlap. Bookings on different dates are allowed.
 - **Checkout page:**
