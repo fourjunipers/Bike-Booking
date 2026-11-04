@@ -504,6 +504,9 @@ isOneToOne: true
 "create_shop_invite":
 { Args: { "p_shop_id": string }; Returns: string
                            },
+"is_admin":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "is_bike_model_public":
 { Args: { "p_bike_model_id": string }; Returns: boolean
                            },
@@ -521,6 +524,11 @@ isOneToOne: true
                            },
 "promotion_shop_id":
 { Args: { "p_promotion_id": string }; Returns: string
+                           },
+"shop_coordinates":
+{ Args: { "p_shop_id": string }; Returns: {
+              "lat": number,"lng": number
+            }[]
                            },
 "shop_extra_shop_id":
 { Args: { "p_extra_id": string }; Returns: string
