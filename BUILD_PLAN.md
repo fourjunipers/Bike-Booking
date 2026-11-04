@@ -487,6 +487,17 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 
 ---
 
+## Later: other countries (not scheduled)
+
+Prepared in Phase 2: `shops.country` / `shops.currency` (TH / THB) and `bookings.currency`. When a second country is planned:
+- One site and codebase, with country folders: `/thailand/bangkok/…`, `/vietnam/hanoi/…`; country domains, if bought, redirect to them.
+- Per-country settings: booking fee % and minimum, payment methods (PromptPay is Thailand only), time zone.
+- `lib/money.ts` and `lib/time.ts` per currency and time zone (VND has no minor unit; some countries aren't UTC+7).
+- Vendor dashboard languages per country.
+- Check payments, tax and licensing for that country first.
+
+---
+
 ## Notes for every phase
 
 - If `SPEC.md` is ambiguous, list the questions in your plan instead of guessing.

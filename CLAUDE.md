@@ -41,7 +41,7 @@ Before relying on any third-party API behaviour (Supabase Auth providers, Stripe
 
 ## Conventions
 
-- **Money:** store all amounts as **integer Thai baht** in the database (`int`). Convert to satang (×100) only at the Stripe boundary, in one helper (`lib/money.ts`).
+- **Money:** store all amounts as **integers in the shop's currency** in the database (`int`). Every shop is Thai baht for now (`shops.currency` = THB; bookings copy it). Convert to satang (×100) only at the Stripe boundary, in one helper (`lib/money.ts`). Don't assume THB in new code where the currency is at hand: other countries may follow (see `docs/decisions.md`).
 - **Time:** store `timestamptz` in UTC. All business logic (shop hours, cut-offs, "today", the 3-days-before payment date) runs in **Asia/Bangkok**. Use one date helper module (`lib/time.ts`) and never call `new Date()` for business rules outside it.
 - **Pure logic in `lib/`, fully unit-tested:** pricing autofill (`lib/pricing.ts`), fee calculation (`lib/fees.ts`), availability rules (`lib/availability.ts`), cancellation rules (`lib/cancellation.ts`), booking state transitions (`lib/booking-state.ts`).
 - **Booking status changes only through `lib/booking-state.ts`.** It validates the transition and writes a `booking_events` row. Nothing else updates `bookings.status` directly.

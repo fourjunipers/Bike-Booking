@@ -73,6 +73,22 @@ describe("seed", () => {
   });
 });
 
+describe("country and currency", () => {
+  it("shops default to Thailand / THB and vendors can't change it", async () => {
+    const { data } = await anon
+      .from("shops")
+      .select("country, currency")
+      .eq("id", seed.bsrShop)
+      .single();
+    expect(data).toEqual({ country: "TH", currency: "THB" });
+    const { error } = await bsrOwner
+      .from("shops")
+      .update({ currency: "VND" } as never)
+      .eq("id", seed.bsrShop);
+    expect(error).not.toBeNull();
+  });
+});
+
 describe("bike catalog", () => {
   it("the public sees approved entries only", async () => {
     const { data } = await anon.from("bike_catalog").select("id, status");

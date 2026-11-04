@@ -342,12 +342,12 @@ Vendors get LINE (with buttons) plus email; customers get email plus WhatsApp. V
 
 ## Data model
 
-Core tables in Supabase (Postgres); availability is computed from bookings, buffers and down time rather than stored. The build's actual table and column names are recorded in `docs/decisions.md` where they differ from this list.
+Core tables in Supabase (Postgres); availability is computed from bookings, buffers and down time rather than stored. Every amount is a whole number in the shop's currency (THB at launch); shops and bookings carry country and currency so other countries can be added later without a second site. The build's actual table and column names are recorded in `docs/decisions.md` where they differ from this list.
 
 | Table | Key fields |
 | --- | --- |
 | users | id, role (customer/vendor_staff/admin), name, email, whatsapp, line_user_id, language, notify_channels |
-| shops | id, name, slug, about, lat, lng, maps_url, nearest_station, whatsapp, line_id, status (draft/pending/live/suspended), boost_level, cutoff_minutes, buffer_before_h, buffer_after_h, request_window_min, delivery_enabled, delivery_radius_km, delivery_min_days (null = any length), google_place_id |
+| shops | id, name, slug, about, lat, lng, maps_url, nearest_station, whatsapp, line_id, status (draft/pending/live/suspended), boost_level, cutoff_minutes, buffer_before_h, buffer_after_h, request_window_min, delivery_enabled, delivery_radius_km, delivery_min_days (null = any length), google_place_id, country (ISO code, default TH), currency (ISO code, default THB) |
 | shop_members | shop_id, user_id, role (owner/staff) |
 | shop_hours | shop_id, weekday, open, close |
 | shop_closures | shop_id, start_date, end_date, note |
@@ -360,7 +360,7 @@ Core tables in Supabase (Postgres); availability is computed from bookings, buff
 | shop_extras | id, shop_id, name, description, terms, price_kind (rental/time), price_rental, price_1d, price_7d, price_30d, all_models, active |
 | shop_extra_models | extra_id, bike_model_id (when the extra applies to chosen models) |
 | promotions | id, shop_id, model_ids, kind (pct/fixed/long_rental/date_window/new_customer), value, min_days, start_date, end_date, active |
-| bookings | id, code, customer_id, shop_id, bike_model_id, qty, start_at, end_at, mode (instant/request/now), delivery_address, delivery_fee, rental_total, promo_id, discount, rental_after_promo, fee, extras_total, due_at_shop, status, payment_method, payment_due_at, stripe_customer_id, payment_method_id, paid_at, request_expires_at, cancelled_by, cancel_reason |
+| bookings | id, code, customer_id, shop_id, bike_model_id, qty, start_at, end_at, mode (instant/request/now), delivery_address, delivery_fee, rental_total, promo_id, discount, rental_after_promo, fee, extras_total, due_at_shop, currency (copied from the shop), status, payment_method, payment_due_at, stripe_customer_id, payment_method_id, paid_at, request_expires_at, cancelled_by, cancel_reason |
 | booking_extras | booking_id, extra_id, name, unit, price, quantity, total (copied at booking) |
 | reviews | booking_id, rating, text, hidden |
 | referral tables | referral_partners, referral_scans, referral_earnings, referral_payouts, profiles.referred_by_partner_id / referred_at, admin setting referral_rate (see Referral program) |
