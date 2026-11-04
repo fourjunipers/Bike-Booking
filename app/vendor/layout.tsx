@@ -3,13 +3,24 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { AreaShell } from "@/components/area-shell";
 import { SignOutButton } from "@/components/sign-out-button";
+import { VendorNav } from "@/components/vendor/nav";
 import { getMyShops, requireUser } from "@/lib/auth/session";
 import { getVendorLocale } from "@/i18n/vendor";
+import { CreateShopForm } from "./create-shop-form";
 
-// TODO(phase-2): Thai/English toggle that sets the locale cookie.
 export default function VendorLayout({ children }: LayoutProps<"/vendor">) {
   return (
-    <AreaShell area="Vendor">
+    <AreaShell
+      area="Vendor"
+      wide
+      nav={
+        <Suspense>
+          <VendorLocale>
+            <VendorNav />
+          </VendorLocale>
+        </Suspense>
+      }
+    >
       {/* Language and membership come from cookies, so render inside Suspense. */}
       <Suspense>
         <VendorLocale>
@@ -36,7 +47,7 @@ async function VendorLocale({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Signed in and a member of a shop, otherwise the "create your shop" screen. */
+/** Signed in and a member of a shop, otherwise "create your shop". */
 async function VendorGate({ children }: { children: React.ReactNode }) {
   await requireUser("/vendor");
   const shops = await getMyShops();
@@ -47,11 +58,13 @@ async function VendorGate({ children }: { children: React.ReactNode }) {
     namespace: "Vendor",
   });
 
-  // TODO(phase-2): onboarding flow (create shop → profile → policies → models).
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">{t("createShopTitle")}</h1>
-      <p className="text-muted-foreground">{t("createShopIntro")}</p>
+    <section className="max-w-xl space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold">{t("createShopTitle")}</h1>
+        <p className="text-muted-foreground">{t("createShopIntro")}</p>
+      </div>
+      <CreateShopForm />
       <SignOutButton label={t("signOut")} />
     </section>
   );
