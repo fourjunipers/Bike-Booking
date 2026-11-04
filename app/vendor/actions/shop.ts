@@ -57,6 +57,9 @@ export async function createShop(
     p_name: parsed.data.name,
   });
   if (error) return failed;
+  // The form sits in the vendor layout, which the client keeps across a
+  // same-area redirect: refresh it so the new membership shows.
+  refresh();
   redirect("/vendor");
 }
 

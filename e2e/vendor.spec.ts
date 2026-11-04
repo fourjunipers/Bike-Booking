@@ -37,13 +37,20 @@ test("the owner sees BSR's fleet and edits a quantity inline", async ({
   await expect(page.getByRole("link", { name: /Honda NX500/ })).toBeVisible();
 
   const qty = page.getByLabel("Quantity of Honda PCX 160 2026");
-  await qty.fill("2");
+  // Change it from whatever it is, then wait for the restore to save so the
+  // next run starts from the same value.
+  const before = await qty.inputValue();
+  await qty.fill(before === "2" ? "3" : "2");
   await qty.blur();
   await expect(
     page.getByRole("status").filter({ hasText: "Saved" }).first(),
   ).toBeVisible();
-  await qty.fill("1");
+  const restored = page.waitForResponse(
+    (r) => r.request().method() === "POST" && r.ok(),
+  );
+  await qty.fill(before);
   await qty.blur();
+  await restored;
 });
 
 test("a touring model shows its own deposit and inclusion overrides", async ({
