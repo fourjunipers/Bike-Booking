@@ -23,19 +23,65 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "bike_models": {
+            "bike_catalog": {
                   Row: {
-                    "booking_mode": Database["public"]['Enums']["booking_mode"],"buffer_after_h": number | null,"buffer_before_h": number | null,"cc": number,"created_at": string,"downtime_count": number,"downtime_until": string | null,"flagged_for_review": boolean,"id": string,"make": string,"model": string,"photos": (string)[],"qty": number,"ready_today_count": number,"ready_today_on": boolean,"ready_today_updated_at": string | null,"shop_id": string,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"updated_at": string,"visible": boolean,"year_from": number | null,"year_to": number | null
+                    "abs": boolean | null,"cc": number,"created_at": string,"description": string | null,"generation": string | null,"id": string,"key_type": Database["public"]['Enums']["key_type"] | null,"make": string,"model": string,"request_note": string | null,"requested_by_shop_id": string | null,"review_notes": string | null,"reviewed_at": string | null,"slug": string,"status": Database["public"]['Enums']["catalog_status"],"stock_photo": string | null,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"underseat_storage": boolean | null,"updated_at": string,"usb_charger": boolean | null,"year_from": number | null,"year_to": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "booking_mode"?: Database["public"]['Enums']["booking_mode"],"buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"cc": number,"created_at"?: string,"downtime_count"?: number,"downtime_until"?: string | null,"flagged_for_review"?: boolean,"id"?: string,"make": string,"model": string,"photos"?: (string)[],"qty": number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"shop_id": string,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"updated_at"?: string,"visible"?: boolean,"year_from"?: number | null,"year_to"?: number | null
+                    "abs"?: boolean | null,"cc": number,"created_at"?: string,"description"?: string | null,"generation"?: string | null,"id"?: string,"key_type"?: Database["public"]['Enums']["key_type"] | null,"make": string,"model": string,"request_note"?: string | null,"requested_by_shop_id"?: string | null,"review_notes"?: string | null,"reviewed_at"?: string | null,"slug": string,"status"?: Database["public"]['Enums']["catalog_status"],"stock_photo"?: string | null,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"underseat_storage"?: boolean | null,"updated_at"?: string,"usb_charger"?: boolean | null,"year_from"?: number | null,"year_to"?: number | null
                   }
                   Update: {
-                    "booking_mode"?: Database["public"]['Enums']["booking_mode"],"buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"cc"?: number,"created_at"?: string,"downtime_count"?: number,"downtime_until"?: string | null,"flagged_for_review"?: boolean,"id"?: string,"make"?: string,"model"?: string,"photos"?: (string)[],"qty"?: number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"shop_id"?: string,"transmission"?: Database["public"]['Enums']["transmission"],"type"?: Database["public"]['Enums']["bike_type"],"updated_at"?: string,"visible"?: boolean,"year_from"?: number | null,"year_to"?: number | null
+                    "abs"?: boolean | null,"cc"?: number,"created_at"?: string,"description"?: string | null,"generation"?: string | null,"id"?: string,"key_type"?: Database["public"]['Enums']["key_type"] | null,"make"?: string,"model"?: string,"request_note"?: string | null,"requested_by_shop_id"?: string | null,"review_notes"?: string | null,"reviewed_at"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["catalog_status"],"stock_photo"?: string | null,"transmission"?: Database["public"]['Enums']["transmission"],"type"?: Database["public"]['Enums']["bike_type"],"underseat_storage"?: boolean | null,"updated_at"?: string,"usb_charger"?: boolean | null,"year_from"?: number | null,"year_to"?: number | null
                   }
                   Relationships: [
                     {
+      foreignKeyName: "bike_catalog_requested_by_shop_id_fkey"
+      columns: ["requested_by_shop_id"]
+isOneToOne: false
+      referencedRelation: "shops"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"bike_model_policies": {
+                  Row: {
+                    "bike_model_id": string,"deposit_methods": (Database["public"]['Enums']["deposit_method"])[] | null,"deposit_refund_days": number | null,"experience_required": boolean | null,"gloves": Database["public"]['Enums']["gear_option"] | null,"helmet_sizes": (string)[] | null,"helmet_type": Database["public"]['Enums']["helmet_type"] | null,"helmets": number | null,"jacket": Database["public"]['Enums']["gear_option"] | null,"km_limit": number | null,"licence_required": Database["public"]['Enums']["licence_type"] | null,"medical_cover": boolean | null,"min_age": number | null,"notes": string | null,"passport": Database["public"]['Enums']["passport_policy"] | null,"phone_holder": boolean | null,"rain_gear": Database["public"]['Enums']["gear_option"] | null,"side_panniers": boolean | null,"top_box": boolean | null,"updated_at": string,"usage_area": Database["public"]['Enums']["usage_area"] | null,"usb_charger": boolean | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bike_model_id": string,"deposit_methods"?: (Database["public"]['Enums']["deposit_method"])[] | null,"deposit_refund_days"?: number | null,"experience_required"?: boolean | null,"gloves"?: Database["public"]['Enums']["gear_option"] | null,"helmet_sizes"?: (string)[] | null,"helmet_type"?: Database["public"]['Enums']["helmet_type"] | null,"helmets"?: number | null,"jacket"?: Database["public"]['Enums']["gear_option"] | null,"km_limit"?: number | null,"licence_required"?: Database["public"]['Enums']["licence_type"] | null,"medical_cover"?: boolean | null,"min_age"?: number | null,"notes"?: string | null,"passport"?: Database["public"]['Enums']["passport_policy"] | null,"phone_holder"?: boolean | null,"rain_gear"?: Database["public"]['Enums']["gear_option"] | null,"side_panniers"?: boolean | null,"top_box"?: boolean | null,"updated_at"?: string,"usage_area"?: Database["public"]['Enums']["usage_area"] | null,"usb_charger"?: boolean | null
+                  }
+                  Update: {
+                    "bike_model_id"?: string,"deposit_methods"?: (Database["public"]['Enums']["deposit_method"])[] | null,"deposit_refund_days"?: number | null,"experience_required"?: boolean | null,"gloves"?: Database["public"]['Enums']["gear_option"] | null,"helmet_sizes"?: (string)[] | null,"helmet_type"?: Database["public"]['Enums']["helmet_type"] | null,"helmets"?: number | null,"jacket"?: Database["public"]['Enums']["gear_option"] | null,"km_limit"?: number | null,"licence_required"?: Database["public"]['Enums']["licence_type"] | null,"medical_cover"?: boolean | null,"min_age"?: number | null,"notes"?: string | null,"passport"?: Database["public"]['Enums']["passport_policy"] | null,"phone_holder"?: boolean | null,"rain_gear"?: Database["public"]['Enums']["gear_option"] | null,"side_panniers"?: boolean | null,"top_box"?: boolean | null,"updated_at"?: string,"usage_area"?: Database["public"]['Enums']["usage_area"] | null,"usb_charger"?: boolean | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "bike_model_policies_bike_model_id_fkey"
+      columns: ["bike_model_id"]
+isOneToOne: true
+      referencedRelation: "bike_models"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"bike_models": {
+                  Row: {
+                    "booking_mode": Database["public"]['Enums']["booking_mode"],"buffer_after_h": number | null,"buffer_before_h": number | null,"catalog_id": string,"created_at": string,"deposit_amount": number | null,"downtime_count": number,"downtime_until": string | null,"flagged_for_review": boolean,"id": string,"photos": (string)[],"qty": number,"ready_today_count": number,"ready_today_on": boolean,"ready_today_updated_at": string | null,"shop_id": string,"updated_at": string,"visible": boolean,"year_from": number | null,"year_to": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "booking_mode"?: Database["public"]['Enums']["booking_mode"],"buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"catalog_id": string,"created_at"?: string,"deposit_amount"?: number | null,"downtime_count"?: number,"downtime_until"?: string | null,"flagged_for_review"?: boolean,"id"?: string,"photos"?: (string)[],"qty": number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"shop_id": string,"updated_at"?: string,"visible"?: boolean,"year_from"?: number | null,"year_to"?: number | null
+                  }
+                  Update: {
+                    "booking_mode"?: Database["public"]['Enums']["booking_mode"],"buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"catalog_id"?: string,"created_at"?: string,"deposit_amount"?: number | null,"downtime_count"?: number,"downtime_until"?: string | null,"flagged_for_review"?: boolean,"id"?: string,"photos"?: (string)[],"qty"?: number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"shop_id"?: string,"updated_at"?: string,"visible"?: boolean,"year_from"?: number | null,"year_to"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "bike_models_catalog_id_fkey"
+      columns: ["catalog_id"]
+isOneToOne: false
+      referencedRelation: "bike_catalog"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "bike_models_shop_id_fkey"
       columns: ["shop_id"]
 isOneToOne: false
@@ -261,20 +307,66 @@ isOneToOne: false
                   ]
                 },"shop_contacts": {
                   Row: {
-                    "line_id": string | null,"shop_id": string,"updated_at": string,"whatsapp": string | null
+                    "email": string | null,"line_id": string | null,"phone": string | null,"shop_id": string,"updated_at": string,"whatsapp": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "line_id"?: string | null,"shop_id": string,"updated_at"?: string,"whatsapp"?: string | null
+                    "email"?: string | null,"line_id"?: string | null,"phone"?: string | null,"shop_id": string,"updated_at"?: string,"whatsapp"?: string | null
                   }
                   Update: {
-                    "line_id"?: string | null,"shop_id"?: string,"updated_at"?: string,"whatsapp"?: string | null
+                    "email"?: string | null,"line_id"?: string | null,"phone"?: string | null,"shop_id"?: string,"updated_at"?: string,"whatsapp"?: string | null
                   }
                   Relationships: [
                     {
       foreignKeyName: "shop_contacts_shop_id_fkey"
       columns: ["shop_id"]
 isOneToOne: true
+      referencedRelation: "shops"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shop_extra_models": {
+                  Row: {
+                    "bike_model_id": string,"extra_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bike_model_id": string,"extra_id": string
+                  }
+                  Update: {
+                    "bike_model_id"?: string,"extra_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shop_extra_models_bike_model_id_fkey"
+      columns: ["bike_model_id"]
+isOneToOne: false
+      referencedRelation: "bike_models"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shop_extra_models_extra_id_fkey"
+      columns: ["extra_id"]
+isOneToOne: false
+      referencedRelation: "shop_extras"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shop_extras": {
+                  Row: {
+                    "active": boolean,"all_models": boolean,"created_at": string,"description": string | null,"id": string,"name": string,"price_1d": number | null,"price_30d": number | null,"price_7d": number | null,"price_kind": Database["public"]['Enums']["extra_price_kind"],"price_rental": number | null,"shop_id": string,"sort": number,"terms": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"all_models"?: boolean,"created_at"?: string,"description"?: string | null,"id"?: string,"name": string,"price_1d"?: number | null,"price_30d"?: number | null,"price_7d"?: number | null,"price_kind": Database["public"]['Enums']["extra_price_kind"],"price_rental"?: number | null,"shop_id": string,"sort"?: number,"terms"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "active"?: boolean,"all_models"?: boolean,"created_at"?: string,"description"?: string | null,"id"?: string,"name"?: string,"price_1d"?: number | null,"price_30d"?: number | null,"price_7d"?: number | null,"price_kind"?: Database["public"]['Enums']["extra_price_kind"],"price_rental"?: number | null,"shop_id"?: string,"sort"?: number,"terms"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shop_extras_shop_id_fkey"
+      columns: ["shop_id"]
+isOneToOne: false
       referencedRelation: "shops"
       referencedColumns: ["id"]
     }
@@ -296,6 +388,38 @@ isOneToOne: true
       columns: ["shop_id"]
 isOneToOne: false
       referencedRelation: "shops"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shop_invites": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"expires_at": string,"id": string,"shop_id": string,"token_hash": string,"used_at": string | null,"used_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"expires_at"?: string,"id"?: string,"shop_id": string,"token_hash": string,"used_at"?: string | null,"used_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"expires_at"?: string,"id"?: string,"shop_id"?: string,"token_hash"?: string,"used_at"?: string | null,"used_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shop_invites_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shop_invites_shop_id_fkey"
+      columns: ["shop_id"]
+isOneToOne: false
+      referencedRelation: "shops"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shop_invites_used_by_fkey"
+      columns: ["used_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -327,14 +451,14 @@ isOneToOne: false
                   ]
                 },"shop_policies": {
                   Row: {
-                    "deposit_amount": number | null,"deposit_type": Database["public"]['Enums']["deposit_type"],"helmets": number,"insurance_type": string | null,"licence_required": Database["public"]['Enums']["licence_type"],"notes": string | null,"phone_holder": boolean,"rain_gear": boolean,"shop_id": string,"updated_at": string
+                    "deposit_amount": number | null,"deposit_methods": (Database["public"]['Enums']["deposit_method"])[],"deposit_refund_days": number,"experience_required": boolean,"gloves": Database["public"]['Enums']["gear_option"],"helmet_sizes": (string)[],"helmet_type": Database["public"]['Enums']["helmet_type"] | null,"helmets": number,"jacket": Database["public"]['Enums']["gear_option"],"km_limit": number,"licence_required": Database["public"]['Enums']["licence_type"],"medical_cover": boolean,"min_age": number | null,"notes": string | null,"passport": Database["public"]['Enums']["passport_policy"],"phone_holder": boolean,"rain_gear": Database["public"]['Enums']["gear_option"],"shop_id": string,"side_panniers": boolean,"top_box": boolean,"updated_at": string,"usage_area": Database["public"]['Enums']["usage_area"],"usb_charger": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "deposit_amount"?: number | null,"deposit_type": Database["public"]['Enums']["deposit_type"],"helmets"?: number,"insurance_type"?: string | null,"licence_required"?: Database["public"]['Enums']["licence_type"],"notes"?: string | null,"phone_holder"?: boolean,"rain_gear"?: boolean,"shop_id": string,"updated_at"?: string
+                    "deposit_amount"?: number | null,"deposit_methods"?: (Database["public"]['Enums']["deposit_method"])[],"deposit_refund_days"?: number,"experience_required"?: boolean,"gloves"?: Database["public"]['Enums']["gear_option"],"helmet_sizes"?: (string)[],"helmet_type"?: Database["public"]['Enums']["helmet_type"] | null,"helmets"?: number,"jacket"?: Database["public"]['Enums']["gear_option"],"km_limit"?: number,"licence_required"?: Database["public"]['Enums']["licence_type"],"medical_cover"?: boolean,"min_age"?: number | null,"notes"?: string | null,"passport"?: Database["public"]['Enums']["passport_policy"],"phone_holder"?: boolean,"rain_gear"?: Database["public"]['Enums']["gear_option"],"shop_id": string,"side_panniers"?: boolean,"top_box"?: boolean,"updated_at"?: string,"usage_area"?: Database["public"]['Enums']["usage_area"],"usb_charger"?: boolean
                   }
                   Update: {
-                    "deposit_amount"?: number | null,"deposit_type"?: Database["public"]['Enums']["deposit_type"],"helmets"?: number,"insurance_type"?: string | null,"licence_required"?: Database["public"]['Enums']["licence_type"],"notes"?: string | null,"phone_holder"?: boolean,"rain_gear"?: boolean,"shop_id"?: string,"updated_at"?: string
+                    "deposit_amount"?: number | null,"deposit_methods"?: (Database["public"]['Enums']["deposit_method"])[],"deposit_refund_days"?: number,"experience_required"?: boolean,"gloves"?: Database["public"]['Enums']["gear_option"],"helmet_sizes"?: (string)[],"helmet_type"?: Database["public"]['Enums']["helmet_type"] | null,"helmets"?: number,"jacket"?: Database["public"]['Enums']["gear_option"],"km_limit"?: number,"licence_required"?: Database["public"]['Enums']["licence_type"],"medical_cover"?: boolean,"min_age"?: number | null,"notes"?: string | null,"passport"?: Database["public"]['Enums']["passport_policy"],"phone_holder"?: boolean,"rain_gear"?: Database["public"]['Enums']["gear_option"],"shop_id"?: string,"side_panniers"?: boolean,"top_box"?: boolean,"updated_at"?: string,"usage_area"?: Database["public"]['Enums']["usage_area"],"usb_charger"?: boolean
                   }
                   Relationships: [
                     {
@@ -347,14 +471,14 @@ isOneToOne: true
                   ]
                 },"shops": {
                   Row: {
-                    "about": string | null,"approved_at": string | null,"boost_level": Database["public"]['Enums']["boost_level"],"buffer_after_h": number,"buffer_before_h": number,"created_at": string,"cutoff_minutes": number,"delivery_enabled": boolean,"delivery_radius_km": number | null,"id": string,"location": unknown,"maps_url": string | null,"name": string,"nearest_station": string | null,"photos": (string)[],"request_window_min": number,"review_notes": string | null,"slug": string,"status": Database["public"]['Enums']["shop_status"],"submitted_at": string | null,"terms_accepted_at": string | null,"updated_at": string
+                    "about": string | null,"approved_at": string | null,"boost_level": Database["public"]['Enums']["boost_level"],"buffer_after_h": number,"buffer_before_h": number,"created_at": string,"cutoff_minutes": number,"delivery_enabled": boolean,"delivery_radius_km": number | null,"flagged_for_review": boolean,"google_place_id": string | null,"id": string,"location": unknown,"maps_url": string | null,"name": string,"nearest_station": string | null,"photos": (string)[],"request_window_min": number,"review_notes": string | null,"slug": string,"status": Database["public"]['Enums']["shop_status"],"submitted_at": string | null,"terms_accepted_at": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "about"?: string | null,"approved_at"?: string | null,"boost_level"?: Database["public"]['Enums']["boost_level"],"buffer_after_h"?: number,"buffer_before_h"?: number,"created_at"?: string,"cutoff_minutes"?: number,"delivery_enabled"?: boolean,"delivery_radius_km"?: number | null,"id"?: string,"location"?: unknown,"maps_url"?: string | null,"name": string,"nearest_station"?: string | null,"photos"?: (string)[],"request_window_min"?: number,"review_notes"?: string | null,"slug": string,"status"?: Database["public"]['Enums']["shop_status"],"submitted_at"?: string | null,"terms_accepted_at"?: string | null,"updated_at"?: string
+                    "about"?: string | null,"approved_at"?: string | null,"boost_level"?: Database["public"]['Enums']["boost_level"],"buffer_after_h"?: number,"buffer_before_h"?: number,"created_at"?: string,"cutoff_minutes"?: number,"delivery_enabled"?: boolean,"delivery_radius_km"?: number | null,"flagged_for_review"?: boolean,"google_place_id"?: string | null,"id"?: string,"location"?: unknown,"maps_url"?: string | null,"name": string,"nearest_station"?: string | null,"photos"?: (string)[],"request_window_min"?: number,"review_notes"?: string | null,"slug": string,"status"?: Database["public"]['Enums']["shop_status"],"submitted_at"?: string | null,"terms_accepted_at"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "about"?: string | null,"approved_at"?: string | null,"boost_level"?: Database["public"]['Enums']["boost_level"],"buffer_after_h"?: number,"buffer_before_h"?: number,"created_at"?: string,"cutoff_minutes"?: number,"delivery_enabled"?: boolean,"delivery_radius_km"?: number | null,"id"?: string,"location"?: unknown,"maps_url"?: string | null,"name"?: string,"nearest_station"?: string | null,"photos"?: (string)[],"request_window_min"?: number,"review_notes"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["shop_status"],"submitted_at"?: string | null,"terms_accepted_at"?: string | null,"updated_at"?: string
+                    "about"?: string | null,"approved_at"?: string | null,"boost_level"?: Database["public"]['Enums']["boost_level"],"buffer_after_h"?: number,"buffer_before_h"?: number,"created_at"?: string,"cutoff_minutes"?: number,"delivery_enabled"?: boolean,"delivery_radius_km"?: number | null,"flagged_for_review"?: boolean,"google_place_id"?: string | null,"id"?: string,"location"?: unknown,"maps_url"?: string | null,"name"?: string,"nearest_station"?: string | null,"photos"?: (string)[],"request_window_min"?: number,"review_notes"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["shop_status"],"submitted_at"?: string | null,"terms_accepted_at"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -365,11 +489,26 @@ isOneToOne: true
             [_ in never]: never
           }
           Functions: {
-            "bike_model_shop_id":
+            "accept_shop_invite":
+{ Args: { "p_token": string }; Returns: string
+                           },
+"bike_model_shop_id":
 { Args: { "p_bike_model_id": string }; Returns: string
+                           },
+"can_use_catalog":
+{ Args: { "p_catalog_id": string,"p_shop_id": string }; Returns: boolean
+                           },
+"create_shop":
+{ Args: { "p_name": string }; Returns: string
+                           },
+"create_shop_invite":
+{ Args: { "p_shop_id": string }; Returns: string
                            },
 "is_bike_model_public":
 { Args: { "p_bike_model_id": string }; Returns: boolean
+                           },
+"is_catalog_approved":
+{ Args: { "p_catalog_id": string }; Returns: boolean
                            },
 "is_shop_live":
 { Args: { "p_shop_id": string }; Returns: boolean
@@ -382,10 +521,25 @@ isOneToOne: true
                            },
 "promotion_shop_id":
 { Args: { "p_promotion_id": string }; Returns: string
+                           },
+"shop_extra_shop_id":
+{ Args: { "p_extra_id": string }; Returns: string
+                           },
+"shop_readiness":
+{ Args: { "p_shop_id": string }; Returns: (string)[]
+                           },
+"slugify":
+{ Args: { "value": string }; Returns: string
+                           },
+"submit_shop":
+{ Args: { "p_accept_terms": boolean,"p_shop_id": string }; Returns: (string)[]
+                           },
+"try_uuid":
+{ Args: { "value": string }; Returns: string
                            }
           }
           Enums: {
-            "app_language": "en"|"th","bike_type": "city_scooter"|"touring"|"adventure"|"sport"|"classic"|"off_road","booking_actor": "customer"|"vendor"|"admin"|"system","booking_kind": "instant"|"request"|"now","booking_mode": "instant"|"request","booking_status": "pending_vendor"|"declined"|"expired"|"confirmed_unpaid"|"paid"|"picked_up"|"returned"|"cancelled_customer"|"cancelled_vendor"|"cancelled_unpaid"|"no_show","boost_level": "featured"|"preferred"|"normal","deposit_type": "passport_held"|"cash_deposit"|"passport_copy","licence_type": "none"|"car"|"motorbike"|"international_permit","notify_channel": "email"|"whatsapp","payment_method": "card"|"promptpay","promotion_kind": "pct"|"fixed"|"long_rental"|"new_customer","shop_member_role": "owner"|"staff","shop_status": "draft"|"pending"|"live"|"suspended","transmission": "automatic"|"semi_auto"|"manual","user_role": "customer"|"vendor_staff"|"admin"
+            "app_language": "en"|"th","bike_type": "city_scooter"|"touring"|"adventure"|"sport"|"classic"|"off_road","booking_actor": "customer"|"vendor"|"admin"|"system","booking_kind": "instant"|"request"|"now","booking_mode": "instant"|"request","booking_status": "pending_vendor"|"declined"|"expired"|"confirmed_unpaid"|"paid"|"picked_up"|"returned"|"cancelled_customer"|"cancelled_vendor"|"cancelled_unpaid"|"no_show","boost_level": "featured"|"preferred"|"normal","catalog_status": "requested"|"approved"|"rejected","deposit_method": "cash"|"card_authorisation"|"bank_transfer","extra_price_kind": "rental"|"time","gear_option": "included"|"paid_extra"|"not_offered","helmet_type": "full_face"|"three_quarter"|"half","key_type": "keyless"|"keyed","licence_type": "none"|"car"|"motorbike"|"international_permit","notify_channel": "email"|"whatsapp","passport_policy": "held"|"copy_only","payment_method": "card"|"promptpay","promotion_kind": "pct"|"fixed"|"long_rental"|"new_customer","shop_member_role": "owner"|"staff","shop_status": "draft"|"pending"|"live"|"suspended","transmission": "automatic"|"semi_auto"|"manual","usage_area": "bangkok"|"province"|"thailand"|"cross_border","user_role": "customer"|"vendor_staff"|"admin"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -505,7 +659,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "app_language": ["en", "th"],"bike_type": ["city_scooter", "touring", "adventure", "sport", "classic", "off_road"],"booking_actor": ["customer", "vendor", "admin", "system"],"booking_kind": ["instant", "request", "now"],"booking_mode": ["instant", "request"],"booking_status": ["pending_vendor", "declined", "expired", "confirmed_unpaid", "paid", "picked_up", "returned", "cancelled_customer", "cancelled_vendor", "cancelled_unpaid", "no_show"],"boost_level": ["featured", "preferred", "normal"],"deposit_type": ["passport_held", "cash_deposit", "passport_copy"],"licence_type": ["none", "car", "motorbike", "international_permit"],"notify_channel": ["email", "whatsapp"],"payment_method": ["card", "promptpay"],"promotion_kind": ["pct", "fixed", "long_rental", "new_customer"],"shop_member_role": ["owner", "staff"],"shop_status": ["draft", "pending", "live", "suspended"],"transmission": ["automatic", "semi_auto", "manual"],"user_role": ["customer", "vendor_staff", "admin"]
+            "app_language": ["en", "th"],"bike_type": ["city_scooter", "touring", "adventure", "sport", "classic", "off_road"],"booking_actor": ["customer", "vendor", "admin", "system"],"booking_kind": ["instant", "request", "now"],"booking_mode": ["instant", "request"],"booking_status": ["pending_vendor", "declined", "expired", "confirmed_unpaid", "paid", "picked_up", "returned", "cancelled_customer", "cancelled_vendor", "cancelled_unpaid", "no_show"],"boost_level": ["featured", "preferred", "normal"],"catalog_status": ["requested", "approved", "rejected"],"deposit_method": ["cash", "card_authorisation", "bank_transfer"],"extra_price_kind": ["rental", "time"],"gear_option": ["included", "paid_extra", "not_offered"],"helmet_type": ["full_face", "three_quarter", "half"],"key_type": ["keyless", "keyed"],"licence_type": ["none", "car", "motorbike", "international_permit"],"notify_channel": ["email", "whatsapp"],"passport_policy": ["held", "copy_only"],"payment_method": ["card", "promptpay"],"promotion_kind": ["pct", "fixed", "long_rental", "new_customer"],"shop_member_role": ["owner", "staff"],"shop_status": ["draft", "pending", "live", "suspended"],"transmission": ["automatic", "semi_auto", "manual"],"usage_area": ["bangkok", "province", "thailand", "cross_border"],"user_role": ["customer", "vendor_staff", "admin"]
           }
         }
 } as const

@@ -232,7 +232,7 @@ describe("vendors", () => {
       .eq("id", seed.bsrPcx)
       .select("qty");
     expect(updated).toEqual([{ qty: 5 }]);
-    await bsrStaff.from("bike_models").update({ qty: 4 }).eq("id", seed.bsrPcx);
+    await bsrStaff.from("bike_models").update({ qty: 1 }).eq("id", seed.bsrPcx);
 
     const { data: foreign } = await draftOwner
       .from("bike_models")
