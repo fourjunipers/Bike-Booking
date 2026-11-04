@@ -5,7 +5,8 @@
 
 create table public.bike_catalog (
   id uuid primary key default gen_random_uuid(),
-  slug text not null unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  -- Filled from make/model by the trigger below when left blank.
+  slug text not null default '' unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
   make text not null check (length(trim(make)) between 1 and 40),
   model text not null check (length(trim(model)) between 1 and 60),
   -- e.g. "New Gen", "2nd Gen". Optional.
