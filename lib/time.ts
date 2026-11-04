@@ -96,3 +96,14 @@ export function addHours(instant: Date, hours: number): Date {
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
+
+const bangkokFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: BANGKOK_TIME_ZONE,
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+/** "4 Nov 2026, 08:30" in Bangkok time, for admin lists. Null → "". */
+export function formatBangkok(iso: string | null): string {
+  return iso ? bangkokFormat.format(new Date(iso)) : "";
+}
