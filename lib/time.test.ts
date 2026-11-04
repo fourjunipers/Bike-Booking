@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatBangkok,
   addDays,
   addHours,
   bangkokDateString,
@@ -77,5 +78,12 @@ describe("addDays / addHours", () => {
   it("widens a booking by a buffer", () => {
     const pickup = bangkokDateTime("2026-11-03", "10:00");
     expect(toBangkok(addHours(pickup, -2)).hour).toBe(8);
+  });
+});
+
+describe("formatBangkok", () => {
+  it("formats UTC timestamps in Bangkok time", () => {
+    expect(formatBangkok("2026-11-04T01:30:00Z")).toBe("4 Nov 2026, 08:30");
+    expect(formatBangkok(null)).toBe("");
   });
 });

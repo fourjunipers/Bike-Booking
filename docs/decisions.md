@@ -32,3 +32,59 @@ Owner approved the plan with the recommended answers:
 - **RLS tests (`npm run test:db`) are separate from `npm test`** because they need Docker. They refuse to run against anything but `127.0.0.1`.
 - **Added `zod`** (server-side form validation) **and `server-only`** (guards the service-role client), approved by the owner.
 - **Seed uses placeholder BSR details**; the owner will supply the real address, hours, contacts and fleet.
+
+## 2026-11-03 · Owner decisions before Phase 2
+
+Recorded from `BSR_SEED.md` Part 1. SPEC.md and BUILD_PLAN.md updated to match.
+
+1. **Deposit per bike model.** Shop default amount; each model can override it (`bike_models.deposit_amount`, null = shop default). Pages and checkout show the model's own amount. Phase 2.
+2. **Shop-defined extras.** Name, description, price, unit (day / week / rental), all or chosen models, active. Ticked at checkout, shown in the breakdown and paid at the shop. The 10% fee applies to the rental only. Copied to `booking_extras` at booking so later edits don't change existing bookings. Vendor Extras screen in Phase 2; checkout, totals and notices in Phase 4.
+3. **Date-based discounts** are the "date window" promotion kind and apply only to rental days inside the window. Phase 7. SPEC's data model and the Phase 1 enum lacked a `date_window` kind; Phase 7 adds it.
+4. **Delivery minimum rental length**, optional per shop (`shops.delivery_min_days`, blank = any length). Phase 7.
+5. **No 6- or 12-month rates.** Pricing stays as in SPEC.
+6. **Master bike catalog and model-first browsing.** Admin-maintained `bike_catalog`; vendors pick an entry and add their own offer (`bike_models.catalog_id`); missing models go through a catalog request. Placeholder image until real stock photos exist; no unlicensed images. Catalog and model picker in Phase 2; model-first search, model page and shop listing page in Phase 3; model-per-city SEO pages with the other SEO pages in Phase 7 (the decision didn't name a phase for them).
+7. **Structured "What's included".** Fixed fields replace free-text inclusions; each is a shop default any model can override. Phase 2.
+8. **Referral program (customer referrals only).** Partners, invisible cookie attribution, lifetime first-partner-wins, `referral_rate` 50% of the fee stored per earning, earned when the fee is paid, reversed on refund, monthly manual payouts ≥ ฿500. Added as **Phase 5b** rather than renumbering Phases 6–8, so existing `TODO(phase-N)` comments stay correct.
+
+## 2026-11-03 · Owner answers to the Phase 2 plan questions
+
+- **Catalog specs:** no seat height, fuel tank or weight. Catalog keeps cc plus ABS, under-seat storage, USB charger and key type (keyless / keyed).
+- **Bike photos:** every bike model needs at least 1 real photo.
+- **Damage/theft cover is not an inclusion.** Listed prices are rental plus deposit information only. A shop that offers damage/theft cover adds it as an extra, with its own terms and conditions. Extras gain an optional terms field.
+- **Medical cover** is included free on all BSR bikes.
+- **Time-based extras are charged for the time rented**, never rounded up to whole weeks. Same rule as bike pricing: 1-day price required, 7- and 30-day prices optional, filled at equal steps (2026-11-04). Every extra has an on/off toggle.
+- **BSR use outside Bangkok** (2026-11-04): 110–125cc ฿200/day, ฿4,800/30 days; 150cc+ ฿250/day, ฿6,000/30 days. Replaces the weekly prices in `BSR_SEED.md`.
+- **Shop contacts** gain phone and email, shown only after a booking is confirmed, like WhatsApp and LINE.
+- **BSR seed:** drop the generic "Base" model and the riding jacket extra. Scoopy (New Gen) has the same prices as the Giorno (as in `BSR_SEED.md`).
+- **Google rating and reviews** on shop pages (owner request). Places API (New) returns the overall rating, the review count and at most 5 reviews. Google's Places policies allow showing them with Google Maps attribution and reviewer names, but only the place ID may be stored. So the content is fetched live, it stays out of the ranking score and rating filter, and it isn't shown on search cards. The vendor links the profile in Phase 2 (`shops.google_place_id`); display is built in Phase 3 with the shop pages.
+- **BSR damage/theft cover 450–699cc** (NX500, CB500X): ฿300/day, ฿1,500/7 days, ฿4,500/30 days.
+
+## 2026-11-04 · Desktop, AI search, analytics and apps (owner)
+
+- **Desktop layouts required.** Still mobile-first, but every screen also gets a proper desktop layout (checked at 1280 px). CLAUDE.md's mobile-first rule updated.
+- **AI search visibility and analytics/conversions added to Phase 7.** GA4 and a separate Google Ads account for the platform, Google tag behind cookie consent. Conversions: request sent, booking confirmed, fee paid (value = fee). Fee-paid is sent from the server because most fees are charged 3 days before pickup. Replaces Phase 8's "Plausible or Netlify analytics".
+- **Installable app.** Phase 7 makes the whole site a PWA for customers and vendors, with an `/app` page and QR code to install it, and web push. New **Phase 9 (after launch)**: Google Play via a Trusted Web Activity, then an App Store wrapper (Apple rejects plain website wrappers, so it needs native extras). Same codebase throughout.
+
+## 2026-11-04 · Phase 2 build
+
+- **Catalog replaces vendor-typed specs.** `bike_models` lost make, model, type, transmission and cc; existing rows were backfilled into approved catalog entries. A shop can list its own pending catalog request straight away; the public sees a model only when its catalog entry is approved, it has at least one photo and the shop is live.
+- **Inclusions are typed columns, not JSON.** `shop_policies` holds every field; `bike_model_policies` repeats them as nullable overrides. The model editor stores only fields that differ from the shop (`minimalOverrides`), so models keep following later shop changes. `km_limit` 0 = unlimited; `deposit_refund_days` 0 = at return. The old `deposit_type` enum was dropped; "passport held or copy only" is its own field.
+- **Extras: owners write, staff read** (same as promotions; extras are pricing). Time-based extras store 1/7/30-day prices and use `lib/pricing.ts`.
+- **Onboarding is a checklist, not a wizard.** `create_shop` makes a draft with the caller as owner; the vendor home shows `shop_readiness` (about, shop photo, map pin, hours, a contact, a model, model photos, model prices) with links to fix each, then the terms and Submit. `submit_shop` only changes status when nothing is missing. A shop photo is required.
+- **Staff invites are single-use links** (hashed token, 7 days) that the owner sends by LINE or email from the Team page; `/account/join?token=` accepts. No email sending in Phase 2.
+- **Review flags:** live-shop edits by signed-in users set `bike_models.flagged_for_review` (new model, catalog, photos, deposit, prices, overrides) or the new `shops.flagged_for_review` (policies, extras). Operational toggles (qty, ready today, down time, visibility, booking mode, buffers) don't flag. Admin "Mark reviewed" clears both.
+- **Photos are resized to WebP (1,600 px) in the browser** and uploaded straight to public Storage buckets with RLS by folder (`<shop_id>/…`, `<shop_id>/<model_id>/…`); removed photos are deleted on save. Admins upload catalog stock photos the same way (policy checks the admin role), so no Server Action needs a body limit above 1 MB. Seed photos are `/images/placeholder-*.svg`.
+- **Map pin picker uses Google's current APIs** (dynamic `importLibrary`, `PlaceAutocompleteElement`, `Place.searchNearby` for the nearest station, advanced marker). Picking the shop's Google Business Profile stores only `google_place_id`. `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` added (blank = `DEMO_MAP_ID` for development). Without a key the form falls back to latitude/longitude fields. `shop_coordinates()` returns lat/lng for the editor.
+- **Dashboard forms submit with startTransition** rather than the form `action` prop, so a failed save doesn't reset the fields; errors are message keys translated in Thai/English.
+- **Dashboards use the desktop width** (`max-w-6xl`) with multi-column layouts from `md`/`lg` up, still checked at 375 px.
+- **Testing limits this phase:** migrations, seed, RLS rules and RPCs were checked on a plain Postgres 16 + PostGIS with Supabase's auth/storage schemas stubbed; the Supabase-backed DB tests (`npm run test:db`) and Playwright specs need the local Supabase stack and have not been run yet.
+- **Country and currency prepared** (owner decision, 2026-11-04): `shops.country` (default TH) and `shops.currency` (default THB), set by admin only; `bookings.currency` is copied from the shop on insert. Nothing reads them yet. Expansion plan: one site with country folders, not sister sites (BUILD_PLAN "Later: other countries").
+
+## 2026-11-04 · Customer site languages and Supabase keep-alive (owner)
+
+- **Customer site in 10 languages** (owner decision): English, Thai, Chinese (Simplified), Russian, German, French, Spanish, Italian, Japanese, Korean. Vendor dashboard stays Thai/English, admin stays English. Replaces the Phase 0 "customer site English only" rule.
+- **Language in the URL, English unprefixed.** Customer pages live in `app/(customer)/[locale]` and are prerendered for every language. `proxy.ts` serves unprefixed paths from `en` and redirects `/en/…` to the unprefixed URL, so each page has one address per language. Written by hand in `proxy.ts` rather than next-intl's routing middleware, so it composes with the Supabase session refresh. Pages set canonical + hreflang links (`i18n/metadata.ts`); `metadataBase` comes from `NEXT_PUBLIC_SITE_URL`.
+- **No automatic redirect by browser language.** On English pages a bar offers the visitor's browser language (`components/customer/language-suggestion.tsx`, client-only so pages stay static). The URL is the only source of the language; no cookie.
+- **Only customer namespaces are translated** beyond Thai/English (`customerNamespaces` in `i18n/config.ts`); the layout sends only those to the browser. `i18n/messages.test.ts` checks every language has every key and placeholder.
+- **Translations are Claude drafts.** zh, ru, de, fr, es, it, ja, ko and the new Thai customer text need a native speaker's review before launch (Thai first). Supabase sign-in emails stay English (one template per project).
+- **Supabase keep-alive:** the free Supabase plan pauses projects after about a week of low activity. `netlify/functions/supabase-keep-alive.mts` reads one row from `shops` with the anon key daily at 00:00 UTC. Remove it once the project is on a paid plan.

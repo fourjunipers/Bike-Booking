@@ -28,7 +28,7 @@ Three roles: **customer**, **vendor** (shop owner + staff), **admin** (platform 
 | Styling / UI | Tailwind CSS + shadcn/ui |
 | Database / auth / storage | Supabase (Postgres, Auth, Storage), with PostGIS for distance search |
 | Migrations | Supabase CLI migrations in `supabase/migrations/`, never edit the DB by hand |
-| i18n | `next-intl`. Customer site is English only. Vendor dashboard is Thai + English |
+| i18n | `next-intl`. Customer site: English, Thai, Chinese, Russian, German, French, Spanish, Italian, Japanese, Korean (English at `/`, others prefixed, e.g. `/ja/…`). Vendor dashboard is Thai + English. Admin is English |
 | Payments | Stripe (cards, saved cards via SetupIntent, Apple Pay / Google Pay, PromptPay) |
 | Vendor messaging | LINE Messaging API (Flex messages, postback buttons) |
 | Customer messaging | Resend (email). WhatsApp Business API is added in Phase 7 |
@@ -41,7 +41,7 @@ Before relying on any third-party API behaviour (Supabase Auth providers, Stripe
 
 ## Conventions
 
-- **Money:** store all amounts as **integer Thai baht** in the database (`int`). Convert to satang (×100) only at the Stripe boundary, in one helper (`lib/money.ts`).
+- **Money:** store all amounts as **integers in the shop's currency** in the database (`int`). Every shop is Thai baht for now (`shops.currency` = THB; bookings copy it). Convert to satang (×100) only at the Stripe boundary, in one helper (`lib/money.ts`). Don't assume THB in new code where the currency is at hand: other countries may follow (see `docs/decisions.md`).
 - **Time:** store `timestamptz` in UTC. All business logic (shop hours, cut-offs, "today", the 3-days-before payment date) runs in **Asia/Bangkok**. Use one date helper module (`lib/time.ts`) and never call `new Date()` for business rules outside it.
 - **Pure logic in `lib/`, fully unit-tested:** pricing autofill (`lib/pricing.ts`), fee calculation (`lib/fees.ts`), availability rules (`lib/availability.ts`), cancellation rules (`lib/cancellation.ts`), booking state transitions (`lib/booking-state.ts`).
 - **Booking status changes only through `lib/booking-state.ts`.** It validates the transition and writes a `booking_events` row. Nothing else updates `bookings.status` directly.
@@ -57,7 +57,7 @@ Before relying on any third-party API behaviour (Supabase Auth providers, Stripe
   - `app/api/...`: webhooks and cron routes
   - `lib/`: business logic
   - `components/`: shared UI
-- **Mobile first:** every screen must work well at 375 px wide.
+- **Mobile first, desktop too:** every screen must work well at 375 px wide and also have a proper desktop layout at 1280 px (e.g. search list and map side by side, wider galleries, multi-column forms), not a stretched phone layout.
 - **Accessibility:** labelled form fields, buttons with text, colour never the only signal.
 
 ## Definition of done (every phase)

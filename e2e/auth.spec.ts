@@ -7,9 +7,7 @@ test.skip(!!process.env.PLAYWRIGHT_BASE_URL, "needs local Supabase");
 test("admin signs in by email and sees the admin panel", async ({ page }) => {
   await signInByEmail(page, "admin@bike-booking.test", "/admin");
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(
-    page.getByRole("heading", { name: "Admin panel" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Approvals" })).toBeVisible();
   await expect(
     page.getByText("Signed in as admin@bike-booking.test"),
   ).toBeVisible();
@@ -18,9 +16,7 @@ test("admin signs in by email and sees the admin panel", async ({ page }) => {
 test("a customer gets not-found at /admin", async ({ page }) => {
   await signInByEmail(page, "customer@bike-booking.test", "/admin");
   await expect(page.getByText("This page could not be found.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Admin panel" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("heading", { name: "Approvals" })).toHaveCount(0);
 });
 
 test("a new customer signs up by email and saves their profile", async ({
@@ -54,9 +50,9 @@ test("a shop owner sees their shop on the vendor dashboard", async ({
 }) => {
   await signInByEmail(page, "owner@bsr.test", "/vendor");
   await expect(
-    page.getByRole("heading", { name: "Vendor dashboard" }),
+    page.getByRole("heading", { name: "BSR Bike Shop" }),
   ).toBeVisible();
-  await expect(page.getByText("BSR Bike Shop · Owner")).toBeVisible();
+  await expect(page.getByText("Live · Owner")).toBeVisible();
 });
 
 test("the vendor dashboard follows the Thai locale cookie", async ({
@@ -67,9 +63,9 @@ test("the vendor dashboard follows the Thai locale cookie", async ({
   await context.addCookies([{ name: "locale", value: "th", url: baseURL! }]);
   await signInByEmail(page, "staff@bsr.test", "/vendor");
   await expect(
-    page.getByRole("heading", { name: "แดชบอร์ดร้านค้า" }),
+    page.getByRole("heading", { name: "BSR Bike Shop" }),
   ).toBeVisible();
-  await expect(page.getByText("BSR Bike Shop · พนักงาน")).toBeVisible();
+  await expect(page.getByText("เปิดให้บริการ · พนักงาน")).toBeVisible();
 });
 
 test("someone with no shop is offered to create one", async ({ page }) => {

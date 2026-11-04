@@ -1,0 +1,54 @@
+{
+  "Customer": {
+    "title": "Location de motos à Bangkok",
+    "intro": "Trouvez et réservez des motos auprès de loueurs locaux. La recherche arrive bientôt.",
+    "metaDescription": "Réservez des motos auprès de loueurs locaux à Bangkok."
+  },
+  "Language": {
+    "label": "Langue",
+    "dismiss": "Non merci"
+  },
+  "Login": {
+    "title": "Connexion",
+    "vendorHint": "Propriétaires et employés de boutique : connectez-vous avec LINE ou Google.",
+    "google": "Continuer avec Google",
+    "line": "Continuer avec LINE",
+    "apple": "Continuer avec Apple",
+    "errorSignin": "La connexion n'a pas abouti. Veuillez réessayer.",
+    "errorLink": "Ce lien de connexion est invalide ou a expiré. Demandez-en un nouveau ci-dessous.",
+    "sent": "Consultez vos e-mails : nous vous avons envoyé un lien de connexion. Il ne fonctionne qu'une fois et expire au bout d'une heure.",
+    "email": "E-mail",
+    "send": "Recevoir un lien de connexion par e-mail",
+    "sending": "Envoi…",
+    "sendFailed": "Impossible d'envoyer le lien. Vérifiez l'adresse et réessayez."
+  },
+  "Account": {
+    "title": "Votre compte",
+    "loading": "Chargement…",
+    "name": "Nom",
+    "email": "E-mail",
+    "whatsapp": "Numéro WhatsApp",
+    "whatsappHint": "Format international, par ex. +66 81 234 5678",
+    "updates": "Suivi des réservations",
+    "emailOnly": "E-mail uniquement",
+    "emailWhatsapp": "E-mail et WhatsApp",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré.",
+    "saveFailed": "Échec de l'enregistrement. Veuillez réessayer.",
+    "signOut": "Se déconnecter",
+    "nameRequired": "Saisissez votre nom",
+    "nameTooLong": "Le nom est trop long",
+    "whatsappFormat": "Utilisez le format international, par ex. +66 81 234 5678",
+    "whatsappNeeded": "Ajoutez un numéro WhatsApp pour recevoir des messages WhatsApp"
+  },
+  "Join": {
+    "title": "Rejoindre l'équipe d'une boutique",
+    "loading": "Chargement…",
+    "incomplete": "Ce lien d'invitation est incomplet. Demandez-en un nouveau au propriétaire.",
+    "intro": "Vous êtes invité à aider à gérer les réservations et la flotte d'un loueur.",
+    "join": "Rejoindre l'équipe",
+    "joining": "Ajout en cours…",
+    "expired": "Cette invitation a expiré ou a déjà été utilisée. Demandez un nouveau lien au propriétaire."
+  }
+}

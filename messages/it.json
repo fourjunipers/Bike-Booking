@@ -1,0 +1,54 @@
+{
+  "Customer": {
+    "title": "Noleggio moto a Bangkok",
+    "intro": "Trova e prenota moto presso i noleggi locali. La ricerca arriverà presto.",
+    "metaDescription": "Prenota moto presso i noleggi locali di Bangkok."
+  },
+  "Language": {
+    "label": "Lingua",
+    "dismiss": "No, grazie"
+  },
+  "Login": {
+    "title": "Accedi",
+    "vendorHint": "Titolari e personale dei noleggi: accedete con LINE o Google.",
+    "google": "Continua con Google",
+    "line": "Continua con LINE",
+    "apple": "Continua con Apple",
+    "errorSignin": "Accesso non completato. Riprova.",
+    "errorLink": "Questo link di accesso non è valido o è scaduto. Richiedine uno nuovo qui sotto.",
+    "sent": "Controlla la tua email: ti abbiamo inviato un link di accesso. Funziona una sola volta e scade dopo 1 ora.",
+    "email": "Email",
+    "send": "Inviami un link di accesso",
+    "sending": "Invio in corso…",
+    "sendFailed": "Impossibile inviare il link. Controlla l'indirizzo e riprova."
+  },
+  "Account": {
+    "title": "Il tuo account",
+    "loading": "Caricamento…",
+    "name": "Nome",
+    "email": "Email",
+    "whatsapp": "Numero WhatsApp",
+    "whatsappHint": "Formato internazionale, ad es. +66 81 234 5678",
+    "updates": "Aggiornamenti sulle prenotazioni",
+    "emailOnly": "Solo email",
+    "emailWhatsapp": "Email e WhatsApp",
+    "save": "Salva",
+    "saving": "Salvataggio…",
+    "saved": "Salvato.",
+    "saveFailed": "Salvataggio non riuscito. Riprova.",
+    "signOut": "Esci",
+    "nameRequired": "Inserisci il tuo nome",
+    "nameTooLong": "Il nome è troppo lungo",
+    "whatsappFormat": "Usa il formato internazionale, ad es. +66 81 234 5678",
+    "whatsappNeeded": "Aggiungi un numero WhatsApp per ricevere messaggi su WhatsApp"
+  },
+  "Join": {
+    "title": "Unisciti al team di un noleggio",
+    "loading": "Caricamento…",
+    "incomplete": "Questo link di invito è incompleto. Chiedine uno nuovo al titolare.",
+    "intro": "Sei stato invitato ad aiutare a gestire le prenotazioni e la flotta di un noleggio.",
+    "join": "Unisciti al team",
+    "joining": "Adesione in corso…",
+    "expired": "Questo invito è scaduto o è già stato usato. Chiedi un nuovo link al titolare."
+  }
+}

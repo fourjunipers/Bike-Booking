@@ -83,3 +83,21 @@ export async function requireVendorShop() {
   const [shop] = await getMyShops();
   return shop ?? null;
 }
+
+/**
+ * Like requireVendorShop, for owner-only pages and actions (shop settings,
+ * extras, team): staff and non-members get a 404.
+ */
+export async function requireShopOwner() {
+  const shop = await requireVendorShop();
+  if (!shop || shop.role !== "owner") notFound();
+  return shop;
+}
+
+/** For vendor Server Actions: the caller's shop, or null if not a member. */
+export async function vendorShopForAction() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const [shop] = await getMyShops();
+  return shop ?? null;
+}

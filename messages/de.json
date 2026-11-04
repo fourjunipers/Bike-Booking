@@ -1,0 +1,54 @@
+{
+  "Customer": {
+    "title": "Motorradverleih in Bangkok",
+    "intro": "Finde und buche Motorräder bei lokalen Verleihern. Die Suche kommt bald.",
+    "metaDescription": "Buche Motorräder bei lokalen Verleihern in Bangkok."
+  },
+  "Language": {
+    "label": "Sprache",
+    "dismiss": "Nein danke"
+  },
+  "Login": {
+    "title": "Anmelden",
+    "vendorHint": "Verleiher und Mitarbeiter: Melde dich mit LINE oder Google an.",
+    "google": "Weiter mit Google",
+    "line": "Weiter mit LINE",
+    "apple": "Weiter mit Apple",
+    "errorSignin": "Die Anmeldung wurde nicht abgeschlossen. Bitte versuche es erneut.",
+    "errorLink": "Dieser Anmeldelink ist ungültig oder abgelaufen. Fordere unten einen neuen an.",
+    "sent": "Wir haben dir einen Anmeldelink per E-Mail geschickt. Er funktioniert einmal und läuft nach 1 Stunde ab.",
+    "email": "E-Mail",
+    "send": "Anmeldelink per E-Mail senden",
+    "sending": "Wird gesendet…",
+    "sendFailed": "Der Link konnte nicht gesendet werden. Prüfe die Adresse und versuche es erneut."
+  },
+  "Account": {
+    "title": "Dein Konto",
+    "loading": "Wird geladen…",
+    "name": "Name",
+    "email": "E-Mail",
+    "whatsapp": "WhatsApp-Nummer",
+    "whatsappHint": "Internationales Format, z. B. +66 81 234 5678",
+    "updates": "Buchungsbenachrichtigungen",
+    "emailOnly": "Nur E-Mail",
+    "emailWhatsapp": "E-Mail und WhatsApp",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "saved": "Gespeichert.",
+    "saveFailed": "Speichern fehlgeschlagen. Bitte versuche es erneut.",
+    "signOut": "Abmelden",
+    "nameRequired": "Gib deinen Namen ein",
+    "nameTooLong": "Der Name ist zu lang",
+    "whatsappFormat": "Verwende das internationale Format, z. B. +66 81 234 5678",
+    "whatsappNeeded": "Füge eine WhatsApp-Nummer hinzu, um WhatsApp-Nachrichten zu erhalten"
+  },
+  "Join": {
+    "title": "Einem Verleih-Team beitreten",
+    "loading": "Wird geladen…",
+    "incomplete": "Dieser Einladungslink ist unvollständig. Bitte den Inhaber um einen neuen.",
+    "intro": "Du wurdest eingeladen, die Buchungen und Fahrzeuge eines Verleihs mitzuverwalten.",
+    "join": "Dem Team beitreten",
+    "joining": "Wird beigetreten…",
+    "expired": "Diese Einladung ist abgelaufen oder wurde bereits verwendet. Bitte den Inhaber um einen neuen Link."
+  }
+}

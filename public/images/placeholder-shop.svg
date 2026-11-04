@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Photo coming soon">
+  <rect width="400" height="300" fill="#f1f5f9"/>
+  <g fill="none" stroke="#94a3b8" stroke-width="10" stroke-linejoin="round">
+    <path d="M80 120 L100 70 H300 L320 120 Z"/>
+    <path d="M95 120 V240 H305 V120"/>
+    <path d="M175 240 V175 H225 V240"/>
+    <rect x="245" y="160" width="40" height="35"/>
+  </g>
+</svg>

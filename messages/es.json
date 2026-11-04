@@ -1,0 +1,54 @@
+{
+  "Customer": {
+    "title": "Alquiler de motos en Bangkok",
+    "intro": "Encuentra y reserva motos en tiendas de alquiler locales. La búsqueda llegará pronto.",
+    "metaDescription": "Reserva motos en tiendas de alquiler locales de Bangkok."
+  },
+  "Language": {
+    "label": "Idioma",
+    "dismiss": "No, gracias"
+  },
+  "Login": {
+    "title": "Iniciar sesión",
+    "vendorHint": "Dueños y personal de tiendas: inicia sesión con LINE o Google.",
+    "google": "Continuar con Google",
+    "line": "Continuar con LINE",
+    "apple": "Continuar con Apple",
+    "errorSignin": "No se completó el inicio de sesión. Inténtalo de nuevo.",
+    "errorLink": "Este enlace de acceso no es válido o ha caducado. Solicita uno nuevo abajo.",
+    "sent": "Revisa tu correo: te enviamos un enlace de acceso. Solo funciona una vez y caduca en 1 hora.",
+    "email": "Correo electrónico",
+    "send": "Enviarme un enlace de acceso",
+    "sending": "Enviando…",
+    "sendFailed": "No se pudo enviar el enlace. Revisa la dirección e inténtalo de nuevo."
+  },
+  "Account": {
+    "title": "Tu cuenta",
+    "loading": "Cargando…",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "whatsapp": "Número de WhatsApp",
+    "whatsappHint": "Formato internacional, p. ej. +66 81 234 5678",
+    "updates": "Avisos de reservas",
+    "emailOnly": "Solo correo",
+    "emailWhatsapp": "Correo y WhatsApp",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saved": "Guardado.",
+    "saveFailed": "No se pudo guardar. Inténtalo de nuevo.",
+    "signOut": "Cerrar sesión",
+    "nameRequired": "Escribe tu nombre",
+    "nameTooLong": "El nombre es demasiado largo",
+    "whatsappFormat": "Usa el formato internacional, p. ej. +66 81 234 5678",
+    "whatsappNeeded": "Añade un número de WhatsApp para recibir mensajes por WhatsApp"
+  },
+  "Join": {
+    "title": "Unirse al equipo de una tienda",
+    "loading": "Cargando…",
+    "incomplete": "Este enlace de invitación está incompleto. Pide uno nuevo al dueño de la tienda.",
+    "intro": "Te han invitado a ayudar a gestionar las reservas y la flota de una tienda de alquiler.",
+    "join": "Unirme al equipo",
+    "joining": "Uniéndote…",
+    "expired": "Esta invitación ha caducado o ya se usó. Pide un enlace nuevo al dueño de la tienda."
+  }
+}
