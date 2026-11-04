@@ -28,6 +28,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 | Stripe | Account for the platform company, **test mode**. Enable PromptPay, Apple Pay, Google Pay | `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | Resend | Account + verified sending domain | `RESEND_API_KEY`, `EMAIL_FROM` |
 | Meta (later, Phase 7) | WhatsApp Business account + approved templates | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` |
+| Google Analytics / Ads (later, Phase 7) | GA4 property and a Google Ads account for the platform (not BSR's), with conversion actions | `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_GOOGLE_ADS_ID`, `GA_API_SECRET` |
 | Other | — | `CRON_SECRET` (random string), `NEXT_PUBLIC_SITE_URL`, `ADMIN_EMAILS` (comma-separated) |
 
 ---
@@ -91,19 +92,26 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 
 ## Phase 2: Vendor side and admin approval
 
-**Goal:** a vendor can create a shop, add their fleet with prices, and submit it. Admin can approve it.
+**Goal:** a vendor can create a shop, add their fleet from the bike catalog with prices, deposits, inclusions and extras, and submit it. Admin can approve it and maintains the catalog.
 
 **Tasks**
-- **Onboarding:** create shop → profile → policies → at least one bike model → submit for review (status `pending`).
+- **Onboarding:** create shop → profile → policies ("What's included", deposit and documents) → at least one bike model → submit for review (status `pending`).
+- **Master bike catalog** (`bike_catalog`):
+  - One entry per make / model / generation: stock photo, cc, transmission, type, ABS, under-seat storage, USB charger, key type (keyless / keyed), description, year range.
+  - Admin catalog screen: add, edit, upload stock photo. Until a stock photo exists, show a neutral placeholder image. Never copy manufacturer or third-party images without a licence.
+  - Vendors add a bike by **picking a catalog entry** (search by make/model). `bike_models.catalog_id` replaces the vendor typing make, model, type, transmission and cc.
+  - Missing model: vendor submits a catalog request. Admin approves (adds stock photo) or rejects it from the approval queue.
 - **Shop settings:**
-  - Profile: name, about, photos (Supabase Storage, resized), Google Maps pin picker + Maps link, nearest BTS/MRT (auto-suggested, editable).
+  - Profile: name, about, photos (Supabase Storage, resized), Google Maps pin picker + Maps link, nearest BTS/MRT (auto-suggested, editable), optional link to the shop's Google Business Profile (stores `google_place_id` only).
   - Opening hours per weekday, holiday closures.
   - Contacts: WhatsApp number, LINE ID.
   - Same-day cut-off (minutes before closing), default buffers before/after (hours), request response window (minutes, default 120).
-  - Deposit and document policy: deposit type and amount, licence required, included items, notes.
+  - **Structured "What's included"** (replaces free-text inclusions; fields in SPEC): helmets, gear, bike setup, usage, insurance, deposit, documents, notes. Each is a shop default that any bike model can override.
+  - **Deposit:** shop default amount, method, passport held or copy only, refund timing. Each bike model can override the amount (`bike_models.deposit_amount`, null = shop default).
   - Delivery settings form can exist but is hidden behind a flag until Phase 7.
+- **Extras screen** (`shop_extras`, `shop_extra_models`): create, edit and pause extras with name, description, optional terms and conditions, price (per rental, or time-based with a 1-day price and optional 7- and 30-day prices, filled by `lib/pricing.ts`), all or chosen models, active toggle. Damage/theft cover is offered this way, not as an inclusion. Checkout selection, totals and notices come in Phase 4.
 - **Fleet page:** the one-screen table from SPEC (Qty, Ready today toggle + count, Down time toggle + count + back-on date) with inline editing that saves instantly. The Ready-today count can never exceed qty − down time − bikes currently on rent (on-rent count is 0 until Phase 4).
-- **Bike model editor:** specs, photos, booking mode (Instant/Request), buffer overrides, visible toggle, pricing.
+- **Bike model editor:** catalog entry (specs read-only), the shop's real photos (at least 1), quantity, deposit override, "What's included" overrides, booking mode (Instant/Request), buffer overrides, visible toggle, pricing.
 - **Pricing autofill** (`lib/pricing.ts`, pure functions + unit tests):
   - Anchors: day 1 and day 30 required; days 7, 14, 21 optional.
   - Fill rule: linear between consecutive set anchors, rounded to nearest ฿10. Manual day edits are flagged `is_manual` and never overwritten when anchors change.
@@ -114,19 +122,25 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 - **Staff:** owner can invite staff by email or LINE. Staff can manage bookings and fleet but not shop ownership or team.
 - **Vendor dashboard language toggle** Thai/English. All vendor UI strings go through `next-intl`.
 - **Admin:**
-  - Approval queue: approve (→ live) or return with notes.
-  - After approval, edits to models, prices or policies go live but set `flagged_for_review`. Admin can clear the flag.
+  - Approval queue: new shops, flagged edits, catalog requests. Approve (→ live) or return with notes.
+  - After approval, edits to models, prices, policies, inclusions or extras go live but set `flagged_for_review`. Admin can clear the flag.
   - Shops list with status, boost level (Featured / Preferred / Normal) and suspend.
+  - Bike catalog screen (see above).
 - **Vendor terms** acceptance checkbox at submission, with the four terms from SPEC.
+- **Seed:** replace the placeholder BSR data with the real shop, policies, extras and fleet from `BSR_SEED.md` Part 2, with catalog entries for every BSR model.
 
 **Acceptance criteria**
 - BSR's real fleet can be entered in under 15 minutes on a phone.
 - The pricing grid matches the SPEC example exactly, and the unit tests pass.
 - A new shop is invisible to the public until admin approves it.
 - Staff cannot see the Team page.
+- A vendor adds a model by picking it from the catalog; a missing model can be requested and, once admin approves it, used.
+- A touring model with a ฿5,000 deposit override shows ฿5,000 while the shop default stays ฿2,000.
+- A "What's included" field overridden on one model shows the override on that model and the shop default on the others.
+- The vendor can create, edit, pause and assign extras to chosen models.
 
 **Prompt**
-> Phase 1 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 2: Vendor side and admin approval. Write the pricing autofill as pure tested functions first, using the SPEC example as test cases. Wait for approval.
+> Phase 1 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 2: Vendor side and admin approval, including the bike catalog, structured "What's included" fields, per-model deposits and the vendor Extras screen. Write the pricing autofill as pure tested functions first, using the SPEC example as test cases. Wait for approval.
 
 ---
 
@@ -136,9 +150,9 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 
 **Tasks**
 - **Home:** location input (GPS, address via Places autocomplete, BTS/MRT station list), date/time pickers, bike type chips, "Get your bike now" button, featured shops, area links (placeholder until Phase 7).
-- **Search results:** list + map toggle (Google Maps, shop pins).
-  - Each card shows photo, model, shop, distance, **total price for chosen dates** (from `price_days`), badge (Instant / Request / Ready today), rating, deposit type.
-- **Filters:** dates, bike type, transmission, cc range, price range, Get your bike now, deposit type, rating. Delivery and deals filters are hidden until Phase 7.
+- **Search results (model-first):** list + map toggle (Google Maps, shop pins).
+  - One card per **catalog model**: stock photo, model, "From ฿X/day" (lowest live price for the chosen dates, from `price_days`), "N shops near you". Default sort is ranking.
+- **Filters:** dates, bike type, transmission, cc range, price range, Get your bike now, passport not held, rating. Delivery and deals filters are hidden until Phase 7.
 - **Sort:** Recommended (default), price, distance, rating.
 - **Ranking score** (a SQL function or view, weights stored in an admin settings table):
   - 30% admin boost (Featured 1.0 / Preferred 0.6 / Normal 0.3)
@@ -149,21 +163,24 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - Featured shops show a badge.
 - **Availability in search:** for Instant models, hide models with 0 units free for the chosen dates (use the Phase 4 availability function. In this phase, build `lib/availability.ts` and the SQL function so search can use it). Request models always show, with a "Request" badge.
 - **Get your bike now filter:** ready_today_on with count ≥ 1, shop open today, current Bangkok time before the shop's cut-off. Show "Updated today / N days ago" from `ready_today_updated_at`.
-- **Bike page:**
-  - Photos, specs, price for chosen dates and a mini price table.
-  - **Deposit and document policy shown prominently**, plus included items, shop info + map, reviews and cancellation policy.
+- **Model page:** catalog specs and stock photo; every shop offering that model with total price for the dates, distance, deposit (the model's own amount), badges (Instant, Delivers, Ready today); a comparable "What's included" block; a map with only those shops pinned.
+- **Shop listing page** (one shop's offer of one model, reached from the model page):
+  - The shop's real photos in a gallery, price for chosen dates and a mini price table.
+  - **Deposit and documents shown prominently**, plus "What's included", extras (read-only list), shop info + map, reviews and cancellation policy.
   - Book button (leads to a "coming soon" in this phase).
 - **Shop page:** about, photos, hours, location, all models, reviews.
+- **Google rating and reviews** on the shop page and shop listing page when the shop linked its Google Business Profile: overall rating, review count and up to 5 reviews, fetched live from Places API (New) with Google Maps attribution and reviewer names; nothing but the place ID is stored. Not on search cards. Check the current Places policies and pricing before building.
 - Everything server-rendered for SEO, with proper titles and meta descriptions.
 
 **Acceptance criteria**
 - Searching from Phra Khanong BTS shows BSR first among equal shops when boosted, and sorting by price works.
 - Prices for 1, 7, 10, 30 and 45 days match the pricing function.
+- A model offered by two shops shows one search card with the lower "From" price and "2 shops near you"; its model page lists both shops.
 - The availability function has unit tests covering buffers, down time and overlapping bookings.
 - Lighthouse mobile performance ≥ 85 on home and search.
 
 **Prompt**
-> Phase 2 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 3: Customer browsing and search, including the availability function and ranking score. Wait for approval.
+> Phase 2 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 3: Customer browsing and search (model-first), including the availability function and ranking score. Wait for approval.
 
 ---
 
@@ -194,7 +211,13 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - fee = max(round(10% × rental after promotion), 50), but never more than the rental itself.
   - due_at_shop = rental after promotion − fee.
   - Delivery fee is separate.
+  - Extras never count towards the fee.
   - Test cases: 2,880 → fee 288 / shop 2,592; 250 → fee 50 / shop 200.
+- **Extras at checkout:**
+  - Customer ticks the shop's active extras that apply to the model.
+  - Totals: per rental = price × 1; time-based extras use the bike pricing rule on their 1/7/30-day prices, charged for the days rented, never rounded up to whole weeks (unit tests, incl. BSR's ฿200/day–฿4,800/month outside-Bangkok extra).
+  - Extras are recalculated on the server and copied into `booking_extras` (booking_id, extra_id, name, unit, price, quantity, total), so later price edits don't change existing bookings.
+  - Shown in the price breakdown under "Pay at shop"; the amount to collect includes them. The vendor's booking notice lists them.
 - **Modes:**
   - **Instant:** confirms immediately → `confirmed_unpaid` (or straight to paid flow if pickup within 3 days. Simulated in this phase).
   - **Request:** → `pending_vendor` with `request_expires_at` = now + shop response window. Vendor Accept/Decline in the dashboard (LINE buttons come in Phase 6).
@@ -228,7 +251,8 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 **Acceptance criteria**
 - All three booking modes work end to end with the simulated payment.
 - Double booking is impossible under concurrent requests.
-- The vendor sees the correct "collect ฿X" amount on every booking.
+- The vendor sees the correct "collect ฿X" amount on every booking, including extras.
+- Changing an extra's price after a booking leaves that booking's extras unchanged.
 
 **Prompt**
 > Phase 3 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 4: Booking engine. Start with the state machine, availability and fee logic as tested pure functions, then the create-booking RPC with row locking. Payments are simulated in this phase. Wait for approval.
@@ -276,6 +300,38 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 
 ---
 
+## Phase 5b: Referral program (customer referrals)
+
+**Goal:** partners earn a lifetime share of the booking fee from customers they refer. Needs paid booking fees, so it comes after Phase 5. (Numbered 5b so later phase numbers and existing `TODO(phase-N)` comments stay valid.)
+
+**Tasks**
+- **Partners:** application form; admin approves. Each approved partner gets one code, a link `/r/<code>` and a QR code.
+- **Printable kit:** downloadable, branded table stand and sticker (PDF/PNG) with the partner's QR.
+- **Attribution** (invisible to the customer):
+  - `/r/<code>` records a scan, stores the code in a first-party cookie and shows the normal homepage. No discount, code never shown.
+  - On sign-up or booking, a customer with no partner is linked permanently (`profiles.referred_by_partner_id`, `referred_at`). First partner wins.
+  - No self-referral: nothing is earned on a partner's own bookings (same user, email or card).
+- **Earnings** (pure logic in `lib/referrals.ts`, unit tests):
+  - Admin setting `referral_rate`, starting at 50% of the booking fee. Each earning stores its own `rate`; a change applies only to fees paid after it.
+  - Created as `approved` when the booking fee is paid (Stripe webhook path from Phase 5).
+  - Fee refunded → earning reversed; if already paid out, deducted from the next payout.
+- **Partner dashboard:** scans, sign-ups, bookings, upcoming earnings, earned balance, payout history, current rate, QR and kit download. Booking dates and amounts only, never customer names or contacts.
+- **Admin:** approve / suspend / edit partners; hold suspicious earnings; monthly payout run listing approved balances ≥ ฿500; mark payouts paid (PromptPay or bank transfer made outside the app); CSV export.
+- **Data:** `referral_partners`, `referral_scans`, `referral_earnings`, `referral_payouts` (nullable `withholding_amount`, not used yet), `referral_rate` setting, `profiles.referred_by_partner_id` / `referred_at`. RLS: partners read only their own rows.
+- Partner terms wording exactly as in SPEC.
+
+**Acceptance criteria**
+- Scanning a partner QR, then signing up and booking, credits that partner when the fee is paid; a second partner's QR scanned later changes nothing.
+- Changing `referral_rate` affects only fees paid afterwards.
+- A refunded fee reverses the earning, or reduces the next payout if already paid.
+- A partner booking for themselves earns nothing.
+- The partner dashboard never shows customer names or contacts.
+
+**Prompt**
+> Phase 5 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 5b: Referral program. Write the earning and reversal rules as pure tested functions first. Wait for approval.
+
+---
+
 ## Phase 6: Notifications and scheduled jobs
 
 **Goal:** vendors run their day from LINE, and customers get timely emails.
@@ -307,22 +363,24 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 - Tapping an old Accept button after the request expired replies "This request has expired" and changes nothing.
 
 **Prompt**
-> Phase 5 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 6: Notifications and scheduled jobs. Check the current LINE Messaging API docs for Flex messages, postbacks and webhook signature verification. Wait for approval.
+> Phase 5b is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 6: Notifications and scheduled jobs. Check the current LINE Messaging API docs for Flex messages, postbacks and webhook signature verification. Wait for approval.
 
 ---
 
-## Phase 7: Promotions, delivery, stats, reviews, SEO, WhatsApp
+## Phase 7: Promotions, delivery, stats, reviews, SEO, analytics, WhatsApp, PWA
 
 **Goal:** the remaining features from SPEC.
 
 **Tasks**
 - **Promotions:**
   - Vendor creates and pauses promotions: % off, ฿ off, long-rental discount (min days), date window, new customers only; all models or chosen models.
+  - Date window (e.g. 20% off touring bikes 1 Apr – 30 Sep): the discount applies only to the rental days that fall inside the window. Add `date_window` to the promotion kind enum.
+  - Seed BSR's low-season discount: touring models 20% off, 1 Apr – 30 Sep.
   - Best single promotion applies (no stacking).
   - Badge on cards and a Deals filter.
   - Fee is calculated on the discounted price (already in `lib/fees.ts`).
 - **Delivery:**
-  - Turn on the delivery settings: radius and flat fee or distance zones.
+  - Turn on the delivery settings: radius and flat fee or distance zones, and the optional minimum rental length (`shops.delivery_min_days`, blank = any length). Delivery is offered only when the rental meets it.
   - Customer chooses delivery and enters an address (Places autocomplete). Distance is checked against the radius.
   - Every delivery booking → `pending_vendor`, even for Instant models (holds a unit while pending).
   - Delivery fee is shown separately and paid at handover.
@@ -335,22 +393,36 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 - **Vendor stats:** listing views (lightweight counter table), requests, confirmed bookings, amount to collect by week/month, response rate and speed, cancellation rate, ratings, top models.
 - **SEO area pages:**
   - Generated pages per area/city and bike type, e.g. `/rent/bangkok/sukhumvit`, `/rent/bangkok/monthly`, `/rent/bangkok/automatic-scooter`, from live listings.
+  - One page per catalog model per city, e.g. "Rent a Honda PCX 160 in Bangkok", listing every live shop offering it.
   - Unique title/meta/intro (intro editable in admin), sitemap.xml, robots.txt, structured data (LocalBusiness / Product with offers).
   - Pages appear automatically when an area gets its first live shop.
   - Daily refresh job.
+- **AI search visibility:** robots.txt allows the main AI search crawlers; FAQ blocks with FAQ structured data on model and area pages; Search Console and Bing Webmaster Tools verification with sitemaps submitted (owner steps listed in `docs/go-live.md`).
+- **Analytics and conversions:**
+  - Google tag for GA4 and Google Ads, loaded only after cookie consent (consent mode), with a cookie banner.
+  - Conversion events: request sent, booking confirmed, booking fee paid (value = fee).
+  - Fee-paid conversions are sent from the server when the charge succeeds (GA4 Measurement Protocol; Google Ads via GA4 import or offline conversion upload, whichever the current docs recommend). Check the current Google docs before building, and ask before adding any package.
 - **WhatsApp:**
   - Customer notifications through the WhatsApp Business API using approved templates (confirmed, payment reminder, card failed, day-before pickup, review).
   - Only for customers who added a WhatsApp number and chose WhatsApp.
   - Fall back to email on failure.
-- **PWA:** web manifest and icons so the vendor dashboard can be installed on a phone home screen.
+- **PWA (customers and vendors):**
+  - Web manifest, icons, service worker with an offline fallback page.
+  - An `/app` install page with a QR code for the website: Android gets the install prompt; iPhone gets "Share → Add to Home Screen" instructions.
+  - Web push notifications for installed users (booking confirmed, payment reminders), alongside email/WhatsApp.
+  - Vendor dashboard installable the same way.
 
 **Acceptance criteria**
 - A 10% promotion on a 14-day rental shows exactly the SPEC checkout example (3,200 → 2,880; pay now 288; at shop 2,592).
 - A delivery request on an Instant model waits for vendor approval and blocks the unit meanwhile.
+- A date-window promotion on a rental that starts before the window discounts only the days inside it.
+- With a delivery minimum of 7 days, delivery isn't offered for a 5-day rental.
 - Area pages render server-side, appear in the sitemap and pass Google's Rich Results test.
+- With consent accepted, a test booking records request sent, booking confirmed and fee paid in GA4 and Google Ads; with consent declined, nothing is sent.
+- Scanning the website's QR on Android and iPhone installs the app to the home screen, and it opens full-screen.
 
 **Prompt**
-> Phase 6 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 7. Split it into sub-steps (promotions, delivery, reviews, stats, SEO pages, WhatsApp, PWA) and we will build them one at a time. Wait for approval.
+> Phase 6 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 7. Split it into sub-steps (promotions, delivery, reviews, stats, SEO pages and AI search, analytics and conversions, WhatsApp, PWA) and we will build them one at a time. Wait for approval.
 
 ---
 
@@ -362,11 +434,12 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 - **Legal pages:**
   - Terms of service (booking platform, not the renter; damage disputes between customer and shop)
   - Vendor agreement (the four vendor terms)
-  - PDPA privacy policy
-  - Cookie notice
+  - PDPA privacy policy (mentions referral tracking)
+  - Cookie notice (mentions the referral cookie)
+  - Referral partner terms
 
   Use placeholder text clearly marked for the owner's lawyer to replace.
-- Error monitoring (Sentry) and basic analytics (Plausible or Netlify's own analytics). Ask before adding.
+- Error monitoring (Sentry). Ask before adding. (Analytics is GA4, from Phase 7.)
 - Rate limiting on auth, booking creation and webhook routes.
 - Database backups confirmed (Supabase), and a written restore procedure in `docs/ops.md`.
 - Full Playwright suite passing against a staging deployment.
@@ -382,6 +455,8 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - Hosted Supabase sends auth email through Resend SMTP with our magic-link template (`supabase/templates/magic-link.html`)
   - Publish the Google OAuth app (Google Auth Platform → Audience). Google requires a homepage URL and a privacy policy URL on the Branding page first; until then it stays in Testing mode and only listed test users can sign in with Google
   - WhatsApp templates approved
+  - Search Console and Bing Webmaster Tools verified, sitemap submitted
+  - GA4 and Google Ads conversions recording on production
   - Seed only BSR as the live vendor
 
 **Acceptance criteria**
@@ -389,6 +464,26 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 
 **Prompt**
 > Phase 7 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 8: Launch hardening. Wait for approval.
+
+---
+
+## Phase 9: Store apps (after launch)
+
+**Goal:** the same web app listed in Google Play, then the App Store, so customers can also find and install it from the stores.
+
+**Tasks**
+- **Google Play first:** package the PWA as a Trusted Web Activity (e.g. with Bubblewrap or PWABuilder; ask before adding tools), Digital Asset Links file on the site, store listing, privacy policy link, internal testing track, then production.
+- **App Store second:** a thin native wrapper of the web app (e.g. Capacitor; ask first). Apple rejects apps that are only a website in a frame, so plan native extras such as push notifications, Apple Pay and location. Needs an Apple Developer account and review.
+- One codebase: the store apps load the live site; only store assets and wrapper settings live in the repo (`apps/`).
+- The website's `/app` page and QR detect the device and point to the store listing once it exists, otherwise to the PWA install.
+- Check the current Google Play and App Store review rules before planning.
+
+**Acceptance criteria**
+- The Play Store app installs from a QR scan, opens the live site full-screen without a browser bar, and a booking works end to end.
+- The App Store build passes review.
+
+**Prompt**
+> Phase 8 is done. Read CLAUDE.md, SPEC.md and BUILD_PLAN.md. Plan Phase 9: Store apps. Check the current Google Play TWA and App Store review guidelines before planning. Wait for approval.
 
 ---
 

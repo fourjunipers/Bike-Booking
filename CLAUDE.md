@@ -57,7 +57,7 @@ Before relying on any third-party API behaviour (Supabase Auth providers, Stripe
   - `app/api/...`: webhooks and cron routes
   - `lib/`: business logic
   - `components/`: shared UI
-- **Mobile first:** every screen must work well at 375 px wide.
+- **Mobile first, desktop too:** every screen must work well at 375 px wide and also have a proper desktop layout at 1280 px (e.g. search list and map side by side, wider galleries, multi-column forms), not a stretched phone layout.
 - **Accessibility:** labelled form fields, buttons with text, colour never the only signal.
 
 ## Definition of done (every phase)
