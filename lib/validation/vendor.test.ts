@@ -86,7 +86,6 @@ describe("shopInclusionsSchema", () => {
       deposit_amount: "2000",
       deposit_methods: ["cash", "card_authorisation"],
       passport: "copy_only",
-      deposit_refund_days: "0",
       licence_required: "motorbike",
       min_age: "21",
       notes: "",
@@ -95,7 +94,6 @@ describe("shopInclusionsSchema", () => {
     expect(row).toMatchObject({
       helmets: 2,
       helmet_types: ["full_face", "half"],
-      deposit_refund_days: 0,
       phone_holder: true,
       usb_charger: false,
       km_limit: 0,
@@ -139,7 +137,7 @@ describe("parseInclusionOverrides", () => {
 });
 
 describe("modelSchema", () => {
-  const base = { qty: "1", booking_mode: "request", visible: "on" };
+  const base = { qty: "1", instant_qty: "0", request_qty: "1", visible: "on" };
 
   it("requires at least one photo", () => {
     const r = modelSchema.safeParse({ ...base, photos: "[]" });

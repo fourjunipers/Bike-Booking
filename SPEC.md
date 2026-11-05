@@ -44,6 +44,8 @@ Every shop is hidden until admin approves it; after approval, major edits go liv
 | Contact | WhatsApp number and LINE ID; shown to customer only after confirmation |
 | Same-day cut-off | Vendor-chosen, e.g. 2 hours before closing |
 | Default buffers | Before pickup and after return, in hours; models can override |
+| Minimum rental length | Days, set separately for walk-ins and advance bookings; models can override |
+| Minimum notice | Hours before pickup that an advance booking must be made (e.g. 24, to wash and check the bike); models can override. Walk-ins skip it |
 | Request response window | Default 2 hours. The clock runs only during opening hours: a request made while the shop is closed starts counting when it next opens |
 
 **What's included, deposit and documents** (structured fields, shown as a comparable block on model pages, shop listings and at checkout)
@@ -113,20 +115,22 @@ If a model is missing, the vendor submits a **catalog request**. Admin approves 
 | --- | --- |
 | Catalog entry | Picked from the catalog; gives make, model, year range, type, transmission, cc, specs and stock photo |
 | Photos | The shop's real photos: at least 1, up to 8 |
-| Quantity | Total units owned |
+| Quantity | Total units owned, split into Instant, Request and walk-ins only (see Booking modes) |
 | Deposit | Overrides the shop default deposit amount (blank = shop default) |
 | What's included | Any field can override the shop default |
-| Booking mode | Instant or Request |
 | Buffers | Before/after, overrides shop default |
+| Minimum days and notice | Walk-in minimum, advance-booking minimum and minimum notice, each overriding the shop default |
 | Pricing | Anchor rates + day table (see Pricing) |
 | Visible | On/off without deleting |
 
 **Fleet page: one screen of toggles**
 
-| Model | Qty | Ready today | Down time |
+| Model | Quantity | Ready for walk-ins today | In repair / out of service |
 | --- | --- | --- | --- |
-| Honda Click 125 | 6 | On · 3 | 1 |
-| Honda PCX 160 | 4 | Out | 0 |
+| Honda Click 125 (2 instant · 4 request) | 6 | On · −1 [3] +1 | 1 (back 12 Nov) |
+| Honda PCX 160 (4 walk-ins only) | 4 | Out | None |
+
+A shop lists each catalog model once. Bikes not ready for walk-ins today are shown lighter so today's walk-in stock stands out.
 
 **Ready today**
 
@@ -134,13 +138,15 @@ If a model is missing, the vendor submits a **catalog request**. Admin approves 
 - Each Get-your-bike-now booking reduces the count by 1; at 0 it switches to Out automatically.
 - Daily LINE reminder at shop opening: "Still correct?" with one-tap Confirm or Edit.
 - Customers see the last update: "Updated today" or "Updated 3 days ago".
-- Ready-today count can never exceed Qty minus down time minus bikes currently on rent.
+- Ready-today count can never exceed Qty minus down time minus bikes currently on rent. −1/+1 buttons change it in one tap.
+- A walk-in rental must end before that model's next advance booking needs the unit (buffers included); the listing shows the longest rental possible, e.g. "Available up to 14 days". It then holds a unit until its end date like any booking. The count is never refilled automatically: the shop taps +1 when the bike is back and ready.
 
 **Down time**
 
-- A toggle plus a count of units out of service, with an optional "back on" date.
+- Separate entries, each with a count of units out of service and an optional "back on" date, so bikes can come back on different days.
 - Units in down time are removed from every kind of availability: calendar, Ready today and requests.
 - On the "back on" date the units return automatically and the vendor gets a LINE note.
+- When an entry leaves more bookings than bikes on any day, the vendor is warned straight away with the affected booking codes.
 
 ## Pricing
 
@@ -167,14 +173,16 @@ Vendors enter up to five anchor totals per model; the system fills every day in 
 
 ## Booking modes and statuses
 
-Each bike model is either Instant or Request; Get your bike now and delivery are layered on top.
+Each model's quantity is split three ways: **Instant** units, **Request** units and **walk-ins only** units (never booked in advance). Get your bike now (ready for walk-ins) and delivery are layered on top and can use any unit. Bikes are a pool: no booking is tied to a particular bike, so whenever the busiest moment of a period has a unit free, the bookings fit without anyone changing bikes mid-rental, provided bikes are handed over in pickup order and not promised in advance.
 
 | Mode | When it applies | How it confirms |
 | --- | --- | --- |
-| Instant | Model set to Instant, no delivery | Automatically, if qty − overlapping bookings (with buffers) − down time ≥ 1 |
-| Request | Model set to Request | Vendor taps Accept on LINE or in the dashboard within the response window (default 2 hours) |
+| Instant | An Instant unit is free for the dates, no delivery | Automatically, if qty − overlapping bookings (with buffers) − down time ≥ 1 and Instant bookings for those dates are below the Instant units |
+| Request | Only Request units are free | Vendor taps Accept on LINE or in the dashboard within the response window (default 2 hours, opening hours only). Dates already full from platform bookings can't be requested |
 | Delivery | Any model, delivery chosen | Always needs vendor acceptance, even for Instant models |
-| Get your bike now | Ready-today count ≥ 1 and before the shop's cut-off | Instantly; fee paid at booking; Ready-today count drops by 1 |
+| Get your bike now | Ready-today count ≥ 1, before the shop's cut-off, and the rental ends before the model's next booking needs the unit | Instantly; fee paid at booking; Ready-today count drops by 1 |
+
+Advance bookings (Instant and Request) need at least the minimum notice and the advance-booking minimum days; walk-ins need the walk-in minimum days and skip the notice.
 
 **Booking status flow**
 
@@ -347,14 +355,15 @@ Core tables in Supabase (Postgres); availability is computed from bookings, buff
 | Table | Key fields |
 | --- | --- |
 | users | id, role (customer/vendor_staff/admin), name, email, whatsapp, line_user_id, language, notify_channels |
-| shops | id, name, slug, about, lat, lng, maps_url, nearest_station, whatsapp, line_id, status (draft/pending/live/suspended), boost_level, cutoff_minutes, buffer_before_h, buffer_after_h, request_window_min, delivery_enabled, delivery_radius_km, delivery_min_days (null = any length), google_place_id, country (ISO code, default TH), currency (ISO code, default THB) |
+| shops | id, name, slug, about, lat, lng, maps_url, nearest_station, whatsapp, line_id, status (draft/pending/live/suspended), boost_level, cutoff_minutes, buffer_before_h, buffer_after_h, request_window_min, min_days_walkin, min_days_booking, notice_h, delivery_enabled, delivery_radius_km, delivery_min_days (null = any length), google_place_id, country (ISO code, default TH), currency (ISO code, default THB) |
 | shop_members | shop_id, user_id, role (owner/staff) |
 | shop_hours | shop_id, weekday, open, close |
 | shop_closures | shop_id, start_date, end_date, note, repeats_yearly |
 | shop_policies | shop_id, the structured "What's included", deposit and documents fields as shop defaults (incl. deposit_amount), notes |
 | bike_catalog | id, make, model, year_from, year_to, type, transmission, cc, abs, underseat_storage, usb_charger, key_type (keyless/keyed), description, stock_photo, status (requested/approved/rejected), requested_by_shop_id |
 | delivery_zones | shop_id, max_km, fee |
-| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), price_after_30, booking_mode (instant/request), buffer_before_h, buffer_after_h, ready_today_count, ready_today_on, ready_today_updated_at, downtime_count, downtime_until, visible, flagged_for_review |
+| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), price_after_30, instant_qty, request_qty (rest = walk-ins only), buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h (null = shop default), ready_today_count, ready_today_on, ready_today_updated_at, visible, flagged_for_review; unique (shop_id, catalog_id) |
+| bike_model_downtime | bike_model_id, units, back_on (null = not known), note |
 | bike_model_policies | bike_model_id, the same "What's included", deposit and documents fields as shop_policies, all nullable (null = shop default) |
 | price_days | bike_model_id, day (1–30), total, is_anchor, is_manual |
 | shop_extras | id, shop_id, name, description, terms, price_kind (rental/time), price_rental, price_1d, price_7d, price_30d, all_models, active |
@@ -365,7 +374,7 @@ Core tables in Supabase (Postgres); availability is computed from bookings, buff
 | reviews | booking_id, rating, text, hidden |
 | referral tables | referral_partners, referral_scans, referral_earnings, referral_payouts, profiles.referred_by_partner_id / referred_at, admin setting referral_rate (see Referral program) |
 
-**Availability for an Instant model over a date range:** qty − downtime_count − max overlapping bookings where each booking is widened by buffer_before and buffer_after. Bookings that hold a unit: confirmed_unpaid, paid, picked_up, and pending_vendor only for delivery requests on Instant models. Ended statuses never hold a unit.
+**Availability for a model over a date range:** qty − units in repair − max overlapping bookings where each booking is widened by buffer_before and buffer_after. Bookings that hold a unit: confirmed_unpaid, paid, picked_up, and pending_vendor only for delivery requests on Instant models. Ended statuses never hold a unit.
 
 **Events log:** an append-only booking_events table (booking_id, at, actor, event, data) records every status change and message sent, for disputes and stats.
 

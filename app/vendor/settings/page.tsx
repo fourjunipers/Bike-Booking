@@ -1,17 +1,11 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { deleteClosure } from "@/app/vendor/actions/shop";
 import { Button } from "@/components/ui/button";
+import { SettingsTabs } from "@/components/vendor/settings-tabs";
 import { requireShopOwner } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { getVendorLocale } from "@/i18n/vendor";
-import {
-  BookingSettingsForm,
-  ClosureForm,
-  ContactsForm,
-  HoursForm,
-  ProfileForm,
-} from "./forms";
+import { ClosureForm, ContactsForm, HoursForm, ProfileForm } from "./forms";
 
 export default async function SettingsPage() {
   const shop = await requireShopOwner();
@@ -29,9 +23,7 @@ export default async function SettingsPage() {
   ] = await Promise.all([
     supabase
       .from("shops")
-      .select(
-        "name, about, photos, maps_url, nearest_station, google_place_id, cutoff_minutes, buffer_before_h, buffer_after_h, request_window_min",
-      )
+      .select("name, about, photos, maps_url, nearest_station, google_place_id")
       .eq("id", shop.id)
       .single(),
     supabase.rpc("shop_coordinates", { p_shop_id: shop.id }),
@@ -55,14 +47,9 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="space-y-4">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <Link
-          href="/vendor/settings/included"
-          className="underline underline-offset-4"
-        >
-          {t("includedLink")}
-        </Link>
+        <SettingsTabs active="store" />
       </header>
 
       <ProfileForm
@@ -127,12 +114,6 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      <BookingSettingsForm
-        cutoff={s.cutoff_minutes}
-        before={s.buffer_before_h}
-        after={s.buffer_after_h}
-        window={s.request_window_min}
-      />
       {/* TODO(phase-7): delivery settings (radius, fee, minimum rental length). */}
     </div>
   );

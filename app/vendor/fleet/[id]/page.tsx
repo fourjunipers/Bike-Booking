@@ -23,10 +23,12 @@ import { DeleteModelForm, ModelForm } from "./model-form";
 
 export default async function ModelPage({
   params,
+  searchParams,
 }: PageProps<"/vendor/fleet/[id]">) {
   const shop = await requireVendorShop();
   if (!shop) return null;
   const { id } = await params;
+  const { existing } = await searchParams;
   const t = await getTranslations({
     locale: await getVendorLocale(),
     namespace: "Model",
@@ -39,11 +41,12 @@ export default async function ModelPage({
     { data: overrides },
     { data: shopDefaults },
     { data: extras },
+    { data: shopRules },
   ] = await Promise.all([
     supabase
       .from("bike_models")
       .select(
-        "id, shop_id, qty, photos, deposit_amount, price_after_30, booking_mode, buffer_before_h, buffer_after_h, year_from, year_to, visible, catalog:bike_catalog (make, model, year_from, year_to, cc, type, transmission, status, abs, underseat_storage, usb_charger, key_type)",
+        "id, shop_id, qty, instant_qty, request_qty, photos, deposit_amount, price_after_30, buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h, visible, catalog:bike_catalog (make, model, year_from, year_to, cc, type, transmission, status, abs, underseat_storage, usb_charger, key_type)",
       )
       .eq("id", id)
       .eq("shop_id", shop.id)
@@ -67,8 +70,15 @@ export default async function ModelPage({
       .select("id, name, active, all_models, shop_extra_models (bike_model_id)")
       .eq("shop_id", shop.id)
       .order("sort"),
+    supabase
+      .from("shops")
+      .select(
+        "buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h",
+      )
+      .eq("id", shop.id)
+      .single(),
   ]);
-  if (!model || !model.catalog || !shopDefaults) notFound();
+  if (!model || !model.catalog || !shopDefaults || !shopRules) notFound();
 
   const anchors: Anchors = {};
   const manual: ManualDays = {};
@@ -92,6 +102,11 @@ export default async function ModelPage({
           {t("back")}
         </Link>
         <h1 className="text-2xl font-semibold">{catalogLabel(c)}</h1>
+        {existing && (
+          <p role="status" className="rounded-md border p-3 text-sm">
+            {t("alreadyInFleet")}
+          </p>
+        )}
         <p className="text-muted-foreground">
           {c.cc}cc · {t("specsFromCatalog")}
           {c.status === "requested" && ` · ${t("catalogPending")}`}
@@ -106,6 +121,7 @@ export default async function ModelPage({
           modelId={id}
           model={model}
           shopDeposit={shopDefaults.deposit_amount}
+          shopDefaults={shopRules}
         />
       </section>
 

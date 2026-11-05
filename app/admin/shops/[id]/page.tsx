@@ -49,7 +49,7 @@ export default async function AdminShopPage({
     db
       .from("bike_models")
       .select(
-        "id, qty, photos, deposit_amount, booking_mode, visible, flagged_for_review, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day, total)",
+        "id, qty, instant_qty, request_qty, photos, deposit_amount, visible, flagged_for_review, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day, total)",
       )
       .eq("shop_id", id),
     db
@@ -239,7 +239,8 @@ export default async function AdminShopPage({
                     {!m.visible && " · hidden"}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Qty {m.qty} · {m.booking_mode} · deposit{" "}
+                    Qty {m.qty} ({m.instant_qty} instant, {m.request_qty}{" "}
+                    request) · deposit{" "}
                     {formatBaht(
                       effectiveDeposit(
                         policies?.deposit_amount ?? null,

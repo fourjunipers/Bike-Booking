@@ -58,11 +58,75 @@ test("a touring model shows its own deposit and inclusion overrides", async ({
 }) => {
   await signInByEmail(page, "owner@bsr.test", "/vendor/fleet");
   await page.getByRole("link", { name: /Honda NX500/ }).click();
+  await page.waitForURL(/\/vendor\/fleet\/c0000000-/);
   await expect(page.getByLabel("Deposit (฿)")).toHaveValue("5000");
   await expect(page.getByLabel("Gloves")).toHaveValue("included");
   await expect(page.getByLabel("Riding area")).toHaveValue("thailand");
   // The price table is filled from the anchors.
   await expect(page.getByLabel("1 day (required)")).toHaveValue("2100");
+});
+
+test("walk-in stock changes with −1/+1 and unready bikes are lighter", async ({
+  page,
+}) => {
+  await signInByEmail(page, "owner@bsr.test", "/vendor/fleet");
+  const row = page
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("link", { name: /Honda Click 160/ }) });
+  await expect(row).toHaveAttribute("data-ready", "false");
+
+  await row
+    .getByRole("button", { name: /^One more ready for walk-ins/ })
+    .click();
+  await expect(row).toHaveAttribute("data-ready", "true");
+  await expect(row.getByLabel(/^Bikes ready for walk-ins today/)).toHaveValue(
+    "1",
+  );
+
+  // Restore, so the next run starts the same way.
+  await row
+    .getByRole("button", { name: /^One less ready for walk-ins/ })
+    .click();
+  await expect(row).toHaveAttribute("data-ready", "false");
+});
+
+test("a bike's quantity is split between Instant, Request and walk-ins only", async ({
+  page,
+}) => {
+  await signInByEmail(page, "owner@bsr.test", "/vendor/fleet");
+  await page.getByRole("link", { name: /Honda NX500/ }).click();
+  await page.waitForURL(/\/vendor\/fleet\/c0000000-/);
+  const split = page.getByRole("group", {
+    name: "How these bikes can be booked",
+  });
+  await expect(split.getByLabel("Request", { exact: true })).toHaveValue("1");
+  await expect(split.getByLabel("Instant", { exact: true })).toHaveValue("0");
+  // Moving the Request bike to Instant: Request is capped by what's left.
+  await split.getByRole("button", { name: "One less: Request" }).click();
+  await split.getByRole("button", { name: "One more: Instant" }).click();
+  await expect(split.getByLabel("Instant", { exact: true })).toHaveValue("1");
+  await expect(
+    split.getByRole("button", { name: "One more: Request" }),
+  ).toBeDisabled();
+});
+
+test("shop settings has Store information and Default settings tabs", async ({
+  page,
+}) => {
+  await signInByEmail(page, "owner@bsr.test", "/vendor/settings");
+  const tabs = page.getByRole("navigation", { name: "Shop settings" });
+  await expect(
+    tabs.getByRole("link", { name: "Store information" }),
+  ).toHaveAttribute("aria-current", "page");
+  await tabs.getByRole("link", { name: "Default settings" }).click();
+  await expect(page).toHaveURL("/vendor/settings/defaults");
+  await expect(page.getByLabel("Minimum days, walk-ins")).toHaveValue("1");
+  await expect(
+    page.getByRole("heading", { name: "Riding usage restrictions" }),
+  ).toBeVisible();
+
+  await page.goto("/vendor/settings/included");
+  await expect(page).toHaveURL("/vendor/settings/defaults");
 });
 
 test("staff can't open the Team page", async ({ page }) => {
