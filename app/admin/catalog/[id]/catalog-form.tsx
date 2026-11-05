@@ -16,7 +16,6 @@ type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;
 type Entry = {
   make: string;
   model: string;
-  generation: string | null;
   year_from: number | null;
   year_to: number | null;
   cc: number;
@@ -54,12 +53,6 @@ export function CatalogForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField name="make" label="Make" defaultValue={entry?.make} />
         <TextField name="model" label="Model" defaultValue={entry?.model} />
-        <TextField
-          name="generation"
-          label="Generation"
-          hint='e.g. "New Gen", "2nd Gen"'
-          defaultValue={entry?.generation}
-        />
         <NumberField name="cc" label="Engine (cc)" defaultValue={entry?.cc} />
         <NumberField
           name="year_from"

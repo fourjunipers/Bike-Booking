@@ -68,7 +68,7 @@ Recorded from `BSR_SEED.md` Part 1. SPEC.md and BUILD_PLAN.md updated to match.
 ## 2026-11-04 · Phase 2 build
 
 - **Catalog replaces vendor-typed specs.** `bike_models` lost make, model, type, transmission and cc; existing rows were backfilled into approved catalog entries. A shop can list its own pending catalog request straight away; the public sees a model only when its catalog entry is approved, it has at least one photo and the shop is live.
-- **Inclusions are typed columns, not JSON.** `shop_policies` holds every field; `bike_model_policies` repeats them as nullable overrides. The model editor stores only fields that differ from the shop (`minimalOverrides`), so models keep following later shop changes. `km_limit` 0 = unlimited; `deposit_refund_days` 0 = at return. The old `deposit_type` enum was dropped; "passport held or copy only" is its own field.
+- **Inclusions are typed columns, not JSON.** `shop_policies` holds every field; `bike_model_policies` repeats them as nullable overrides. The model editor stores only fields that differ from the shop (`minimalOverrides`), so models keep following later shop changes. `km_limit` 0 = unlimited; `deposit_refund_days` 0 = at return (null = not stated, from 2026-11-04). The old `deposit_type` enum was dropped; "passport held or copy only" is its own field.
 - **Extras: owners write, staff read** (same as promotions; extras are pricing). Time-based extras store 1/7/30-day prices and use `lib/pricing.ts`.
 - **Onboarding is a checklist, not a wizard.** `create_shop` makes a draft with the caller as owner; the vendor home shows `shop_readiness` (about, shop photo, map pin, hours, a contact, a model, model photos, model prices) with links to fix each, then the terms and Submit. `submit_shop` only changes status when nothing is missing. A shop photo is required.
 - **Staff invites are single-use links** (hashed token, 7 days) that the owner sends by LINE or email from the Team page; `/account/join?token=` accepts. No email sending in Phase 2.
@@ -88,3 +88,14 @@ Recorded from `BSR_SEED.md` Part 1. SPEC.md and BUILD_PLAN.md updated to match.
 - **Only customer namespaces are translated** beyond Thai/English (`customerNamespaces` in `i18n/config.ts`); the layout sends only those to the browser. `i18n/messages.test.ts` checks every language has every key and placeholder.
 - **Translations are Claude drafts.** zh, ru, de, fr, es, it, ja, ko and the new Thai customer text need a native speaker's review before launch (Thai first). Supabase sign-in emails stay English (one template per project).
 - **Supabase keep-alive:** the free Supabase plan pauses projects after about a week of low activity. `netlify/functions/supabase-keep-alive.mts` reads one row from `shops` with the anon key daily at 00:00 UTC. Remove it once the project is on a paid plan.
+
+## 2026-11-04 · Owner feedback on Phase 2
+
+- **Yearly closures.** `shop_closures.repeats_yearly`: later years match the same month and day, including closures over New Year; a 29 February start falls on 1 March in other years. Lunar holidays stay one-off. `is_shop_closed_on()` (SQL) and `lib/closures.ts` share the rule and a DB test checks they agree; Phase 3 search and Phase 4 checkout use them.
+- **Generic phone example.** Vendor settings showed BSR's real number as the format example; now `+66 81 234 5678` like the customer pages.
+- **No catalog generation.** `bike_catalog.generation` dropped; entries are told apart by make, model and year range. New slugs come from make, model and years; existing slugs are kept.
+- **Price per day after 30 days, required.** `bike_models.price_after_30`. Days 31+ cost that much each; each further 30 days is capped at the 30-day price. There is no fallback to the old rule for bikes; `shop_readiness` lists a model without it under `model_prices`. Time-based extras keep the old rule. Seed values (30-day price ÷ 30) are **placeholders** until the owner gives BSR's real rates.
+- **Helmets.** "Helmets included (number)"; helmet sizes dropped; helmet type became `helmet_types` (any combination), overridable per model like deposit methods.
+- **Deposit refund days optional.** `shop_policies.deposit_refund_days` null = not stated; customers see nothing for it.
+- **Fleet page wording.** Columns renamed "Ready for walk-ins today" and "In repair / out of service", with a "What do these columns mean?" explainer (a `<details>`, so it works on phones without a tooltip).
+- **Request reply window counts opening hours only** (owner, recommended answer). A request made while the shop is closed starts counting at the next opening, and the customer is told when the shop opens. Recorded in SPEC and BUILD_PLAN now; built with request expiry in Phases 4 and 6.

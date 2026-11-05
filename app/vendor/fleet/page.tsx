@@ -19,7 +19,7 @@ export default async function FleetPage() {
   const { data: models } = await supabase
     .from("bike_models")
     .select(
-      "id, qty, photos, booking_mode, visible, ready_today_on, ready_today_count, ready_today_updated_at, downtime_count, downtime_until, deposit_amount, catalog:bike_catalog (make, model, generation, year_from, year_to, cc, status), price_days (day)",
+      "id, qty, photos, booking_mode, visible, ready_today_on, ready_today_count, ready_today_updated_at, downtime_count, downtime_until, deposit_amount, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day)",
     )
     .eq("shop_id", shop.id)
     .order("created_at");
@@ -58,6 +58,25 @@ export default async function FleetPage() {
           {t("addModel")}
         </Link>
       </header>
+      <details className="rounded-lg border p-4">
+        <summary className="min-h-11 cursor-pointer content-center font-medium">
+          {t("helpTitle")}
+        </summary>
+        <dl className="mt-2 space-y-3 text-sm">
+          <div>
+            <dt className="font-medium">{t("qty")}</dt>
+            <dd className="text-muted-foreground">{t("helpQty")}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">{t("readyToday")}</dt>
+            <dd className="text-muted-foreground">{t("helpReady")}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">{t("downtime")}</dt>
+            <dd className="text-muted-foreground">{t("helpDowntime")}</dd>
+          </div>
+        </dl>
+      </details>
       {rows.length === 0 ? <p>{t("empty")}</p> : <FleetTable rows={rows} />}
     </div>
   );

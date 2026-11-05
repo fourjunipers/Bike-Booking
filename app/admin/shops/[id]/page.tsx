@@ -49,7 +49,7 @@ export default async function AdminShopPage({
     db
       .from("bike_models")
       .select(
-        "id, qty, photos, deposit_amount, booking_mode, visible, flagged_for_review, catalog:bike_catalog (make, model, generation, year_from, year_to, cc, status), price_days (day, total)",
+        "id, qty, photos, deposit_amount, booking_mode, visible, flagged_for_review, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day, total)",
       )
       .eq("shop_id", id),
     db

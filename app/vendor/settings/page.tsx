@@ -41,7 +41,7 @@ export default async function SettingsPage() {
       .eq("shop_id", shop.id),
     supabase
       .from("shop_closures")
-      .select("id, start_date, end_date, note")
+      .select("id, start_date, end_date, note, repeats_yearly")
       .eq("shop_id", shop.id)
       .order("start_date"),
     supabase
@@ -97,6 +97,7 @@ export default async function SettingsPage() {
                   <li key={c.id} className="flex flex-wrap items-center gap-3">
                     <span>
                       {c.start_date} – {c.end_date}
+                      {c.repeats_yearly ? ` · ${t("everyYear")}` : ""}
                       {c.note ? ` · ${c.note}` : ""}
                     </span>
                     <form action={deleteClosure}>

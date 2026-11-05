@@ -11,8 +11,7 @@ import {
 // BSR shop defaults (seed).
 const shop: Inclusions = {
   helmets: 2,
-  helmet_type: null,
-  helmet_sizes: [],
+  helmet_types: [],
   gloves: "not_offered",
   jacket: "not_offered",
   rain_gear: "not_offered",
@@ -25,7 +24,7 @@ const shop: Inclusions = {
   medical_cover: true,
   deposit_methods: ["cash", "card_authorisation"],
   passport: "copy_only",
-  deposit_refund_days: 0,
+  deposit_refund_days: null,
   licence_required: "motorbike",
   min_age: 21,
   experience_required: false,

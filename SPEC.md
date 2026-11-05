@@ -40,11 +40,11 @@ Every shop is hidden until admin approves it; after approval, major edits go liv
 | Name, about, photos | Shown on the shop page and shop listing pages |
 | Location | Google Maps pin + Maps link; nearest BTS/MRT auto-detected. The vendor can link the shop's Google Business Profile (stored as its Google place ID) |
 | Opening hours | Per weekday; pickups and returns only within hours |
-| Holiday closures | Date ranges; blocks pickups and returns |
+| Holiday closures | Date ranges, optionally repeating every year on the same dates (e.g. Songkran); blocks pickups and returns |
 | Contact | WhatsApp number and LINE ID; shown to customer only after confirmation |
 | Same-day cut-off | Vendor-chosen, e.g. 2 hours before closing |
 | Default buffers | Before pickup and after return, in hours; models can override |
-| Request response window | Default 2 hours |
+| Request response window | Default 2 hours. The clock runs only during opening hours: a request made while the shop is closed starts counting when it next opens |
 
 **What's included, deposit and documents** (structured fields, shown as a comparable block on model pages, shop listings and at checkout)
 
@@ -52,12 +52,12 @@ Each field below is a **shop default**. Any bike model can override any field (b
 
 | Group | Fields |
 | --- | --- |
-| Helmets | Number included; type (full-face / 3/4 / half); sizes available |
+| Helmets | Number included; types offered (full-face / 3/4 / half, any combination) |
 | Gear | Gloves, jacket, rain gear: each included / paid extra / not offered |
 | Bike setup | Phone holder, USB charger, top box, side panniers (each yes/no) |
 | Usage | Area allowed (Bangkok only / province / all Thailand / cross-border with bike passport); km limit or unlimited |
 | Insurance | Compulsory third-party (always yes); medical cover (yes/no). Damage/theft cover is not an inclusion: a shop that offers it adds it as an extra with its own terms (see Extras), and the block shows "Damage/theft cover available as an extra" |
-| Deposit | Amount (shop default; each bike model can set its own); method (cash / card authorisation / bank transfer); passport held or copy only; when it is refunded |
+| Deposit | Amount (shop default; each bike model can set its own); method (cash / card authorisation / bank transfer); passport held or copy only; when it is refunded (optional) |
 | Documents | Licence required (none / car / motorbike / international driving permit); minimum age; riding experience required |
 | Notes | Free text, e.g. fuel policy, late return charges |
 
@@ -93,11 +93,11 @@ Inventory is tracked per bike model with a quantity, not per individual bike, so
 
 **Master bike catalog**
 
-Admin maintains one catalog entry per make / model / generation. Shops never type specs; they pick a catalog entry and add their own offer on top.
+Admin maintains one catalog entry per make / model / year range. Shops never type specs; they pick a catalog entry and add their own offer on top.
 
 | Catalog field | Values |
 | --- | --- |
-| Make, model, generation / year range | e.g. Honda PCX 160, 2025– |
+| Make, model, year range | e.g. Honda PCX 160, 2025– |
 | Type | City/scooter, touring, adventure, sport, classic, off-road |
 | Transmission | Automatic, semi-auto, manual |
 | Engine size | cc (used for cc-range filter) |
@@ -111,7 +111,7 @@ If a model is missing, the vendor submits a **catalog request**. Admin approves 
 
 | Field | Values |
 | --- | --- |
-| Catalog entry | Picked from the catalog; gives make, model, generation, type, transmission, cc, specs and stock photo |
+| Catalog entry | Picked from the catalog; gives make, model, year range, type, transmission, cc, specs and stock photo |
 | Photos | The shop's real photos: at least 1, up to 8 |
 | Quantity | Total units owned |
 | Deposit | Overrides the shop default deposit amount (blank = shop default) |
@@ -159,7 +159,7 @@ Vendors enter up to five anchor totals per model; the system fills every day in 
 | 15–21 | 3,370, 3,540, 3,710, 3,890, 4,060, 4,230, 4,400 |
 | 22–30 | 4,520, 4,640, 4,770, 4,890, 5,010, 5,130, 5,260, 5,380, 5,500 |
 
-**Over 30 days:** full months × the 30-day price, plus the remaining days from the table, with the remainder capped at the 30-day price. Example: 45 days = ฿5,500 + ฿3,370 = ฿8,870.
+**Over 30 days:** every bike model has a required **price per day after 30 days**. Days 31 onwards cost that much each, and each further 30 days never costs more than the 30-day price. Example with ฿5,500 for 30 days and ฿150/day after: 45 days = ฿5,500 + 15 × ฿150 = ฿7,750. (Time-based extras keep the older rule: full months × the 30-day price plus the remaining days from the table, capped at the 30-day price.)
 
 **Validation:** the editor warns when a longer rental is cheaper than a shorter one, or when a day total is below the 1-day price.
 
@@ -350,11 +350,11 @@ Core tables in Supabase (Postgres); availability is computed from bookings, buff
 | shops | id, name, slug, about, lat, lng, maps_url, nearest_station, whatsapp, line_id, status (draft/pending/live/suspended), boost_level, cutoff_minutes, buffer_before_h, buffer_after_h, request_window_min, delivery_enabled, delivery_radius_km, delivery_min_days (null = any length), google_place_id, country (ISO code, default TH), currency (ISO code, default THB) |
 | shop_members | shop_id, user_id, role (owner/staff) |
 | shop_hours | shop_id, weekday, open, close |
-| shop_closures | shop_id, start_date, end_date, note |
+| shop_closures | shop_id, start_date, end_date, note, repeats_yearly |
 | shop_policies | shop_id, the structured "What's included", deposit and documents fields as shop defaults (incl. deposit_amount), notes |
-| bike_catalog | id, make, model, generation, year_from, year_to, type, transmission, cc, abs, underseat_storage, usb_charger, key_type (keyless/keyed), description, stock_photo, status (requested/approved/rejected), requested_by_shop_id |
+| bike_catalog | id, make, model, year_from, year_to, type, transmission, cc, abs, underseat_storage, usb_charger, key_type (keyless/keyed), description, stock_photo, status (requested/approved/rejected), requested_by_shop_id |
 | delivery_zones | shop_id, max_km, fee |
-| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), booking_mode (instant/request), buffer_before_h, buffer_after_h, ready_today_count, ready_today_on, ready_today_updated_at, downtime_count, downtime_until, visible, flagged_for_review |
+| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), price_after_30, booking_mode (instant/request), buffer_before_h, buffer_after_h, ready_today_count, ready_today_on, ready_today_updated_at, downtime_count, downtime_until, visible, flagged_for_review |
 | bike_model_policies | bike_model_id, the same "What's included", deposit and documents fields as shop_policies, all nullable (null = shop default) |
 | price_days | bike_model_id, day (1–30), total, is_anchor, is_manual |
 | shop_extras | id, shop_id, name, description, terms, price_kind (rental/time), price_rental, price_1d, price_7d, price_30d, all_models, active |

@@ -8,7 +8,6 @@ import { z } from "zod";
 import {
   DEPOSIT_METHODS,
   GEAR_OPTIONS,
-  HELMET_SIZES,
   HELMET_TYPES,
   LICENCE_TYPES,
   PASSPORT_POLICIES,
@@ -34,6 +33,7 @@ export type ErrorKey =
   | "tooManyPhotos"
   | "dayOneRequired"
   | "dayThirtyRequired"
+  | "afterThirtyRequired"
   | "priceRequired";
 
 const err = (key: ErrorKey) => ({ message: key });
@@ -156,11 +156,18 @@ export const closureSchema = z
     start_date: isoDate,
     end_date: isoDate,
     note: text(100),
+    repeats_yearly: checkbox,
   })
   .refine((v) => v.end_date >= v.start_date, {
     ...err("endAfterStart"),
     path: ["end_date"],
-  });
+  })
+  .refine(
+    (v) =>
+      !v.repeats_yearly ||
+      Date.parse(v.end_date) - Date.parse(v.start_date) < 365 * 86_400_000,
+    { ...err("range"), path: ["end_date"] },
+  );
 
 // Contacts -----------------------------------------------------------------
 
@@ -193,14 +200,13 @@ export const bookingSettingsSchema = z.object({
 const enumOf = <T extends string>(values: readonly T[]) =>
   z.enum(values as [T, ...T[]], err("invalid"));
 
-const sizes = z.array(z.enum(HELMET_SIZES, err("invalid")));
+const helmetTypes = z.array(enumOf(HELMET_TYPES));
 const methods = z.array(enumOf(DEPOSIT_METHODS));
 
 /** Every field of the shop defaults, as submitted by the policies form. */
 export const shopInclusionsSchema = z.object({
   helmets: int(0, 4),
-  helmet_type: z.preprocess(blank, enumOf(HELMET_TYPES).optional()),
-  helmet_sizes: sizes,
+  helmet_types: helmetTypes,
   gloves: enumOf(GEAR_OPTIONS),
   jacket: enumOf(GEAR_OPTIONS),
   rain_gear: enumOf(GEAR_OPTIONS),
@@ -214,7 +220,7 @@ export const shopInclusionsSchema = z.object({
   deposit_amount: optionalInt(1, 1000000),
   deposit_methods: methods,
   passport: enumOf(PASSPORT_POLICIES),
-  deposit_refund_days: int(0, 30),
+  deposit_refund_days: optionalInt(0, 30),
   licence_required: enumOf(LICENCE_TYPES),
   min_age: optionalInt(15, 99),
   experience_required: checkbox,
@@ -229,7 +235,7 @@ export function toShopPolicies(
 ): Inclusions & { deposit_amount: number | null } {
   return {
     ...v,
-    helmet_type: v.helmet_type ?? null,
+    deposit_refund_days: v.deposit_refund_days ?? null,
     deposit_amount: v.deposit_amount ?? null,
     min_age: v.min_age ?? null,
     notes: v.notes ?? null,
@@ -243,7 +249,7 @@ export function toShopPolicies(
  */
 export function parseInclusionOverrides(
   form: Record<string, unknown>,
-  arrays: Record<"helmet_sizes" | "deposit_methods", string[]>,
+  arrays: Record<"helmet_types" | "deposit_methods", string[]>,
 ): {
   overrides: InclusionOverrides;
   errors: Partial<Record<string, ErrorKey>>;
@@ -280,7 +286,6 @@ export function parseInclusionOverrides(
   };
 
   num("helmets", 0, 4);
-  pick("helmet_type", HELMET_TYPES);
   pick("gloves", GEAR_OPTIONS);
   pick("jacket", GEAR_OPTIONS);
   pick("rain_gear", GEAR_OPTIONS);
@@ -301,10 +306,10 @@ export function parseInclusionOverrides(
     if (notes.length > 1000) errors.notes = "tooLong";
     else overrides.notes = notes.trim();
   }
-  if (form.override_helmet_sizes === "on") {
-    const parsed = sizes.safeParse(arrays.helmet_sizes);
-    if (parsed.success) overrides.helmet_sizes = parsed.data;
-    else errors.helmet_sizes = "invalid";
+  if (form.override_helmet_types === "on") {
+    const parsed = helmetTypes.safeParse(arrays.helmet_types);
+    if (parsed.success) overrides.helmet_types = parsed.data;
+    else errors.helmet_types = "invalid";
   }
   if (form.override_deposit_methods === "on") {
     const parsed = methods.safeParse(arrays.deposit_methods);
@@ -337,6 +342,8 @@ export const modelSchema = z.object({
 export function parsePriceForm(form: Record<string, unknown>): {
   anchors: Anchors;
   manual: Record<number, number>;
+  /** Price per day after the first 30 days (required for bike models). */
+  dailyAfter30: number | undefined;
   errors: Partial<Record<string, ErrorKey>>;
 } {
   const anchors: Anchors = {};
@@ -357,13 +364,17 @@ export function parsePriceForm(form: Record<string, unknown>): {
     errors.anchor_1 = "dayOneRequired";
   if (anchors[30] === undefined && !errors.anchor_30)
     errors.anchor_30 = "dayThirtyRequired";
+  const after = read("price_after_30");
+  if (after === null) errors.price_after_30 = "invalid";
+  else if (after === undefined) errors.price_after_30 = "afterThirtyRequired";
+  const dailyAfter30 = after ?? undefined;
   for (let day = 2; day < TABLE_DAYS; day++) {
     if ((ANCHOR_DAYS as readonly number[]).includes(day)) continue;
     const v = read(`manual_${day}`);
     if (v === null) errors[`manual_${day}`] = "invalid";
     else if (v !== undefined) manual[day] = v;
   }
-  return { anchors, manual, errors };
+  return { anchors, manual, dailyAfter30, errors };
 }
 
 // Extras -----------------------------------------------------------------------
@@ -420,7 +431,6 @@ export const extraSchema = z
 const catalogBase = {
   make: requiredText(1, 40),
   model: requiredText(1, 60),
-  generation: text(40),
   year_from: optionalInt(1950, 2100),
   year_to: optionalInt(1950, 2100),
   cc: int(50, 2500),

@@ -12,8 +12,7 @@ type ShopPolicies = Database["public"]["Tables"]["shop_policies"]["Row"];
 
 export const INCLUSION_FIELDS = [
   "helmets",
-  "helmet_type",
-  "helmet_sizes",
+  "helmet_types",
   "gloves",
   "jacket",
   "rain_gear",
@@ -48,7 +47,6 @@ export type EffectiveInclusions = Inclusions & {
   overridden: InclusionField[];
 };
 
-export const HELMET_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 export const GEAR_OPTIONS: Enums["gear_option"][] = [
   "included",
   "paid_extra",
@@ -83,7 +81,7 @@ export const LICENCE_TYPES: Enums["licence_type"][] = [
 
 /** Field groups as shown on model pages, shop listings and in the editors. */
 export const INCLUSION_GROUPS: { group: string; fields: InclusionField[] }[] = [
-  { group: "helmets", fields: ["helmets", "helmet_type", "helmet_sizes"] },
+  { group: "helmets", fields: ["helmets", "helmet_types"] },
   { group: "gear", fields: ["gloves", "jacket", "rain_gear"] },
   {
     group: "setup",
