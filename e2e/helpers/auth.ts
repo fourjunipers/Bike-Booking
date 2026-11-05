@@ -20,6 +20,9 @@ export async function signInByEmail(page: Page, email: string, next: string) {
     const link = await waitForSignInLink(email);
     await page.goto(link);
   });
+  // Pages like the fleet table are interactive only once hydrated; under
+  // parallel load that can take a while, and a click before it does nothing.
+  await page.waitForLoadState("networkidle");
 }
 
 /** A cross-worker lock: mkdir is atomic, so only one worker holds it. */

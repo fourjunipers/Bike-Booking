@@ -113,10 +113,7 @@ export function InclusionsForm({
     />
   );
 
-  const num = (
-    name: "helmets" | "km_limit" | "deposit_refund_days" | "min_age",
-    hint?: string,
-  ) => (
+  const num = (name: "helmets" | "km_limit" | "min_age", hint?: string) => (
     <NumberField
       key={name}
       name={name}
@@ -223,7 +220,6 @@ export function InclusionsForm({
             )}
             defaultValue={model ? (o.passport ?? "") : shop.passport}
           />
-          {num("deposit_refund_days", t("refundHint"))}
         </FormSection>
 
         <FormSection title={t("documents")}>

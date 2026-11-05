@@ -34,6 +34,8 @@ export type ErrorKey =
   | "dayOneRequired"
   | "dayThirtyRequired"
   | "afterThirtyRequired"
+  | "splitTooBig"
+  | "repairTooBig"
   | "priceRequired";
 
 const err = (key: ErrorKey) => ({ message: key });
@@ -193,6 +195,9 @@ export const bookingSettingsSchema = z.object({
   buffer_before_h: int(0, 72),
   buffer_after_h: int(0, 72),
   request_window_min: int(15, 1440),
+  min_days_walkin: int(1, 365),
+  min_days_booking: int(1, 365),
+  notice_h: int(0, 720),
 });
 
 // What's included ----------------------------------------------------------
@@ -220,7 +225,6 @@ export const shopInclusionsSchema = z.object({
   deposit_amount: optionalInt(1, 1000000),
   deposit_methods: methods,
   passport: enumOf(PASSPORT_POLICIES),
-  deposit_refund_days: optionalInt(0, 30),
   licence_required: enumOf(LICENCE_TYPES),
   min_age: optionalInt(15, 99),
   experience_required: checkbox,
@@ -235,7 +239,6 @@ export function toShopPolicies(
 ): Inclusions & { deposit_amount: number | null } {
   return {
     ...v,
-    deposit_refund_days: v.deposit_refund_days ?? null,
     deposit_amount: v.deposit_amount ?? null,
     min_age: v.min_age ?? null,
     notes: v.notes ?? null,
@@ -297,7 +300,6 @@ export function parseInclusionOverrides(
   num("km_limit", 0, 100000);
   tri("medical_cover");
   pick("passport", PASSPORT_POLICIES);
-  num("deposit_refund_days", 0, 30);
   pick("licence_required", LICENCE_TYPES);
   num("min_age", 15, 99);
   tri("experience_required");
@@ -321,21 +323,35 @@ export function parseInclusionOverrides(
 
 // Bike models ----------------------------------------------------------------
 
-export const modelSchema = z.object({
-  qty: int(0, 999),
-  deposit_amount: optionalInt(1, 1000000),
-  booking_mode: z.enum(["instant", "request"], err("invalid")),
-  buffer_before_h: optionalInt(0, 72),
-  buffer_after_h: optionalInt(0, 72),
-  year_from: optionalInt(1950, 2100),
-  year_to: optionalInt(1950, 2100),
-  visible: checkbox,
-  photos: jsonStrings.pipe(
-    z
-      .array(z.string())
-      .min(1, err("photoRequired"))
-      .max(MAX_MODEL_PHOTOS, err("tooManyPhotos")),
-  ),
+export const modelSchema = z
+  .object({
+    qty: int(0, 999),
+    instant_qty: int(0, 999),
+    request_qty: int(0, 999),
+    deposit_amount: optionalInt(1, 1000000),
+    buffer_before_h: optionalInt(0, 72),
+    buffer_after_h: optionalInt(0, 72),
+    min_days_walkin: optionalInt(1, 365),
+    min_days_booking: optionalInt(1, 365),
+    notice_h: optionalInt(0, 720),
+    visible: checkbox,
+    photos: jsonStrings.pipe(
+      z
+        .array(z.string())
+        .min(1, err("photoRequired"))
+        .max(MAX_MODEL_PHOTOS, err("tooManyPhotos")),
+    ),
+  })
+  .refine((v) => v.instant_qty + v.request_qty <= v.qty, {
+    ...err("splitTooBig"),
+    path: ["request_qty"],
+  });
+
+/** A repair entry from the fleet page. */
+export const repairSchema = z.object({
+  units: int(1, 999),
+  back_on: z.preprocess(blank, z.iso.date(err("invalid")).optional()),
+  note: text(100),
 });
 
 /** Anchors (anchor_1 … anchor_30) and manual days (manual_2 … manual_29). */

@@ -243,6 +243,9 @@ export function BookingSettingsForm(props: {
   before: number;
   after: number;
   window: number;
+  minDaysWalkin: number;
+  minDaysBooking: number;
+  notice: number;
 }) {
   const t = useTranslations("Settings");
   return (
@@ -271,8 +274,26 @@ export function BookingSettingsForm(props: {
           <NumberField
             name="request_window_min"
             label={t("requestWindow")}
-            hint={t("minutesUnit")}
+            hint={t("requestWindowHint")}
             defaultValue={props.window}
+          />
+          <NumberField
+            name="min_days_walkin"
+            label={t("minDaysWalkin")}
+            hint={t("modelsCanOverride")}
+            defaultValue={props.minDaysWalkin}
+          />
+          <NumberField
+            name="min_days_booking"
+            label={t("minDaysBooking")}
+            hint={t("modelsCanOverride")}
+            defaultValue={props.minDaysBooking}
+          />
+          <NumberField
+            name="notice_h"
+            label={t("notice")}
+            hint={t("noticeHint")}
+            defaultValue={props.notice}
           />
         </div>
       </ActionForm>

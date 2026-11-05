@@ -136,30 +136,13 @@ describe("schema changes", () => {
     expect(error).toBeNull();
     const { data } = await anon
       .from("shop_policies")
-      .select("helmet_types, deposit_refund_days")
+      .select("helmet_types")
       .eq("shop_id", seed.bsrShop)
       .single();
     expect(data?.helmet_types).toEqual(["full_face", "half"]);
     await service
       .from("shop_policies")
       .update({ helmet_types: [] })
-      .eq("shop_id", seed.bsrShop);
-  });
-
-  it("allows the deposit refund days to be left blank", async () => {
-    const { data: was } = await service
-      .from("shop_policies")
-      .select("deposit_refund_days")
-      .eq("shop_id", seed.bsrShop)
-      .single();
-    const { error } = await bsrOwner
-      .from("shop_policies")
-      .update({ deposit_refund_days: null })
-      .eq("shop_id", seed.bsrShop);
-    expect(error).toBeNull();
-    await service
-      .from("shop_policies")
-      .update({ deposit_refund_days: was!.deposit_refund_days })
       .eq("shop_id", seed.bsrShop);
   });
 

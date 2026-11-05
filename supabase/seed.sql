@@ -98,17 +98,17 @@ select
   case when d between 1 and 5 then '18:00'::time else '16:00'::time end
 from generate_series(0, 6) as d;
 
--- Shop defaults for "What's included", deposit and documents. Helmet count,
--- no rain gear and refund at return are assumptions for the owner to check.
+-- Shop defaults for "What's included", deposit and documents. Helmet count and
+-- no rain gear are assumptions for the owner to check.
 insert into public.shop_policies (
   shop_id, helmets, phone_holder, rain_gear, gloves, jacket, usb_charger,
   top_box, side_panniers, usage_area, km_limit, medical_cover,
-  deposit_amount, deposit_methods, passport, deposit_refund_days,
+  deposit_amount, deposit_methods, passport,
   licence_required, min_age, experience_required, notes
 ) values (
   'b0000000-0000-4000-8000-000000000001', 2, true, 'not_offered', 'not_offered',
   'not_offered', false, false, false, 'bangkok', 0, true,
-  2000, '{cash,card_authorisation}', 'copy_only', 0,
+  2000, '{cash,card_authorisation}', 'copy_only',
   'motorbike', 21, false,
   'Free luggage storage. ASEAN driving licences and International Driving Permits are accepted. City bikes may not leave Bangkok without the "Use outside Bangkok" extra.'
 );
@@ -149,31 +149,31 @@ insert into public.bike_catalog (
 -- the ฿2,000 shop deposit with ฿5,000. Photos are placeholders until the owner
 -- uploads real ones.
 insert into public.bike_models (
-  id, shop_id, catalog_id, photos, qty, deposit_amount, booking_mode
-) values  ('c0000000-0000-4000-8000-000000000010', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000010', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000011', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000011', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000012', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000012', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000013', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000013', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000014', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000014', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000015', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000015', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000016', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000016', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000017', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000017', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000018', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000018', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000019', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000019', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000020', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000020', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000021', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000021', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000022', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000022', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000023', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000023', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000024', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000025', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000025', array['/images/placeholder-bike.svg'], 1, null, 'request'),
-  ('c0000000-0000-4000-8000-000000000026', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000026', array['/images/placeholder-bike.svg'], 1, 5000, 'request'),
-  ('c0000000-0000-4000-8000-000000000027', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000027', array['/images/placeholder-bike.svg'], 1, 5000, 'request'),
-  ('c0000000-0000-4000-8000-000000000028', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000028', array['/images/placeholder-bike.svg'], 1, 5000, 'request'),
-  ('c0000000-0000-4000-8000-000000000029', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000029', array['/images/placeholder-bike.svg'], 1, 5000, 'request'),
-  ('c0000000-0000-4000-8000-000000000030', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000030', array['/images/placeholder-bike.svg'], 1, 5000, 'request'),
-  ('c0000000-0000-4000-8000-000000000031', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000031', array['/images/placeholder-bike.svg'], 1, 5000, 'request'),
-  ('c0000000-0000-4000-8000-000000000032', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000032', array['/images/placeholder-bike.svg'], 1, 5000, 'request'),
-  ('c0000000-0000-4000-8000-000000000033', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000033', array['/images/placeholder-bike.svg'], 1, 5000, 'request');
+  id, shop_id, catalog_id, photos, qty, deposit_amount, request_qty
+) values  ('c0000000-0000-4000-8000-000000000010', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000010', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000011', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000011', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000012', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000012', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000013', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000013', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000014', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000014', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000015', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000015', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000016', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000016', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000017', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000017', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000018', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000018', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000019', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000019', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000020', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000020', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000021', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000021', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000022', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000022', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000023', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000023', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000024', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000025', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000025', array['/images/placeholder-bike.svg'], 1, null, 1),
+  ('c0000000-0000-4000-8000-000000000026', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000026', array['/images/placeholder-bike.svg'], 1, 5000, 1),
+  ('c0000000-0000-4000-8000-000000000027', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000027', array['/images/placeholder-bike.svg'], 1, 5000, 1),
+  ('c0000000-0000-4000-8000-000000000028', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000028', array['/images/placeholder-bike.svg'], 1, 5000, 1),
+  ('c0000000-0000-4000-8000-000000000029', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000029', array['/images/placeholder-bike.svg'], 1, 5000, 1),
+  ('c0000000-0000-4000-8000-000000000030', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000030', array['/images/placeholder-bike.svg'], 1, 5000, 1),
+  ('c0000000-0000-4000-8000-000000000031', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000031', array['/images/placeholder-bike.svg'], 1, 5000, 1),
+  ('c0000000-0000-4000-8000-000000000032', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000032', array['/images/placeholder-bike.svg'], 1, 5000, 1),
+  ('c0000000-0000-4000-8000-000000000033', 'b0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000033', array['/images/placeholder-bike.svg'], 1, 5000, 1);
 
 -- Touring overrides of the shop's "What's included".
 insert into public.bike_model_policies (
@@ -438,10 +438,10 @@ values ('b0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-0000000
 
 insert into public.shop_policies (shop_id) values ('b0000000-0000-4000-8000-000000000002');
 
-insert into public.bike_models (id, shop_id, catalog_id, qty, booking_mode)
+insert into public.bike_models (id, shop_id, catalog_id, qty, instant_qty)
 values (
   'c0000000-0000-4000-8000-000000000004', 'b0000000-0000-4000-8000-000000000002',
-  'e0000000-0000-4000-8000-000000000012', 3, 'instant'
+  'e0000000-0000-4000-8000-000000000012', 3, 3
 );
 
 -- A pending catalog request from the draft shop, for the admin queue.

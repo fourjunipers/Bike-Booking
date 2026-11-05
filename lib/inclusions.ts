@@ -25,7 +25,6 @@ export const INCLUSION_FIELDS = [
   "medical_cover",
   "deposit_methods",
   "passport",
-  "deposit_refund_days",
   "licence_required",
   "min_age",
   "experience_required",
@@ -91,7 +90,7 @@ export const INCLUSION_GROUPS: { group: string; fields: InclusionField[] }[] = [
   { group: "insurance", fields: ["medical_cover"] },
   {
     group: "deposit",
-    fields: ["deposit_methods", "passport", "deposit_refund_days"],
+    fields: ["deposit_methods", "passport"],
   },
   {
     group: "documents",

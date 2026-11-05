@@ -5,6 +5,7 @@ import { catalogLabel } from "@/lib/catalog";
 import { photoUrl, PHOTO_BUCKETS } from "@/lib/photos";
 import { supabaseUrl } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { bangkokDateString, now } from "@/lib/time";
 import { getVendorLocale } from "@/i18n/vendor";
 import { FleetTable, type FleetRow } from "./fleet-table";
 
@@ -16,10 +17,11 @@ export default async function FleetPage() {
     namespace: "Fleet",
   });
   const supabase = await createClient();
+  const today = bangkokDateString(now());
   const { data: models } = await supabase
     .from("bike_models")
     .select(
-      "id, qty, photos, booking_mode, visible, ready_today_on, ready_today_count, ready_today_updated_at, downtime_count, downtime_until, deposit_amount, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day)",
+      "id, qty, instant_qty, request_qty, photos, visible, ready_today_on, ready_today_count, ready_today_updated_at, price_after_30, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day), bike_model_downtime (id, units, back_on)",
     )
     .eq("shop_id", shop.id)
     .order("created_at");
@@ -32,15 +34,19 @@ export default async function FleetPage() {
       catalogPending: m.catalog?.status !== "approved",
       photo: photoUrl(supabaseUrl(), PHOTO_BUCKETS.model, m.photos[0]),
       hasPhoto: m.photos.length > 0,
-      hasPrices: m.price_days.length >= 30,
-      bookingMode: m.booking_mode,
+      hasPrices: m.price_days.length >= 30 && m.price_after_30 !== null,
+      instantQty: m.instant_qty,
+      requestQty: m.request_qty,
       visible: m.visible,
       qty: m.qty,
       readyOn: m.ready_today_on,
       readyCount: m.ready_today_count,
       readyUpdatedAt: m.ready_today_updated_at,
-      downtime: m.downtime_count,
-      downtimeUntil: m.downtime_until,
+      repairs: m.bike_model_downtime
+        .filter((r) => r.back_on === null || r.back_on > today)
+        .sort((a, b) =>
+          (a.back_on ?? "9999").localeCompare(b.back_on ?? "9999"),
+        ),
     }))
     .sort((a, b) => a.cc - b.cc || a.label.localeCompare(b.label));
 

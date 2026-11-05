@@ -24,7 +24,6 @@ const shop: Inclusions = {
   medical_cover: true,
   deposit_methods: ["cash", "card_authorisation"],
   passport: "copy_only",
-  deposit_refund_days: null,
   licence_required: "motorbike",
   min_age: 21,
   experience_required: false,

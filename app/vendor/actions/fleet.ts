@@ -18,7 +18,8 @@ import {
 import { isOwnPhotoPath, PHOTO_BUCKETS } from "@/lib/photos";
 import { bikeAnchorErrors, fillDays } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
-import { now } from "@/lib/time";
+import { shrinkSplit } from "@/lib/fleet";
+import { bangkokDateString, now } from "@/lib/time";
 import {
   catalogRequestSchema,
   fieldErrors,
@@ -26,6 +27,7 @@ import {
   modelSchema,
   parseInclusionOverrides,
   parsePriceForm,
+  repairSchema,
 } from "@/lib/validation/vendor";
 
 /** The model, if it belongs to the caller's shop (RLS also enforces this). */
@@ -35,13 +37,23 @@ async function ownModel(modelId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("bike_models")
-    .select(
-      "id, shop_id, qty, downtime_count, ready_today_count, ready_today_on, photos",
-    )
+    .select("id, shop_id, qty, ready_today_count, ready_today_on, photos")
     .eq("id", modelId)
     .eq("shop_id", shop.id)
     .maybeSingle();
   return data ? { shop, model: data, supabase } : null;
+}
+
+/** Units of the model in repair today (Bangkok date). */
+async function unitsInRepair(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  modelId: string,
+): Promise<number> {
+  const { data } = await supabase.rpc("units_in_repair", {
+    p_bike_model_id: modelId,
+    p_date: bangkokDateString(now()),
+  });
+  return data ?? 0;
 }
 
 export async function addModel(formData: FormData) {
@@ -55,10 +67,20 @@ export async function addModel(formData: FormData) {
       shop_id: shop.id,
       catalog_id: catalogId,
       qty: 1,
-      booking_mode: "request",
+      request_qty: 1,
     })
     .select("id")
     .single();
+  if (error?.code === "23505") {
+    // Already in the fleet: one listing per bike, so open that one.
+    const { data: existing } = await supabase
+      .from("bike_models")
+      .select("id")
+      .eq("shop_id", shop.id)
+      .eq("catalog_id", catalogId)
+      .maybeSingle();
+    if (existing) redirect(`/vendor/fleet/${existing.id}?existing=1`);
+  }
   if (error || !data) redirect("/vendor/fleet/new?error=1");
   redirect(`/vendor/fleet/${data.id}`);
 }
@@ -84,7 +106,7 @@ export async function requestCatalogModel(
       shop_id: shop.id,
       catalog_id: entry.id,
       qty: 1,
-      booking_mode: "request",
+      request_qty: 1,
     })
     .select("id")
     .single();
@@ -96,8 +118,6 @@ export type FleetPatch = {
   qty?: number;
   ready_today_on?: boolean;
   ready_today_count?: number;
-  downtime_count?: number;
-  downtime_until?: string | null;
   visible?: boolean;
 };
 
@@ -116,22 +136,16 @@ export async function updateFleetRow(
   if (!own) return { ok: false, error: "failed" };
   const { model, supabase } = own;
 
-  for (const key of ["qty", "ready_today_count", "downtime_count"] as const) {
+  for (const key of ["qty", "ready_today_count"] as const) {
     if (patch[key] !== undefined && !isCount(patch[key]))
       return { ok: false, error: "invalid" };
   }
-  if (
-    patch.downtime_until &&
-    !/^\d{4}-\d{2}-\d{2}$/.test(patch.downtime_until)
-  ) {
-    return { ok: false, error: "invalid" };
-  }
 
   const next = { ...model, ...patch };
-  // Down time can't exceed the bikes owned; ready today can't exceed what's
-  // left. TODO(phase-4): also subtract bikes currently on rent.
-  const downtime = Math.min(next.downtime_count, next.qty);
-  const available = Math.max(next.qty - downtime, 0);
+  // Ready today can't exceed the bikes not in repair.
+  // TODO(phase-4): also subtract bikes currently on rent.
+  const repair = await unitsInRepair(supabase, modelId);
+  const available = Math.max(next.qty - repair, 0);
   let readyCount = next.ready_today_count;
   let readyOn = next.ready_today_on;
   if (patch.ready_today_on === true && readyCount === 0)
@@ -147,13 +161,21 @@ export async function updateFleetRow(
 
   const touchesReady =
     patch.ready_today_on !== undefined || patch.ready_today_count !== undefined;
+  // A lower quantity shrinks Request units first, then Instant.
+  let split = {};
+  if (patch.qty !== undefined) {
+    const { data: m } = await supabase
+      .from("bike_models")
+      .select("instant_qty, request_qty")
+      .eq("id", modelId)
+      .single();
+    if (m) split = shrinkSplit(m.instant_qty, m.request_qty, patch.qty);
+  }
   const { error } = await supabase
     .from("bike_models")
     .update({
       ...patch,
-      downtime_count: downtime,
-      downtime_until:
-        downtime === 0 ? null : (patch.downtime_until ?? undefined),
+      ...split,
       ready_today_count: readyCount,
       ready_today_on: readyOn,
       ...(touchesReady ? { ready_today_updated_at: now().toISOString() } : {}),
@@ -178,28 +200,25 @@ export async function saveModel(
   if (!v.photos.every((p) => isOwnPhotoPath(p, shop.id, modelId))) {
     return invalid({ photos: "invalid" });
   }
-  if (
-    v.year_from !== undefined &&
-    v.year_to !== undefined &&
-    v.year_to < v.year_from
-  ) {
-    return invalid({ year_to: "endAfterStart" });
-  }
-  const downtime = Math.min(model.downtime_count, v.qty);
+  const repair = await unitsInRepair(supabase, modelId);
   const { error } = await supabase
     .from("bike_models")
     .update({
       qty: v.qty,
+      instant_qty: v.instant_qty,
+      request_qty: v.request_qty,
       deposit_amount: v.deposit_amount ?? null,
-      booking_mode: v.booking_mode,
       buffer_before_h: v.buffer_before_h ?? null,
       buffer_after_h: v.buffer_after_h ?? null,
-      year_from: v.year_from ?? null,
-      year_to: v.year_to ?? null,
+      min_days_walkin: v.min_days_walkin ?? null,
+      min_days_booking: v.min_days_booking ?? null,
+      notice_h: v.notice_h ?? null,
       visible: v.visible,
       photos: v.photos,
-      downtime_count: downtime,
-      ready_today_count: Math.min(model.ready_today_count, v.qty - downtime),
+      ready_today_count: Math.max(
+        Math.min(model.ready_today_count, v.qty - repair),
+        0,
+      ),
     })
     .eq("id", modelId);
   if (error) return failed;
@@ -289,4 +308,75 @@ export async function deleteModel(modelId: string): Promise<ActionState> {
   if (photos.length > 0)
     await own.supabase.storage.from(PHOTO_BUCKETS.model).remove(photos);
   redirect("/vendor/fleet");
+}
+
+export type RepairResult =
+  | { ok: true; conflicts: string[] }
+  | { ok: false; error: "invalid" | "repairTooBig" | "failed" };
+
+/**
+ * Adds a repair entry (units out of service, optional back-in-service date).
+ * Returns the codes of bookings that no longer fit, as a warning.
+ */
+export async function addRepair(
+  modelId: string,
+  input: { units: number; back_on?: string; note?: string },
+): Promise<RepairResult> {
+  const own = await ownModel(modelId);
+  if (!own) return { ok: false, error: "failed" };
+  const { model, supabase } = own;
+  const parsed = repairSchema.safeParse({
+    units: String(input.units),
+    back_on: input.back_on ?? "",
+    note: input.note ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const today = bangkokDateString(now());
+  const v = parsed.data;
+  if (v.back_on !== undefined && v.back_on <= today)
+    return { ok: false, error: "invalid" };
+  const repair = await unitsInRepair(supabase, modelId);
+  if (repair + v.units > model.qty) return { ok: false, error: "repairTooBig" };
+
+  const { error } = await supabase.from("bike_model_downtime").insert({
+    bike_model_id: modelId,
+    units: v.units,
+    back_on: v.back_on ?? null,
+    note: v.note ?? null,
+  });
+  if (error) return { ok: false, error: "failed" };
+  // Fewer bikes left: ready today can't exceed them.
+  const left = Math.max(model.qty - repair - v.units, 0);
+  if (model.ready_today_count > left) {
+    await supabase
+      .from("bike_models")
+      .update({
+        ready_today_count: left,
+        ready_today_on: left > 0 && model.ready_today_on,
+      })
+      .eq("id", modelId);
+  }
+  const { data: conflicts } = await supabase.rpc("repair_conflicts", {
+    p_bike_model_id: modelId,
+    p_from: today,
+  });
+  refresh();
+  return { ok: true, conflicts: (conflicts ?? []).map((c) => c.code) };
+}
+
+/** Removes a repair entry: the units are back in service now. */
+export async function removeRepair(
+  modelId: string,
+  repairId: string,
+): Promise<RepairResult> {
+  const own = await ownModel(modelId);
+  if (!own) return { ok: false, error: "failed" };
+  const { error } = await own.supabase
+    .from("bike_model_downtime")
+    .delete()
+    .eq("id", repairId)
+    .eq("bike_model_id", modelId);
+  if (error) return { ok: false, error: "failed" };
+  refresh();
+  return { ok: true, conflicts: [] };
 }
