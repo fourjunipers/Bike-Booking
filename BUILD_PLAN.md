@@ -220,7 +220,8 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
   - Shown in the price breakdown under "Pay at shop"; the amount to collect includes them. The vendor's booking notice lists them.
 - **Modes:**
   - **Instant:** confirms immediately → `confirmed_unpaid` (or straight to paid flow if pickup within 3 days. Simulated in this phase).
-  - **Request:** → `pending_vendor` with `request_expires_at` = now + shop response window, counted in opening hours only (a request outside hours starts counting at the next opening). Vendor Accept/Decline in the dashboard (LINE buttons come in Phase 6).
+  - **Request:** → `pending_vendor` with `request_expires_at` = now + shop response window, counted in opening hours only (a request outside hours starts counting at the next opening). Dates already full from platform bookings can't be requested.
+  - **Mode split (2026-11-05):** a booking is Instant while Instant bookings overlapping its dates are below `instant_qty`, else Request while Request units remain; walk-ins-only units take no advance bookings. Advance bookings respect the minimum notice and advance-booking minimum days; walk-ins respect the walk-in minimum and must end before the next booking needs the unit. Vendor Accept/Decline in the dashboard (LINE buttons come in Phase 6).
   - **Get your bike now:** only when the ready-today rules from Phase 3 pass. Confirms instantly, payment required at booking, and decrements `ready_today_count` in the same transaction (auto-Out at 0).
   - **Abuse guard:** reject a new booking if the customer already has an unpaid booking (`confirmed_unpaid` or `pending_vendor`) whose dates overlap. Bookings on different dates are allowed.
 - **Checkout page:**

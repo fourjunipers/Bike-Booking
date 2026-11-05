@@ -99,3 +99,16 @@ Recorded from `BSR_SEED.md` Part 1. SPEC.md and BUILD_PLAN.md updated to match.
 - **Deposit refund days optional.** `shop_policies.deposit_refund_days` null = not stated; customers see nothing for it.
 - **Fleet page wording.** Columns renamed "Ready for walk-ins today" and "In repair / out of service", with a "What do these columns mean?" explainer (a `<details>`, so it works on phones without a tooltip).
 - **Request reply window counts opening hours only** (owner, recommended answer). A request made while the shop is closed starts counting at the next opening, and the customer is told when the shop opens. Recorded in SPEC and BUILD_PLAN now; built with request expiry in Phases 4 and 6.
+
+## 2026-11-05 · Fleet modes, repairs, minimums and settings tabs (owner)
+
+- **Quantity split three ways.** `bike_models.instant_qty` and `request_qty`; the rest are walk-ins only. Replaces `booking_mode`. Ready for walk-ins stays a separate count on top and can use any unit. Lowering the quantity shrinks Request first, then Instant (`lib/fleet.ts shrinkSplit`).
+- **Bikes are a pool, not numbered units.** No plates or unit numbers: for interval bookings on interchangeable bikes, "fewer booked than owned at the busiest moment" guarantees the bookings fit without mid-rental swaps, as long as bikes aren't promised in advance and are handed over in pickup order. A plate note at pickup may come in Phase 4 for damage disputes.
+- **Repair entries.** `bike_model_downtime` (units, optional `back_on`, note) replaces `downtime_count`/`downtime_until`, so bikes can return on different days. `units_in_repair()` gives the count on a date; `repair_conflicts()` lists bookings that no longer fit (day granularity, buffers ignored) and the fleet page warns with their codes. Search reads repairs through security definer functions in Phase 3; the table itself is members-only.
+- **Minimum rental length and notice.** Shop defaults `shops.min_days_walkin`, `min_days_booking` (days) and `notice_h` (hours, advance bookings only); nullable overrides on `bike_models`. Walk-ins skip the notice.
+- **Walk-ins and future bookings.** A walk-in must end before the model's next booking needs the unit; the listing will show the longest rental possible. Built with Phase 3 search and Phase 4 booking.
+- **Request bikes check platform bookings.** Dates already full from platform bookings can't be requested; the shop still confirms because outside rentals aren't in the system. Phase 4.
+- **One listing per catalog model** (`unique (shop_id, catalog_id)`). Adding a bike already in the fleet opens the existing listing with a note.
+- **Shop settings tabs:** Store information (profile, hours, closures, contacts) and Default settings (booking rules, What's included, deposit and documents). `/vendor/settings/included` redirects to the new tab.
+- **Smaller changes:** "Riding usage restrictions" replaces "Where and how far"; "Quantity" replaces "Quantity owned"; `deposit_refund_days` dropped; the shop's own model years (`bike_models.year_from/year_to`) dropped; fleet rows not ready for walk-ins are shown lighter; −1/+1 buttons on the walk-in count.
+
