@@ -28,28 +28,30 @@ test("a new vendor creates a shop and gets the setup checklist", async ({
   await expect(page.getByText("Waiting for approval")).toBeVisible();
 });
 
-test("the owner sees BSR's fleet and edits a quantity inline", async ({
+test("the owner sees BSR's fleet and takes a bike off the website", async ({
   page,
 }) => {
   await signInByEmail(page, "owner@bsr.test", "/vendor/fleet");
   await expect(page.getByRole("heading", { name: "Fleet" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Honda NX500/ })).toBeVisible();
 
-  const qty = page.getByLabel("Quantity of Honda PCX 160 2026");
-  // Change it from whatever it is, then wait for the restore to save so the
-  // next run starts from the same value.
-  const before = await qty.inputValue();
-  await qty.fill(before === "2" ? "3" : "2");
-  await qty.blur();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Saved" }).first(),
-  ).toBeVisible();
-  const restored = page.waitForResponse(
-    (r) => r.request().method() === "POST" && r.ok(),
-  );
-  await qty.fill(before);
-  await qty.blur();
-  await restored;
+  const row = page
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("link", { name: "Honda PCX 160 2026" }) });
+  const live = row.getByRole("switch", {
+    name: "Live on website: Honda PCX 160 2026",
+  });
+  await expect(live).toBeChecked();
+  await expect(row).toHaveAttribute("data-status", "listed");
+
+  await live.locator("..").click();
+  await expect(row).toHaveAttribute("data-status", "hidden");
+  await expect(row.getByRole("status")).toContainText("Saved");
+
+  // Back on, so the next run starts the same way.
+  await live.locator("..").click();
+  await expect(row).toHaveAttribute("data-status", "listed");
+  await expect(row.getByRole("status")).toContainText("Saved");
 });
 
 test("a touring model shows its own deposit and inclusion overrides", async ({

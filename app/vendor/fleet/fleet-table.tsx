@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 import { inputBase } from "@/components/form-kit";
+import { Switch } from "@/components/switch";
 import { Button } from "@/components/ui/button";
 import { walkinOnlyUnits } from "@/lib/fleet";
 import {
@@ -35,12 +36,13 @@ export type FleetRow = {
 };
 
 const COLUMNS =
-  "lg:grid-cols-[minmax(14rem,2fr)_6rem_minmax(12rem,1.4fr)_minmax(13rem,1.5fr)_7rem]";
+  "lg:grid-cols-[minmax(14rem,2fr)_minmax(15rem,1.5fr)_minmax(13rem,1.4fr)_9rem]";
 
 /**
  * SPEC "Fleet page: one screen of toggles". Every change saves immediately.
  * Row colours (owner request, 2026-11-06): green = ready for walk-ins today,
- * yellow = shown to customers but not ready, red = hidden from customers.
+ * yellow = live on the website but not ready, red = not live. The quantity is
+ * set in the bike editor, together with its Instant/Request split.
  */
 const STATUS_CLASS = {
   ready: "border-emerald-300 bg-emerald-50",
@@ -59,7 +61,6 @@ export function FleetTable({ rows }: { rows: FleetRow[] }) {
         className={`hidden gap-4 px-4 text-sm font-medium text-muted-foreground lg:grid ${COLUMNS}`}
       >
         <span>{t("model")}</span>
-        <span>{t("qty")}</span>
         <span>
           {t("readyToday")}
           <span className="block text-xs font-normal">{t("readyHint")}</span>
@@ -79,6 +80,8 @@ export function FleetTable({ rows }: { rows: FleetRow[] }) {
 function FleetRowItem({ row }: { row: FleetRow }) {
   const t = useTranslations("Fleet");
   const format = useFormatter();
+  // Passing "now" explicitly keeps next-intl from warning (ENVIRONMENT_FALLBACK).
+  const now = useNow();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   // Local copies so taps show at once; the server's values win after a save.
@@ -155,7 +158,8 @@ function FleetRowItem({ row }: { row: FleetRow }) {
             {row.label}
           </Link>
           <p className="text-sm text-muted-foreground">
-            {row.cc}cc{split.length > 0 && ` · ${split.join(" · ")}`}
+            {row.cc}cc · {t("bikes", { n: row.qty })}
+            {split.length > 0 && ` (${split.join(" · ")})`}
           </p>
           {warnings.map((w) => (
             <p key={w} className="text-sm text-destructive">
@@ -165,22 +169,6 @@ function FleetRowItem({ row }: { row: FleetRow }) {
         </div>
       </div>
 
-      <label className="flex items-center gap-2 lg:block">
-        <span className="w-28 text-sm font-medium lg:sr-only">{t("qty")}</span>
-        <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          defaultValue={row.qty}
-          aria-label={t("qtyFor", { model: row.label })}
-          className={`${inputBase} w-24`}
-          onBlur={(e) => {
-            const v = intOf(e.target.value);
-            if (v !== row.qty) save({ qty: v });
-          }}
-        />
-      </label>
-
       <div className="flex flex-wrap items-center gap-2">
         <span className="basis-full text-sm font-medium lg:sr-only">
           {t("readyToday")}{" "}
@@ -188,18 +176,15 @@ function FleetRowItem({ row }: { row: FleetRow }) {
             {t("readyHint")}
           </span>
         </span>
-        <label className="flex min-h-11 items-center gap-2">
-          <input
-            type="checkbox"
-            checked={readyOn}
-            className="size-5 accent-emerald-600"
-            onChange={(e) => {
-              setReadyOn(e.target.checked);
-              save({ ready_today_on: e.target.checked });
-            }}
-          />
-          {readyOn ? t("on") : t("out")}
-        </label>
+        <Switch
+          checked={readyOn}
+          ariaLabel={t("readyFor", { model: row.label })}
+          label={readyOn ? t("on") : t("out")}
+          onChange={(on) => {
+            setReadyOn(on);
+            save({ ready_today_on: on });
+          }}
+        />
         <input
           type="number"
           inputMode="numeric"
@@ -233,7 +218,13 @@ function FleetRowItem({ row }: { row: FleetRow }) {
         <span className="basis-full text-xs text-muted-foreground">
           {row.readyUpdatedAt
             ? t("updated", {
-                when: format.relativeTime(new Date(row.readyUpdatedAt)),
+                when: format.relativeTime(
+                  // The server's clock can be a moment ahead of the browser's.
+                  new Date(
+                    Math.min(Date.parse(row.readyUpdatedAt), now.getTime()),
+                  ),
+                  now,
+                ),
               })
             : t("neverUpdated")}
         </span>
@@ -242,18 +233,15 @@ function FleetRowItem({ row }: { row: FleetRow }) {
       <Repairs row={row} inRepair={inRepair} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex min-h-11 items-center gap-2">
-          <input
-            type="checkbox"
-            checked={visible}
-            className="size-5"
-            onChange={(e) => {
-              setVisible(e.target.checked);
-              save({ visible: e.target.checked });
-            }}
-          />
-          <span>{t("visible")}</span>
-        </label>
+        <Switch
+          checked={visible}
+          ariaLabel={t("visibleFor", { model: row.label })}
+          label={t("visible")}
+          onChange={(on) => {
+            setVisible(on);
+            save({ visible: on });
+          }}
+        />
         <p role="status" aria-live="polite" className="basis-full text-xs">
           {pending ? t("saving") : message}
         </p>

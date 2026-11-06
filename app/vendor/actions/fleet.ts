@@ -19,7 +19,6 @@ import {
 import { isOwnPhotoPath, PHOTO_BUCKETS } from "@/lib/photos";
 import { bikeAnchorErrors, fillDays } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
-import { shrinkSplit } from "@/lib/fleet";
 import { bangkokDateString, now } from "@/lib/time";
 import {
   catalogRequestSchema,
@@ -116,7 +115,6 @@ export async function requestCatalogModel(
 }
 
 export type FleetPatch = {
-  qty?: number;
   ready_today_on?: boolean;
   ready_today_count?: number;
   visible?: boolean;
@@ -137,10 +135,11 @@ export async function updateFleetRow(
   if (!own) return { ok: false, error: "failed" };
   const { model, supabase } = own;
 
-  for (const key of ["qty", "ready_today_count"] as const) {
-    if (patch[key] !== undefined && !isCount(patch[key]))
-      return { ok: false, error: "invalid" };
-  }
+  if (
+    patch.ready_today_count !== undefined &&
+    !isCount(patch.ready_today_count)
+  )
+    return { ok: false, error: "invalid" };
 
   const next = { ...model, ...patch };
   // Ready today can't exceed the bikes not in repair.
@@ -162,21 +161,10 @@ export async function updateFleetRow(
 
   const touchesReady =
     patch.ready_today_on !== undefined || patch.ready_today_count !== undefined;
-  // A lower quantity shrinks Request units first, then Instant.
-  let split = {};
-  if (patch.qty !== undefined) {
-    const { data: m } = await supabase
-      .from("bike_models")
-      .select("instant_qty, request_qty")
-      .eq("id", modelId)
-      .single();
-    if (m) split = shrinkSplit(m.instant_qty, m.request_qty, patch.qty);
-  }
   const { error } = await supabase
     .from("bike_models")
     .update({
       ...patch,
-      ...split,
       ready_today_count: readyCount,
       ready_today_on: readyOn,
       ...(touchesReady ? { ready_today_updated_at: now().toISOString() } : {}),
