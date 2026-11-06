@@ -122,4 +122,5 @@ Recorded from `BSR_SEED.md` Part 1. SPEC.md and BUILD_PLAN.md updated to match.
 - **Fleet rows coloured by status:** green = ready for walk-ins, yellow = shown but not ready, red = hidden (wins). The walk-in −1/+1 buttons sit side by side, update at once and save 0.5 s after the last tap.
 - **Look:** deep teal accent with a faintly tinted page, white cards with tinted section headers, a teal top bar and highlighted current tab. Inputs are white with a visible border (`inputBase` has no width so small inputs can size themselves).
 - **Wording:** "Booking cut off time", "Minimum rental period (walk-ins / advanced bookings)", notice hint "Does not apply to ready walk-ins.", split hint, "Edit accepted deposit payment methods", fleet "Out of service" / "Mark as available" / "Add", and the walk-in explanation under its column title.
+- **Fleet page follow-up (same day):** the quantity is edited only in the bike editor, next to its Instant/Request/walk-ins split; the fleet row shows it as text. "Ready for walk-ins" and "Live on website" (was "Show to customers") are toggle switches (`components/switch.tsx`: a checkbox with `role="switch"`).
 
