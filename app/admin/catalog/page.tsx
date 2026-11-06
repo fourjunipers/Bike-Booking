@@ -43,7 +43,7 @@ export default async function AdminCatalogPage({
           </Link>
         ))}
       </nav>
-      <ul className="divide-y rounded-lg border">
+      <ul className="divide-y rounded-xl border bg-card shadow-sm">
         {(entries ?? []).map((e) => (
           <li
             key={e.id}

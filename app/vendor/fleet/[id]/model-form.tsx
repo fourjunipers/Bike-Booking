@@ -6,12 +6,17 @@ import {
   ActionForm,
   CheckboxField,
   FormSection,
-  inputClass,
+  inputBase,
   NumberField,
   useFieldError,
+  useMarkDirty,
 } from "@/components/form-kit";
 import { PhotoPicker } from "@/components/photo-picker";
 import { Button } from "@/components/ui/button";
+import { InclusionsFields } from "@/components/vendor/inclusions-form";
+import { PriceFields } from "@/components/vendor/price-editor";
+import type { InclusionOverrides, Inclusions } from "@/lib/inclusions";
+import type { Anchors, ManualDays } from "@/lib/pricing";
 import { shrinkSplit, walkinOnlyUnits } from "@/lib/fleet";
 import type { ActionState } from "@/lib/forms";
 import { formatBaht } from "@/lib/money";
@@ -27,6 +32,10 @@ export type ShopBookingDefaults = {
   notice_h: number;
 };
 
+/**
+ * The whole bike editor: details, prices and "What's included" in one form
+ * with one Save button (owner request, 2026-11-06).
+ */
 export function ModelForm({
   action,
   shopId,
@@ -34,6 +43,11 @@ export function ModelForm({
   model,
   shopDeposit,
   shopDefaults,
+  anchors,
+  manual,
+  dailyAfter30,
+  inclusions,
+  overrides,
 }: {
   action: Action;
   shopId: string;
@@ -53,24 +67,45 @@ export function ModelForm({
   };
   shopDeposit: number | null;
   shopDefaults: ShopBookingDefaults;
+  anchors: Anchors;
+  manual: ManualDays;
+  dailyAfter30: number | null;
+  inclusions: Inclusions;
+  overrides: InclusionOverrides | null;
 }) {
   const t = useTranslations("Model");
+  const tCommon = useTranslations("Common");
   const blank = (value: number) => t("blankForShop", { value });
   return (
-    <ActionForm action={action} className="space-y-6">
-      <PhotoPicker
-        label={t("photos")}
-        bucket={PHOTO_BUCKETS.model}
-        folder={`${shopId}/${modelId}`}
-        initial={model.photos}
-        max={MAX_MODEL_PHOTOS}
-      />
+    <ActionForm
+      action={action}
+      submitLabel={tCommon("saveAll")}
+      className="space-y-6"
+      sticky
+      warnUnsaved
+    >
+      <FormSection title={t("details")}>
+        <PhotoPicker
+          label={t("photos")}
+          bucket={PHOTO_BUCKETS.model}
+          folder={`${shopId}/${modelId}`}
+          initial={model.photos}
+          max={MAX_MODEL_PHOTOS}
+        />
 
-      <ModeSplit
-        qty={model.qty}
-        instant={model.instant_qty}
-        request={model.request_qty}
-      />
+        <ModeSplit
+          qty={model.qty}
+          instant={model.instant_qty}
+          request={model.request_qty}
+        />
+
+        <CheckboxField
+          name="visible"
+          label={t("visible")}
+          hint={t("visibleHint")}
+          defaultChecked={model.visible}
+        />
+      </FormSection>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <FormSection title={t("deposit")}>
@@ -117,12 +152,19 @@ export function ModelForm({
         </FormSection>
       </div>
 
-      <CheckboxField
-        name="visible"
-        label={t("visible")}
-        hint={t("visibleHint")}
-        defaultChecked={model.visible}
-      />
+      <FormSection title={t("prices")}>
+        <PriceFields
+          initialAnchors={anchors}
+          initialManual={manual}
+          initialDailyAfter30={dailyAfter30}
+        />
+      </FormSection>
+
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">{t("included")}</h2>
+        <p className="text-sm text-muted-foreground">{t("includedHint")}</p>
+      </div>
+      <InclusionsFields mode="model" shop={inclusions} overrides={overrides} />
     </ActionForm>
   );
 }
@@ -155,7 +197,7 @@ function ModeSplit({
   }
 
   return (
-    <fieldset className="space-y-3 rounded-lg border p-4">
+    <fieldset className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
       <legend className="px-1 font-medium">{t("split")}</legend>
       <p className="text-sm text-muted-foreground">{t("splitHint")}</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -214,7 +256,11 @@ function Stepper({
   const t = useTranslations("Model");
   const tErrors = useTranslations("Errors");
   const error = useFieldError(name);
-  const set = (n: number) => onChange(Math.max(0, Math.min(max, n)));
+  const markDirty = useMarkDirty();
+  const set = (n: number) => {
+    markDirty();
+    onChange(Math.max(0, Math.min(max, n)));
+  };
   return (
     <div className="space-y-1">
       <label htmlFor={name} className="text-sm font-medium">
@@ -241,7 +287,7 @@ function Stepper({
             if (Number.isInteger(n)) set(n);
           }}
           aria-invalid={!!error}
-          className={`${inputClass} w-16 text-center`}
+          className={`${inputBase} w-16 text-center`}
         />
         <Button
           type="button"

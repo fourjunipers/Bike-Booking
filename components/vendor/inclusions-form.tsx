@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
-  ActionForm,
   CheckboxField,
   CheckboxGroup,
   FormSection,
@@ -12,7 +11,6 @@ import {
   SelectField,
   TextAreaField,
 } from "@/components/form-kit";
-import type { ActionState } from "@/lib/forms";
 import {
   DEPOSIT_METHODS,
   GEAR_OPTIONS,
@@ -24,22 +22,19 @@ import {
   type Inclusions,
 } from "@/lib/inclusions";
 
-type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;
-
 /**
- * "What's included", deposit and documents. In "shop" mode every field has a
- * value (the shop defaults). In "model" mode each field starts on "Shop
- * default (…)" and only changed fields are stored as overrides.
+ * "What's included", deposit and documents, as fields inside a page's form
+ * (one Save button per page). In "shop" mode every field has a value (the
+ * shop defaults). In "model" mode each field starts on "Shop default (…)" and
+ * only changed fields are stored as overrides.
  */
-export function InclusionsForm({
+export function InclusionsFields({
   mode,
-  action,
   shop,
   overrides,
   depositAmount,
 }: {
   mode: "shop" | "model";
-  action: Action;
   shop: Inclusions;
   overrides?: InclusionOverrides | null;
   /** Shop mode: the shop's default deposit. */
@@ -128,7 +123,7 @@ export function InclusionsForm({
   );
 
   return (
-    <ActionForm action={action} className="space-y-6">
+    <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
         <FormSection title={t("helmetsSection")}>
           {num("helmets")}
@@ -142,6 +137,7 @@ export function InclusionsForm({
             }))}
             shopValues={shop.helmet_types}
             values={o.helmet_types ?? null}
+            overrideLabel={t("overrideHelmets")}
           />
         </FormSection>
 
@@ -209,6 +205,7 @@ export function InclusionsForm({
             }))}
             shopValues={shop.deposit_methods}
             values={o.deposit_methods ?? null}
+            overrideLabel={t("overrideDeposit")}
           />
           <SelectField
             name="passport"
@@ -248,7 +245,7 @@ export function InclusionsForm({
           />
         </FormSection>
       </div>
-    </ActionForm>
+    </div>
   );
 }
 
@@ -260,6 +257,7 @@ function ArrayOverride({
   options,
   shopValues,
   values,
+  overrideLabel,
 }: {
   enabled: boolean;
   name: "helmet_types" | "deposit_methods";
@@ -267,6 +265,8 @@ function ArrayOverride({
   options: { value: string; label: string }[];
   shopValues: readonly string[];
   values: readonly string[] | null;
+  /** The switch's label, e.g. "Edit accepted deposit payment methods". */
+  overrideLabel: string;
 }) {
   const t = useTranslations("Included");
   const [on, setOn] = useState(values !== null);
@@ -297,7 +297,12 @@ function ArrayOverride({
           onChange={(e) => setOn(e.target.checked)}
           className="size-5"
         />
-        {t("overrideField", { field: legend, value: shopLabel })}
+        <span>
+          {overrideLabel}{" "}
+          <span className="text-muted-foreground">
+            {t("shopValue", { value: shopLabel })}
+          </span>
+        </span>
       </label>
       {on && (
         <CheckboxGroup

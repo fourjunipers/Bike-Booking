@@ -21,3 +21,16 @@ export const failed: ActionState = { status: "error" };
 export function hasErrors(errors: object): boolean {
   return Object.keys(errors).length > 0;
 }
+
+/**
+ * One result for a page that saves several sections with one button: any
+ * failure wins, then field errors (all sections' together), else saved.
+ */
+export function mergeStates(states: ActionState[]): ActionState {
+  if (states.some((s) => s.status === "error")) return failed;
+  const errors = Object.assign(
+    {},
+    ...states.map((s) => (s.status === "invalid" ? s.errors : {})),
+  ) as Partial<Record<string, string>>;
+  return hasErrors(errors) ? invalid(errors) : savedState;
+}

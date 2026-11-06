@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { approveShop, clearFlags, returnShop } from "@/app/admin/actions";
+import {
+  approveShop,
+  clearFlags,
+  deleteShop,
+  returnShop,
+} from "@/app/admin/actions";
+import { ConfirmButton } from "@/components/confirm-button";
 import { Button } from "@/components/ui/button";
 import { textareaClass } from "@/components/form-kit";
 import { requireAdmin } from "@/lib/auth/session";
@@ -87,11 +93,23 @@ export default async function AdminShopPage({
       </header>
 
       {shop.status === "pending" && (
-        <section className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">
+        <section className="grid gap-4 rounded-xl border bg-card p-4 shadow-sm md:grid-cols-2">
           <form action={approveShop} className="space-y-2">
             <input type="hidden" name="id" value={shop.id} />
-            <p>Approving makes the shop visible to customers.</p>
-            <Button type="submit" size="lg" className="h-11">
+            {readiness && readiness.length > 0 ? (
+              <p>
+                This shop was submitted before setup was finished. Approval
+                opens once nothing is missing; meanwhile, return it with notes.
+              </p>
+            ) : (
+              <p>Approving makes the shop visible to customers.</p>
+            )}
+            <Button
+              type="submit"
+              size="lg"
+              className="h-11"
+              disabled={!readiness || readiness.length > 0}
+            >
               Approve and go live
             </Button>
           </form>
@@ -119,7 +137,7 @@ export default async function AdminShopPage({
           (models ?? []).some((m) => m.flagged_for_review)) && (
           <form
             action={clearFlags}
-            className="flex flex-wrap items-center gap-3 rounded-lg border p-4"
+            className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4 shadow-sm"
           >
             <input type="hidden" name="id" value={shop.id} />
             <p>
@@ -130,6 +148,25 @@ export default async function AdminShopPage({
             </Button>
           </form>
         )}
+
+      {shop.status !== "live" && (
+        <form
+          action={deleteShop}
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/40 bg-card p-4 shadow-sm"
+        >
+          <input type="hidden" name="id" value={shop.id} />
+          <p className="grow">
+            Not approving this shop? Delete it with its bikes, settings and
+            photos. This can&apos;t be undone.
+          </p>
+          <ConfirmButton
+            message={`Delete ${shop.name} permanently? This can't be undone.`}
+            className="h-11"
+          >
+            Delete shop
+          </ConfirmButton>
+        </form>
+      )}
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-3">
@@ -219,7 +256,7 @@ export default async function AdminShopPage({
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Fleet ({models?.length ?? 0})</h2>
-        <ul className="divide-y rounded-lg border">
+        <ul className="divide-y rounded-xl border bg-card shadow-sm">
           {(models ?? []).map((m) => {
             const price = (d: number) =>
               m.price_days.find((p) => p.day === d)?.total;

@@ -3,8 +3,17 @@
 import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { useFieldError } from "@/components/form-kit";
-import { fitWithin, photoUrl, type PhotoBucket } from "@/lib/photos";
+import { useFieldError, useMarkDirty } from "@/components/form-kit";
+import {
+  fitWithin,
+  photoFileProblem,
+  photoUrl,
+  PHOTO_MAX_BYTES,
+  PHOTO_MAX_EDGE,
+  uploadErrorProblem,
+  type PhotoBucket,
+  type PhotoProblem,
+} from "@/lib/photos";
 import { createClient } from "@/lib/supabase/client";
 import { supabaseUrl } from "@/lib/supabase/env";
 
@@ -35,40 +44,61 @@ export function PhotoPicker({
   const inputId = useId();
   const [paths, setPaths] = useState(initial);
   const [busy, setBusy] = useState(false);
-  const [uploadError, setUploadError] = useState(false);
+  const [problems, setProblems] = useState<
+    { file: string; problem: PhotoProblem }[]
+  >([]);
   const error = useFieldError(name);
+  const markDirty = useMarkDirty();
 
   async function upload(files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
-    setUploadError(false);
+    setProblems([]);
     const supabase = createClient();
     const added: string[] = [];
-    try {
-      for (const file of Array.from(files).slice(0, max - paths.length)) {
-        const blob = await toWebp(file);
-        const path = `${folder}/${crypto.randomUUID()}.webp`;
-        const { error } = await supabase.storage
-          .from(bucket)
-          .upload(path, blob, { contentType: "image/webp" });
-        if (error) throw error;
-        added.push(path);
+    const failed: { file: string; problem: PhotoProblem }[] = [];
+    for (const file of Array.from(files).slice(0, max - paths.length)) {
+      const known = photoFileProblem(file);
+      if (known) {
+        failed.push({ file: file.name, problem: known });
+        continue;
       }
-    } catch {
-      setUploadError(true);
-    } finally {
-      setPaths((current) => [...current, ...added]);
-      setBusy(false);
+      let resized: { blob: Blob; ext: string };
+      try {
+        resized = await resize(file);
+      } catch {
+        failed.push({ file: file.name, problem: "unreadable" });
+        continue;
+      }
+      if (resized.blob.size > PHOTO_MAX_BYTES) {
+        failed.push({ file: file.name, problem: "tooLarge" });
+        continue;
+      }
+      const path = `${folder}/${crypto.randomUUID()}.${resized.ext}`;
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(path, resized.blob, { contentType: resized.blob.type });
+      if (error)
+        failed.push({ file: file.name, problem: uploadErrorProblem(error) });
+      else added.push(path);
     }
+    setPaths((current) => [...current, ...added]);
+    if (added.length > 0) markDirty();
+    setProblems(failed);
+    setBusy(false);
   }
 
-  const move = (index: number) =>
+  const move = (index: number) => {
+    markDirty();
     setPaths((current) => [
       current[index],
       ...current.filter((_, i) => i !== index),
     ]);
-  const remove = (index: number) =>
+  };
+  const remove = (index: number) => {
+    markDirty();
     setPaths((current) => current.filter((_, i) => i !== index));
+  };
 
   return (
     <fieldset className="space-y-3">
@@ -131,10 +161,19 @@ export function PhotoPicker({
               e.currentTarget.value = "";
             }}
           />
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("requirements", { max, edge: PHOTO_MAX_EDGE })}
+          </p>
         </div>
       )}
-      {uploadError && (
-        <p className="text-sm text-destructive">{t("uploadFailed")}</p>
+      {problems.length > 0 && (
+        <ul role="alert" className="space-y-1 text-sm text-destructive">
+          {problems.map((p, i) => (
+            <li key={`${p.file}-${i}`}>
+              {p.file}: {t(`problem.${p.problem}`)}
+            </li>
+          ))}
+        </ul>
       )}
       {error && (
         <p className="text-sm text-destructive">
@@ -145,7 +184,11 @@ export function PhotoPicker({
   );
 }
 
-async function toWebp(file: File): Promise<Blob> {
+/**
+ * Resizes to PHOTO_MAX_EDGE and encodes as WebP. Safari can't encode WebP
+ * (toBlob silently returns a much larger PNG), so fall back to JPEG there.
+ */
+async function resize(file: File): Promise<{ blob: Blob; ext: string }> {
   const bitmap = await createImageBitmap(file);
   const { width, height } = fitWithin(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
@@ -153,11 +196,15 @@ async function toWebp(file: File): Promise<Blob> {
   canvas.height = height;
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
-  return new Promise((resolve, reject) =>
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("encode failed"))),
-      "image/webp",
-      0.85,
-    ),
-  );
+  const encode = (type: string) =>
+    new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("encode failed"))),
+        type,
+        0.85,
+      ),
+    );
+  const webp = await encode("image/webp");
+  if (webp.type === "image/webp") return { blob: webp, ext: "webp" };
+  return { blob: await encode("image/jpeg"), ext: "jpg" };
 }

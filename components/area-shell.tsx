@@ -28,25 +28,27 @@ export function AreaShell({
   ];
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b">
-        <nav
-          aria-label="Areas"
-          className={`mx-auto flex ${width} items-center gap-4 px-4 py-3 text-sm`}
-        >
-          <span className="font-semibold">{area}</span>
-          <ul className="ml-auto flex flex-wrap justify-end gap-x-3 gap-y-1">
-            {areas.map((a) => (
-              <li key={a.href}>
-                <Link
-                  href={a.href}
-                  className="underline-offset-4 hover:underline"
-                >
-                  {a.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+      <header className="border-b bg-card shadow-sm">
+        <div className="bg-primary text-primary-foreground">
+          <nav
+            aria-label="Areas"
+            className={`mx-auto flex ${width} items-center gap-4 px-4 py-3 text-sm`}
+          >
+            <span className="font-semibold tracking-wide">{area}</span>
+            <ul className="ml-auto flex flex-wrap justify-end gap-x-3 gap-y-1">
+              {areas.map((a) => (
+                <li key={a.href}>
+                  <Link
+                    href={a.href}
+                    className="text-primary-foreground/90 underline-offset-4 hover:text-primary-foreground hover:underline"
+                  >
+                    {a.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
         {nav}
       </header>
       <main className={`mx-auto w-full ${width} flex-1 px-4 py-6 md:py-8`}>

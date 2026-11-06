@@ -7,6 +7,7 @@ import {
   failed,
   hasErrors,
   invalid,
+  mergeStates,
   savedState,
   type ActionState,
 } from "@/lib/forms";
@@ -379,4 +380,20 @@ export async function removeRepair(
   if (error) return { ok: false, error: "failed" };
   refresh();
   return { ok: true, conflicts: [] };
+}
+
+/**
+ * The bike editor's one Save button: details, prices and "What's included".
+ * Each part saves on its own; the result lists every part's field errors.
+ */
+export async function saveModelPage(
+  modelId: string,
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return mergeStates([
+    await saveModel(modelId, prev, formData),
+    await savePrices(modelId, prev, formData),
+    await saveModelInclusions(modelId, prev, formData),
+  ]);
 }

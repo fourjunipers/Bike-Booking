@@ -3,7 +3,9 @@ import {
   BIKE_PLACEHOLDER,
   fitWithin,
   isOwnPhotoPath,
+  photoFileProblem,
   photoUrl,
+  uploadErrorProblem,
 } from "./photos";
 
 const shopId = "b0000000-0000-4000-8000-000000000001";
@@ -56,5 +58,43 @@ describe("fitWithin", () => {
     expect(fitWithin(800, 600)).toEqual({ width: 800, height: 600 });
     expect(fitWithin(4000, 3000)).toEqual({ width: 1600, height: 1200 });
     expect(fitWithin(3000, 4000)).toEqual({ width: 1200, height: 1600 });
+  });
+});
+
+describe("photoFileProblem", () => {
+  it("spots iPhone HEIC photos by name or type", () => {
+    expect(photoFileProblem({ name: "IMG_0042.HEIC", type: "" })).toBe("heic");
+    expect(photoFileProblem({ name: "x.jpg", type: "image/heif" })).toBe(
+      "heic",
+    );
+  });
+
+  it("rejects files that aren't images", () => {
+    expect(
+      photoFileProblem({ name: "menu.pdf", type: "application/pdf" }),
+    ).toBe("notImage");
+  });
+
+  it("accepts ordinary photos", () => {
+    expect(
+      photoFileProblem({ name: "bike.jpg", type: "image/jpeg" }),
+    ).toBeNull();
+    expect(
+      photoFileProblem({ name: "bike.png", type: "image/png" }),
+    ).toBeNull();
+  });
+});
+
+describe("uploadErrorProblem", () => {
+  it("tells size, permission and other failures apart", () => {
+    expect(
+      uploadErrorProblem({ statusCode: "413", message: "Payload too large" }),
+    ).toBe("tooLarge");
+    expect(
+      uploadErrorProblem({
+        message: "new row violates row-level security policy",
+      }),
+    ).toBe("permission");
+    expect(uploadErrorProblem({ message: "Failed to fetch" })).toBe("failed");
   });
 });

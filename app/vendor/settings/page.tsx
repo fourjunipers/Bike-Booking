@@ -1,11 +1,9 @@
 import { getTranslations } from "next-intl/server";
-import { deleteClosure } from "@/app/vendor/actions/shop";
-import { Button } from "@/components/ui/button";
 import { SettingsTabs } from "@/components/vendor/settings-tabs";
 import { requireShopOwner } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { getVendorLocale } from "@/i18n/vendor";
-import { ClosureForm, ContactsForm, HoursForm, ProfileForm } from "./forms";
+import { StoreInformationForm } from "./forms";
 
 export default async function SettingsPage() {
   const shop = await requireShopOwner();
@@ -52,7 +50,7 @@ export default async function SettingsPage() {
         <SettingsTabs active="store" />
       </header>
 
-      <ProfileForm
+      <StoreInformationForm
         shopId={shop.id}
         name={s.name}
         about={s.about}
@@ -62,57 +60,21 @@ export default async function SettingsPage() {
         mapsUrl={s.maps_url}
         station={s.nearest_station}
         placeId={s.google_place_id}
+        hours={(hours ?? []).map((h) => ({
+          ...h,
+          open: h.open.slice(0, 5),
+          close: h.close.slice(0, 5),
+        }))}
+        closures={closures ?? []}
+        contacts={
+          contacts ?? {
+            whatsapp: null,
+            phone: null,
+            line_id: null,
+            email: null,
+          }
+        }
       />
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        <HoursForm
-          hours={(hours ?? []).map((h) => ({
-            ...h,
-            open: h.open.slice(0, 5),
-            close: h.close.slice(0, 5),
-          }))}
-        />
-        <div className="space-y-8">
-          <section
-            id="closures"
-            className="space-y-4 rounded-lg border p-4 md:p-6"
-          >
-            <h2 className="text-lg font-semibold">{t("closures")}</h2>
-            {closures && closures.length > 0 ? (
-              <ul className="space-y-2">
-                {closures.map((c) => (
-                  <li key={c.id} className="flex flex-wrap items-center gap-3">
-                    <span>
-                      {c.start_date} – {c.end_date}
-                      {c.repeats_yearly ? ` · ${t("everyYear")}` : ""}
-                      {c.note ? ` · ${c.note}` : ""}
-                    </span>
-                    <form action={deleteClosure}>
-                      <input type="hidden" name="id" value={c.id} />
-                      <Button type="submit" variant="outline" size="sm">
-                        {t("remove")}
-                      </Button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground">{t("noClosures")}</p>
-            )}
-            <ClosureForm />
-          </section>
-          <ContactsForm
-            contacts={
-              contacts ?? {
-                whatsapp: null,
-                phone: null,
-                line_id: null,
-                email: null,
-              }
-            }
-          />
-        </div>
-      </div>
 
       {/* TODO(phase-7): delivery settings (radius, fee, minimum rental length). */}
     </div>

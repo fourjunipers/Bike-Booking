@@ -242,6 +242,13 @@ describe("shop setup", () => {
     expect(shop!.status).toBe("draft");
     expect(shop!.slug).toMatch(/^test-phase-two-rentals/);
 
+    // The terms are required; the setup steps aren't (2026-11-06).
+    const { data: noTerms } = await newcomer.rpc("submit_shop", {
+      p_shop_id: shopId!,
+      p_accept_terms: false,
+    });
+    expect(noTerms).toEqual(["terms"]);
+
     const { data: missing } = await newcomer.rpc("submit_shop", {
       p_shop_id: shopId!,
       p_accept_terms: true,
@@ -249,6 +256,12 @@ describe("shop setup", () => {
     expect(missing).toEqual(
       expect.arrayContaining(["about", "shop_photo", "hours", "model"]),
     );
+    const { data: submitted } = await newcomer
+      .from("shops")
+      .select("status")
+      .eq("id", shopId!)
+      .single();
+    expect(submitted!.status).toBe("pending");
     // Still invisible to the public.
     const { data: hidden } = await anon
       .from("shops")

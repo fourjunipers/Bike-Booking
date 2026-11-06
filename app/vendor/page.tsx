@@ -62,7 +62,9 @@ export default async function VendorPage() {
       )}
 
       {status === "pending" && (
-        <p className="rounded-lg border p-4">{t("pendingNote")}</p>
+        <p className="rounded-xl border bg-card p-4 shadow-sm">
+          {t("pendingNote")}
+        </p>
       )}
       {status === "suspended" && (
         <p role="alert" className="rounded-lg border border-destructive p-4">

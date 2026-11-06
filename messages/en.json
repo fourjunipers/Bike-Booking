@@ -82,7 +82,10 @@
     "saving": "Saving…",
     "saved": "Saved.",
     "fixErrors": "Please fix the highlighted fields.",
-    "saveFailed": "Couldn't save. Please try again."
+    "saveFailed": "Couldn't save. Please try again.",
+    "unsaved": "Unsaved changes",
+    "leaveConfirm": "You have unsaved changes. Leave without saving?",
+    "saveAll": "Save changes"
   },
   "Errors": {
     "required": "Required.",
@@ -105,7 +108,7 @@
     "hasBookings": "This model has bookings, so it can't be deleted. Untick \"Show to customers\" to hide it instead.",
     "afterThirtyRequired": "The price per day after 30 days is required.",
     "splitTooBig": "Instant and Request together can't be more than the quantity.",
-    "repairTooBig": "That's more bikes than are out of repair."
+    "repairTooBig": "That's more bikes than are in service."
   },
   "Home": {
     "status": {
@@ -140,11 +143,11 @@
     "term3": "Keep Ready today and down time accurate.",
     "term4": "Reply to requests and delivery approvals within the response window.",
     "acceptTerms": "I accept the vendor terms",
-    "submit": "Submit for review",
-    "notReadyHint": "Finish the checklist first. Submitting tells you what's still missing.",
+    "submit": "Submit",
     "liveNote": "Your shop is live. Customers will see your bikes once search opens.",
     "flaggedNote": "Recent changes are live and waiting for a routine check by the platform team.",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "submitEarlyHint": "You can submit now and finish the rest later. Your shop goes live once everything on the checklist is done and we've approved it."
   },
   "Settings": {
     "title": "Shop settings",
@@ -179,7 +182,7 @@
     "lineId": "LINE ID",
     "email": "Email",
     "bookingSettings": "Booking settings",
-    "cutoff": "Same-day cut-off",
+    "cutoff": "Booking cut off time",
     "cutoffHint": "Minutes before closing",
     "bufferBefore": "Buffer before pickup",
     "bufferAfter": "Buffer after return",
@@ -191,12 +194,14 @@
       "defaults": "Default settings"
     },
     "defaultsIntro": "The rules and inclusions every bike starts from. Each bike model can change any of them.",
-    "requestWindowHint": "Minutes. Counts during opening hours only.",
-    "minDaysWalkin": "Minimum days, walk-ins",
-    "minDaysBooking": "Minimum days, advance bookings",
+    "requestWindowHint": "Minutes, up to 240 (4 hours). Counts during opening hours only.",
+    "minDaysWalkin": "Minimum rental period (walk-ins)",
+    "minDaysBooking": "Minimum rental period (advanced bookings)",
     "modelsCanOverride": "Days (models can override)",
     "notice": "Minimum notice for advance bookings",
-    "noticeHint": "Hours before pickup, e.g. 24 to have time to wash and check bikes. Walk-ins skip this."
+    "noticeHint": "Hours before pickup, e.g. 24 to have time to wash and check bikes. Does not apply to ready walk-ins.",
+    "notSavedYet": "not saved yet",
+    "addToList": "Add to list"
   },
   "Weekdays": {
     "0": "Sunday",
@@ -232,7 +237,15 @@
     "remove": "Remove",
     "uploading": "Uploading…",
     "add": "Add photos ({left} left)",
-    "uploadFailed": "Some photos couldn't upload. Please try again."
+    "requirements": "JPG, PNG or WebP · up to {max} photos · resized automatically to {edge} px",
+    "problem": {
+      "heic": "iPhone HEIC photo, which this browser can't open. Save it as JPG first, or set the iPhone camera to Most Compatible (Settings → Camera → Formats).",
+      "notImage": "not a photo. Use JPG, PNG or WebP.",
+      "unreadable": "couldn't be opened. Try saving it as JPG.",
+      "tooLarge": "still over 5 MB after resizing. Try a smaller photo.",
+      "permission": "you don't have permission to add photos here. Sign in again as the shop's owner or staff.",
+      "failed": "upload failed. Check your connection and try again."
+    }
   },
   "Included": {
     "title": "What's included, deposit and documents",
@@ -243,7 +256,6 @@
     "notSet": "not set",
     "shopDefault": "Shop default ({value})",
     "blankForDefault": "Blank = shop default ({value})",
-    "overrideField": "Change {field} for this model (shop: {value})",
     "helmetsSection": "Helmets",
     "helmets": "Helmets included (number)",
     "helmet_types": "Helmet types (tick all you offer)",
@@ -277,7 +289,10 @@
     "experience_required": "Riding experience required",
     "notes": "Notes",
     "notesHint": "Anything else, e.g. fuel policy or late return charges.",
-    "notesModelHint": "Blank = the shop's notes."
+    "notesModelHint": "Blank = the shop's notes.",
+    "overrideHelmets": "Edit helmet types for this bike",
+    "overrideDeposit": "Edit accepted deposit payment methods",
+    "shopValue": "(shop: {value})"
   },
   "Enums": {
     "gear": {
@@ -333,14 +348,14 @@
     "model": "Model",
     "qty": "Quantity",
     "readyToday": "Ready for walk-ins today",
-    "downtime": "In repair / out of service",
+    "downtime": "Out of service",
     "visible": "Show to customers",
     "warnPhoto": "Needs a photo",
     "warnPrices": "Needs prices",
     "warnCatalog": "Catalog request waiting for approval",
     "qtyFor": "Quantity of {model}",
     "readyCountFor": "Bikes ready for walk-ins today: {model}",
-    "downtimeFor": "Bikes in repair or out of service: {model}",
+    "downtimeFor": "Bikes out of service: {model}",
     "backOnFor": "Back in service on: {model}",
     "on": "On",
     "out": "Out",
@@ -362,16 +377,17 @@
     "splitWalkin": "{n} walk-ins only",
     "readyMinus": "One less ready for walk-ins: {model}",
     "readyPlus": "One more ready for walk-ins: {model}",
-    "inRepair": "{n} in repair",
-    "noneInRepair": "None in repair",
+    "inRepair": "{n} out of service",
+    "noneInRepair": "None out of service",
     "repairEntry": "{n, plural, one {# bike} other {# bikes}}",
     "backOn": "back {date}",
     "noBackDate": "no date yet",
-    "backInService": "Back in service",
+    "backInService": "Mark as available",
     "repairUnits": "Bikes",
     "repairBackOn": "Back on (optional)",
-    "addRepair": "Add to repair",
-    "repairConflicts": "These bookings no longer fit with bikes in repair: {codes}. Shorten the repair, or contact the customers."
+    "addRepair": "Add",
+    "repairConflicts": "These bookings no longer fit with bikes out of service: {codes}. Shorten the time out of service, or contact the customers.",
+    "readyHint": "(removes advanced notice requirement allowing for customers to rent immediately)"
   },
   "NewModel": {
     "back": "Fleet",
@@ -424,7 +440,7 @@
     "delete": "Delete model",
     "deleteConfirm": "Delete this model? This can't be undone.",
     "split": "How these bikes can be booked",
-    "splitHint": "Split your quantity. Any bike can also be marked ready for walk-ins on the fleet page.",
+    "splitHint": "Select how many bikes you would like to allocate for each booking type.",
     "modeInstantHint": "Booked in advance and confirmed automatically.",
     "modeRequestHint": "Booked in advance; you accept or decline each one.",
     "modeWalkinOnly": "Walk-ins only",
@@ -432,10 +448,10 @@
     "minusOne": "One less: {field}",
     "plusOne": "One more: {field}",
     "rentalRules": "Rental rules",
-    "minDaysWalkin": "Minimum days, walk-ins",
-    "minDaysBooking": "Minimum days, advance bookings",
+    "minDaysWalkin": "Minimum rental period (walk-ins)",
+    "minDaysBooking": "Minimum rental period (advanced bookings)",
     "notice": "Minimum notice for advance bookings (hours)",
-    "noticeHint": "Walk-ins skip this.",
+    "noticeHint": "Does not apply to ready walk-ins.",
     "blankForShop": "Blank = shop default ({value}).",
     "alreadyInFleet": "This bike is already in your fleet, so we opened it. Change its quantity here instead of adding it again."
   },

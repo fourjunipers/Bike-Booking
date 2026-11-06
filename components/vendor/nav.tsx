@@ -47,7 +47,7 @@ export async function VendorNav() {
               name="locale"
               value={l}
               aria-pressed={locale === l}
-              className="min-h-11 rounded-md px-3 aria-pressed:bg-muted aria-pressed:font-semibold"
+              className="min-h-11 rounded-md px-3 text-muted-foreground aria-pressed:bg-accent aria-pressed:font-semibold aria-pressed:text-accent-foreground"
             >
               {l === "th" ? "ไทย" : "English"}
             </button>

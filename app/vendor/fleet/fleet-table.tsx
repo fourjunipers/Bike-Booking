@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
-import { inputClass } from "@/components/form-kit";
+import { inputBase } from "@/components/form-kit";
 import { Button } from "@/components/ui/button";
 import { walkinOnlyUnits } from "@/lib/fleet";
 import {
@@ -39,9 +39,17 @@ const COLUMNS =
 
 /**
  * SPEC "Fleet page: one screen of toggles". Every change saves immediately.
- * Bikes not ready for walk-ins today are shown lighter, so today's walk-in
- * stock stands out (owner request, 2026-11-05).
+ * Row colours (owner request, 2026-11-06): green = ready for walk-ins today,
+ * yellow = shown to customers but not ready, red = hidden from customers.
  */
+const STATUS_CLASS = {
+  ready: "border-emerald-300 bg-emerald-50",
+  listed: "border-amber-300 bg-amber-50",
+  hidden: "border-rose-300 bg-rose-50",
+} as const;
+
+/** How long the −1/+1 buttons wait after the last tap before saving. */
+const READY_SAVE_DELAY_MS = 500;
 export function FleetTable({ rows }: { rows: FleetRow[] }) {
   const t = useTranslations("Fleet");
   return (
@@ -52,7 +60,10 @@ export function FleetTable({ rows }: { rows: FleetRow[] }) {
       >
         <span>{t("model")}</span>
         <span>{t("qty")}</span>
-        <span>{t("readyToday")}</span>
+        <span>
+          {t("readyToday")}
+          <span className="block text-xs font-normal">{t("readyHint")}</span>
+        </span>
         <span>{t("downtime")}</span>
         <span>{t("visible")}</span>
       </div>
@@ -70,13 +81,19 @@ function FleetRowItem({ row }: { row: FleetRow }) {
   const format = useFormatter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  // Local copies so taps show at once; the server's values win after a save.
   const [ready, setReady] = useState(row.readyCount);
-  // Follow the saved count after a refresh (e.g. ticking Ready sets it to 1).
-  const [savedCount, setSavedCount] = useState(row.readyCount);
-  if (row.readyCount !== savedCount) {
-    setSavedCount(row.readyCount);
+  const [readyOn, setReadyOn] = useState(row.readyOn);
+  const [visible, setVisible] = useState(row.visible);
+  const [saved, setSaved] = useState(row);
+  if (row !== saved) {
+    setSaved(row);
     setReady(row.readyCount);
+    setReadyOn(row.readyOn);
+    setVisible(row.visible);
   }
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => clearTimeout(timer.current ?? undefined), []);
 
   function save(patch: FleetPatch) {
     setMessage(null);
@@ -86,11 +103,17 @@ function FleetRowItem({ row }: { row: FleetRow }) {
     });
   }
 
+  /** Updates the count now and saves once the taps stop. */
   function setReadyCount(n: number) {
     const v = Math.max(0, Math.min(available, n));
     if (v === ready) return;
     setReady(v);
-    save({ ready_today_count: v, ready_today_on: v > 0 });
+    setReadyOn(v > 0);
+    clearTimeout(timer.current ?? undefined);
+    timer.current = setTimeout(
+      () => save({ ready_today_count: v, ready_today_on: v > 0 }),
+      READY_SAVE_DELAY_MS,
+    );
   }
 
   const intOf = (value: string) => (value === "" ? 0 : Number(value));
@@ -108,11 +131,14 @@ function FleetRowItem({ row }: { row: FleetRow }) {
     row.catalogPending && t("warnCatalog"),
   ].filter(Boolean) as string[];
 
+  const status = !visible ? "hidden" : readyOn ? "ready" : "listed";
+
   return (
     <li
       aria-busy={pending}
-      data-ready={row.readyOn}
-      className={`grid gap-4 rounded-lg border p-4 transition-opacity lg:items-center ${COLUMNS} ${row.readyOn ? "" : "bg-muted/40 opacity-60 focus-within:opacity-100 hover:opacity-100"}`}
+      data-ready={readyOn}
+      data-status={status}
+      className={`grid gap-4 rounded-lg border p-4 transition-colors lg:items-center ${COLUMNS} ${STATUS_CLASS[status]}`}
     >
       <div className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- Storage URL, already resized */}
@@ -147,7 +173,7 @@ function FleetRowItem({ row }: { row: FleetRow }) {
           min={0}
           defaultValue={row.qty}
           aria-label={t("qtyFor", { model: row.label })}
-          className={`${inputClass} w-24`}
+          className={`${inputBase} w-24`}
           onBlur={(e) => {
             const v = intOf(e.target.value);
             if (v !== row.qty) save({ qty: v });
@@ -156,49 +182,54 @@ function FleetRowItem({ row }: { row: FleetRow }) {
       </label>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="w-28 text-sm font-medium lg:sr-only">
-          {t("readyToday")}
+        <span className="basis-full text-sm font-medium lg:sr-only">
+          {t("readyToday")}{" "}
+          <span className="font-normal text-muted-foreground">
+            {t("readyHint")}
+          </span>
         </span>
         <label className="flex min-h-11 items-center gap-2">
           <input
             type="checkbox"
-            checked={row.readyOn}
-            className="size-5"
-            onChange={(e) => save({ ready_today_on: e.target.checked })}
+            checked={readyOn}
+            className="size-5 accent-emerald-600"
+            onChange={(e) => {
+              setReadyOn(e.target.checked);
+              save({ ready_today_on: e.target.checked });
+            }}
           />
-          {row.readyOn ? t("on") : t("out")}
+          {readyOn ? t("on") : t("out")}
         </label>
-        <Button
-          type="button"
-          variant="outline"
-          className="size-11"
-          aria-label={t("readyMinus", { model: row.label })}
-          disabled={ready <= 0 || pending}
-          onClick={() => setReadyCount(ready - 1)}
-        >
-          −1
-        </Button>
         <input
           type="number"
           inputMode="numeric"
           min={0}
           max={available}
-          key={row.readyCount}
-          defaultValue={row.readyCount}
+          value={ready}
+          onChange={(e) => setReadyCount(intOf(e.target.value))}
           aria-label={t("readyCountFor", { model: row.label })}
-          className={`${inputClass} w-16 text-center`}
-          onBlur={(e) => setReadyCount(intOf(e.target.value))}
+          className={`${inputBase} w-16 text-center`}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="size-11"
-          aria-label={t("readyPlus", { model: row.label })}
-          disabled={ready >= available || pending}
-          onClick={() => setReadyCount(ready + 1)}
-        >
-          +1
-        </Button>
+        <div className="inline-flex overflow-hidden rounded-md shadow-sm">
+          <button
+            type="button"
+            className="h-11 w-12 bg-rose-600 font-semibold text-white hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:bg-slate-300"
+            aria-label={t("readyMinus", { model: row.label })}
+            disabled={ready <= 0}
+            onClick={() => setReadyCount(ready - 1)}
+          >
+            −1
+          </button>
+          <button
+            type="button"
+            className="h-11 w-12 border-l border-white/40 bg-emerald-600 font-semibold text-white hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:bg-slate-300"
+            aria-label={t("readyPlus", { model: row.label })}
+            disabled={ready >= available}
+            onClick={() => setReadyCount(ready + 1)}
+          >
+            +1
+          </button>
+        </div>
         <span className="basis-full text-xs text-muted-foreground">
           {row.readyUpdatedAt
             ? t("updated", {
@@ -214,9 +245,12 @@ function FleetRowItem({ row }: { row: FleetRow }) {
         <label className="flex min-h-11 items-center gap-2">
           <input
             type="checkbox"
-            defaultChecked={row.visible}
+            checked={visible}
             className="size-5"
-            onChange={(e) => save({ visible: e.target.checked })}
+            onChange={(e) => {
+              setVisible(e.target.checked);
+              save({ visible: e.target.checked });
+            }}
           />
           <span>{t("visible")}</span>
         </label>
@@ -318,7 +352,7 @@ function Repairs({ row, inRepair }: { row: FleetRow; inRepair: number }) {
                 value={units}
                 onChange={(e) => setUnits(e.target.value)}
                 aria-label={t("downtimeFor", { model: row.label })}
-                className={`${inputClass} w-16`}
+                className={`${inputBase} w-16`}
               />
             </label>
             <label className="space-y-1 text-sm">
@@ -328,7 +362,7 @@ function Repairs({ row, inRepair }: { row: FleetRow; inRepair: number }) {
                 value={backOn}
                 onChange={(e) => setBackOn(e.target.value)}
                 aria-label={t("backOnFor", { model: row.label })}
-                className={`${inputClass} w-auto`}
+                className={`${inputBase} w-auto`}
               />
             </label>
             <Button

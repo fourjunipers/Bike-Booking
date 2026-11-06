@@ -194,7 +194,7 @@ export const bookingSettingsSchema = z.object({
   cutoff_minutes: int(0, 720),
   buffer_before_h: int(0, 72),
   buffer_after_h: int(0, 72),
-  request_window_min: int(15, 1440),
+  request_window_min: int(15, 240),
   min_days_walkin: int(1, 365),
   min_days_booking: int(1, 365),
   notice_h: int(0, 720),

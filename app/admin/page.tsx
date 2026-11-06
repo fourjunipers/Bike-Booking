@@ -134,7 +134,9 @@ function Queue({
       {children.length === 0 ? (
         <p className="text-muted-foreground">{empty}</p>
       ) : (
-        <ul className="divide-y rounded-lg border">{children}</ul>
+        <ul className="divide-y rounded-xl border bg-card shadow-sm">
+          {children}
+        </ul>
       )}
     </section>
   );

@@ -143,6 +143,14 @@ describe("minimum days and notice", () => {
       .eq("id", seed.bsrShop);
   });
 
+  it("cap the request reply window at 4 hours", async () => {
+    const { error } = await bsrOwner
+      .from("shops")
+      .update({ request_window_min: 241 })
+      .eq("id", seed.bsrShop);
+    expect(error?.code).toBe("23514");
+  });
+
   it("can be overridden per model", async () => {
     const { error } = await bsrStaff
       .from("bike_models")
