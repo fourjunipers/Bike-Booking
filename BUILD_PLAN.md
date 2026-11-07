@@ -22,7 +22,7 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 | GitHub | New private repo | — |
 | Netlify | Project imported from the GitHub repo (production branch `main`) | Same variables as `.env.local`, entered in the Netlify UI |
 | Supabase | New project (Singapore region). Enable Google, Apple and email (magic link) auth providers | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
-| Google Cloud | OAuth client for Google login. Maps JavaScript API + Places API key, restricted to your domains | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` |
+| Google Cloud | OAuth client for Google login. Maps JavaScript API + Places API key, restricted to your domains. A second, server-only key restricted to Places API (New) for Google reviews, with a daily quota cap | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`, `GOOGLE_PLACES_SERVER_KEY` |
 | Apple | Sign in with Apple service ID (can be added later) | (configured in Supabase) |
 | LINE Developers | **One provider** for the platform. Inside it: a **LINE Login** channel and a **Messaging API** channel (new LINE Official Account for the platform, not BSR's). Both channels must be under the same provider so vendor user IDs match. Link the OA to the Login channel | `LINE_LOGIN_CHANNEL_ID`, `LINE_LOGIN_CHANNEL_SECRET`, `LINE_MESSAGING_CHANNEL_SECRET`, `LINE_MESSAGING_ACCESS_TOKEN` |
 | Stripe | Account for the platform company, **test mode**. Enable PromptPay, Apple Pay, Google Pay | `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` |

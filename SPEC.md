@@ -238,12 +238,12 @@ The platform collects only the booking fee: 10% of the rental after promotions, 
 
 ## Customer screens
 
-Customers can browse without logging in; login is required at checkout.
+Customers can browse without logging in; login is required at checkout. A rental is priced in days: every started 24 hours is a day (10:00 Mon → 10:00 Tue is 1 day; → 10:30 Tue is 2 days). The turnaround between rentals is the shop's buffer after return, not a grace period on the price.
 
 | Screen | Contents |
 | --- | --- |
-| Home | Location box (GPS, address, BTS/MRT), date picker, bike type chips, "Get your bike now" button, featured shops, area links |
-| Search results | **Model-first.** List + map toggle. One card per catalog model: stock photo, model, "From ฿X/day" (lowest live price for the chosen dates), "N shops near you", promo badge |
+| Home | Location box (GPS, address, BTS/MRT station from an admin-editable list seeded from OpenStreetMap), date picker, bike type chips, "Get your bike now" button, featured shops, area links |
+| Search results | **Model-first.** List + map toggle. One card per catalog model: stock photo, model, "From ฿X/day" (lowest live price for the chosen dates), "N shops near you" (within 15 km, with a link to show shops further away), promo badge |
 | Filters | Dates, bike type, transmission, cc range, price range, Get your bike now, delivery, passport not held, deals, rating |
 | Sort | Recommended (ranking score, default), price, distance, rating |
 | Model page | Catalog specs and stock photo; every shop offering that model, each with total price for the dates, distance, deposit, badges (Instant, Delivers, Ready today); comparable "What's included" block; map with only those shops pinned |
@@ -259,7 +259,7 @@ Customers can browse without logging in; login is required at checkout.
 - When a shop has linked its Google Business Profile, its pages show the overall Google star rating, the number of Google reviews and up to 5 Google reviews (the most Google's Places API returns), with a link to all reviews on Google Maps.
 - Shown in a separate block from the platform's own reviews, with Google Maps attribution and each reviewer's name next to their review, as Google's Places policies require.
 - Only the place ID is stored. Rating and reviews are fetched from Google when the page is shown, because Google doesn't allow storing them. For the same reason the Google rating doesn't feed the ranking score or the rating filter; those use platform reviews only.
-- Not shown on search result cards, to keep API costs down.
+- Not shown on search result cards, to keep API costs down, and loaded only when the block scrolls into view.
 
 **Price breakdown shown at checkout (example, 14 days)**
 
