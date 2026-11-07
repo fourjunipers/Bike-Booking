@@ -351,8 +351,6 @@
     "readyCountFor": "จำนวนรถพร้อมให้เช่าวันนี้: {model}",
     "downtimeFor": "จำนวนรถงดให้เช่า: {model}",
     "backOnFor": "กลับมาให้เช่าวันที่: {model}",
-    "on": "เปิด",
-    "out": "หมด",
     "updated": "อัปเดต {when}",
     "neverUpdated": "ยังไม่ได้อัปเดต",
     "saving": "กำลังบันทึก…",

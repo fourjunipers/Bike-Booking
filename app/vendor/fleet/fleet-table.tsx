@@ -179,7 +179,6 @@ function FleetRowItem({ row }: { row: FleetRow }) {
         <Switch
           checked={readyOn}
           ariaLabel={t("readyFor", { model: row.label })}
-          label={readyOn ? t("on") : t("out")}
           onChange={(on) => {
             setReadyOn(on);
             save({ ready_today_on: on });

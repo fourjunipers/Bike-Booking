@@ -13,8 +13,8 @@ export function Switch({
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  /** Visible text next to the switch. */
-  label: React.ReactNode;
+  /** Visible text next to the switch, if any (then give ariaLabel). */
+  label?: React.ReactNode;
   /** Accessible name when the visible text alone isn't enough. */
   ariaLabel?: string;
   name?: string;
@@ -35,7 +35,7 @@ export function Switch({
         aria-hidden
         className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-600 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring after:absolute after:left-1 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
       />
-      <span className="font-medium">{label}</span>
+      {label && <span className="font-medium">{label}</span>}
     </label>
   );
 }

@@ -356,8 +356,6 @@
     "readyCountFor": "Bikes ready for walk-ins today: {model}",
     "downtimeFor": "Bikes out of service: {model}",
     "backOnFor": "Back in service on: {model}",
-    "on": "On",
-    "out": "Out",
     "updated": "Updated {when}",
     "neverUpdated": "Not updated yet",
     "saving": "Saving…",
