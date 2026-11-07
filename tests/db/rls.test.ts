@@ -51,8 +51,8 @@ describe("the public (signed out)", () => {
     const { data: models } = await anon
       .from("bike_models")
       .select("id, shop_id");
-    expect(models!.length).toBeGreaterThan(0);
-    expect(models!.every((m) => m.shop_id === seed.bsrShop)).toBe(true);
+    expect(models!.some((m) => m.shop_id === seed.bsrShop)).toBe(true);
+    expect(models!.some((m) => m.shop_id === seed.draftShop)).toBe(false);
 
     const { data: prices } = await anon
       .from("price_days")
@@ -63,11 +63,14 @@ describe("the public (signed out)", () => {
 
   it("sees hours and policies of live shops", async () => {
     const { data: hours } = await anon.from("shop_hours").select("shop_id");
-    expect(hours!.length).toBe(7);
+    expect(hours!.filter((h) => h.shop_id === seed.bsrShop)).toHaveLength(7);
+    expect(hours!.some((h) => h.shop_id === seed.draftShop)).toBe(false);
     const { data: policies } = await anon
       .from("shop_policies")
       .select("shop_id");
-    expect(policies!.map((p) => p.shop_id)).toEqual([seed.bsrShop]);
+    const shops = policies!.map((p) => p.shop_id);
+    expect(shops).toContain(seed.bsrShop);
+    expect(shops).not.toContain(seed.draftShop);
   });
 
   it("can't read contacts, team, profiles, bookings or events", async () => {

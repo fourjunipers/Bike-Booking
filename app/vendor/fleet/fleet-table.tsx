@@ -197,7 +197,7 @@ function FleetRowItem({ row }: { row: FleetRow }) {
         <div className="inline-flex overflow-hidden rounded-md shadow-sm">
           <button
             type="button"
-            className="h-11 w-12 bg-rose-600 font-semibold text-white hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:bg-slate-300"
+            className="h-11 w-12 bg-rose-700 font-semibold text-white hover:bg-rose-800 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:bg-slate-300"
             aria-label={t("readyMinus", { model: row.label })}
             disabled={ready <= 0}
             onClick={() => setReadyCount(ready - 1)}
@@ -206,7 +206,7 @@ function FleetRowItem({ row }: { row: FleetRow }) {
           </button>
           <button
             type="button"
-            className="h-11 w-12 border-l border-white/40 bg-emerald-600 font-semibold text-white hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:bg-slate-300"
+            className="h-11 w-12 border-l border-white/40 bg-emerald-700 font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:bg-slate-300"
             aria-label={t("readyPlus", { model: row.label })}
             disabled={ready >= available}
             onClick={() => setReadyCount(ready + 1)}

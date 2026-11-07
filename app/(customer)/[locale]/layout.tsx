@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { AreaShell } from "@/components/area-shell";
 import { LanguagePicker } from "@/components/customer/language-picker";
 import { LanguageSuggestion } from "@/components/customer/language-suggestion";
@@ -16,7 +18,6 @@ export function generateStaticParams() {
   return customerLocales.map((locale) => ({ locale }));
 }
 
-// TODO(phase-3): real customer header (location, dates, account).
 export default async function CustomerLayout({
   children,
   params,
@@ -29,6 +30,7 @@ export default async function CustomerLayout({
   const messages = Object.fromEntries(
     customerNamespaces.map((ns) => [ns, all[ns]]),
   );
+  const tp = await getTranslations({ locale, namespace: "Privacy" });
 
   return (
     <NextIntlClientProvider
@@ -37,15 +39,37 @@ export default async function CustomerLayout({
       timeZone="Asia/Bangkok"
     >
       <div lang={locale} className="flex flex-1 flex-col">
-        <LanguageSuggestion />
+        {/* Both read the address, which on bike and shop pages is only
+            known per request: they stream in after the static shell. */}
+        <Suspense>
+          <LanguageSuggestion />
+        </Suspense>
         <AreaShell
           area="Customer"
+          wide
           homeHref={localePath(locale, "/")}
           accountHref={localePath(locale, "/account")}
-          nav={<LanguagePicker />}
+          nav={
+            <Suspense fallback={<div className="h-[53px] border-t" />}>
+              <LanguagePicker />
+            </Suspense>
+          }
         >
           {children}
         </AreaShell>
+        <footer className="border-t bg-card">
+          <nav
+            aria-label={tp("link")}
+            className="mx-auto flex max-w-6xl gap-4 px-4 py-4 text-sm"
+          >
+            <Link
+              href={localePath(locale, "/privacy")}
+              className="text-muted-foreground underline-offset-4 hover:underline"
+            >
+              {tp("link")}
+            </Link>
+          </nav>
+        </footer>
       </div>
     </NextIntlClientProvider>
   );

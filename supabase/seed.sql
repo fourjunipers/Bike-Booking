@@ -338,13 +338,6 @@ cross join lateral (
   order by day asc limit 1
 ) b;
 
--- Price per day after 30 days. PLACEHOLDER for the owner to replace with BSR's
--- real rates: the 30-day price / 30, rounded to 10 baht.
-update public.bike_models m
-set price_after_30 = (round(p.total / 30.0 / 10) * 10)::int
-from public.price_days p
-where p.bike_model_id = m.id and p.day = 30;
-
 -- Extras (paid at the shop) ------------------------------------------------
 insert into public.shop_extras (
   id, shop_id, name, description, terms, price_kind, price_rental, price_1d, price_7d, price_30d, all_models, sort
@@ -451,3 +444,79 @@ insert into public.bike_catalog (
   'e0000000-0000-4000-8000-000000000090', 'Vespa', 'Primavera 150', 150, 'city_scooter', 'automatic',
   'requested', 'b0000000-0000-4000-8000-000000000002', 'We have three of these; not in the catalog yet.'
 );
+
+-- A second live shop for testing search (local only, never the live site) --
+-- Near On Nut BTS, about 1.5 km from BSR. Rents a PCX 160 (cheaper than BSR)
+-- and a Click 125i (ready for walk-ins), so one search card shows "2 shops"
+-- and boost order can be tested.
+
+insert into public.shops (
+  id, name, slug, about, photos, location, nearest_station, status, boost_level,
+  cutoff_minutes, buffer_before_h, buffer_after_h, request_window_min,
+  submitted_at, approved_at, terms_accepted_at
+) values (
+  'b0000000-0000-4000-8000-000000000003',
+  'On Nut Rentals (demo)',
+  'on-nut-rentals-demo',
+  'Demo shop for testing search. Not a real business.',
+  array['/images/placeholder-shop.svg'],
+  extensions.st_setsrid(extensions.st_makepoint(100.6010, 13.7057), 4326)::extensions.geography,
+  'On Nut (BTS)', 'live', 'normal',
+  60, 0, 1, 120, now(), now(), now()
+);
+
+insert into public.shop_hours (shop_id, weekday, open, close)
+select 'b0000000-0000-4000-8000-000000000003', d, '08:00'::time, '20:00'::time
+from generate_series(0, 6) as d;
+
+insert into public.shop_contacts (shop_id, whatsapp, line_id)
+values ('b0000000-0000-4000-8000-000000000003', '+66822222222', 'onnut-demo');
+
+insert into public.shop_policies (shop_id, helmets, deposit_amount, deposit_methods, passport)
+values ('b0000000-0000-4000-8000-000000000003', 1, 3000, '{cash}', 'held');
+
+insert into public.bike_models (
+  id, shop_id, catalog_id, photos, qty, instant_qty, request_qty,
+  ready_today_on, ready_today_count, ready_today_updated_at
+) values
+  ('c0000000-0000-4000-8000-000000000040', 'b0000000-0000-4000-8000-000000000003',
+   'e0000000-0000-4000-8000-000000000024', array['/images/placeholder-bike.svg'],
+   2, 2, 0, false, 0, null),
+  ('c0000000-0000-4000-8000-000000000041', 'b0000000-0000-4000-8000-000000000003',
+   'e0000000-0000-4000-8000-000000000010', array['/images/placeholder-bike.svg'],
+   2, 1, 1, true, 1, now());
+
+with anchors (bike_model_id, day, total) as (
+  values
+    ('c0000000-0000-4000-8000-000000000040'::uuid, 1, 550),
+    ('c0000000-0000-4000-8000-000000000040'::uuid, 7, 2400),
+    ('c0000000-0000-4000-8000-000000000040'::uuid, 30, 5600),
+    ('c0000000-0000-4000-8000-000000000041'::uuid, 1, 280),
+    ('c0000000-0000-4000-8000-000000000041'::uuid, 7, 1300),
+    ('c0000000-0000-4000-8000-000000000041'::uuid, 30, 2900)
+),
+days as (
+  select m.bike_model_id, d.day
+  from (select distinct bike_model_id from anchors) m
+  cross join generate_series(1, 30) as d (day)
+)
+insert into public.price_days (bike_model_id, day, total, is_anchor)
+select
+  d.bike_model_id,
+  d.day,
+  case
+    when a.day = b.day then a.total
+    else (round((a.total + (b.total - a.total) * (d.day - a.day)::numeric / (b.day - a.day)) / 10) * 10)::int
+  end,
+  exists (select 1 from anchors x where x.bike_model_id = d.bike_model_id and x.day = d.day)
+from days d
+cross join lateral (
+  select day, total from anchors
+  where bike_model_id = d.bike_model_id and day <= d.day
+  order by day desc limit 1
+) a
+cross join lateral (
+  select day, total from anchors
+  where bike_model_id = d.bike_model_id and day >= d.day
+  order by day asc limit 1
+) b;

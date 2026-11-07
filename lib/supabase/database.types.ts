@@ -85,14 +85,14 @@ isOneToOne: true
                   ]
                 },"bike_models": {
                   Row: {
-                    "buffer_after_h": number | null,"buffer_before_h": number | null,"catalog_id": string,"created_at": string,"deposit_amount": number | null,"flagged_for_review": boolean,"id": string,"instant_qty": number,"min_days_booking": number | null,"min_days_walkin": number | null,"notice_h": number | null,"photos": (string)[],"price_after_30": number | null,"qty": number,"ready_today_count": number,"ready_today_on": boolean,"ready_today_updated_at": string | null,"request_qty": number,"shop_id": string,"updated_at": string,"visible": boolean
+                    "buffer_after_h": number | null,"buffer_before_h": number | null,"catalog_id": string,"created_at": string,"deposit_amount": number | null,"flagged_for_review": boolean,"id": string,"instant_qty": number,"min_days_booking": number | null,"min_days_walkin": number | null,"notice_h": number | null,"photos": (string)[],"qty": number,"ready_today_count": number,"ready_today_on": boolean,"ready_today_updated_at": string | null,"request_qty": number,"shop_id": string,"updated_at": string,"visible": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"catalog_id": string,"created_at"?: string,"deposit_amount"?: number | null,"flagged_for_review"?: boolean,"id"?: string,"instant_qty"?: number,"min_days_booking"?: number | null,"min_days_walkin"?: number | null,"notice_h"?: number | null,"photos"?: (string)[],"price_after_30"?: number | null,"qty": number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"request_qty"?: number,"shop_id": string,"updated_at"?: string,"visible"?: boolean
+                    "buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"catalog_id": string,"created_at"?: string,"deposit_amount"?: number | null,"flagged_for_review"?: boolean,"id"?: string,"instant_qty"?: number,"min_days_booking"?: number | null,"min_days_walkin"?: number | null,"notice_h"?: number | null,"photos"?: (string)[],"qty": number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"request_qty"?: number,"shop_id": string,"updated_at"?: string,"visible"?: boolean
                   }
                   Update: {
-                    "buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"catalog_id"?: string,"created_at"?: string,"deposit_amount"?: number | null,"flagged_for_review"?: boolean,"id"?: string,"instant_qty"?: number,"min_days_booking"?: number | null,"min_days_walkin"?: number | null,"notice_h"?: number | null,"photos"?: (string)[],"price_after_30"?: number | null,"qty"?: number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"request_qty"?: number,"shop_id"?: string,"updated_at"?: string,"visible"?: boolean
+                    "buffer_after_h"?: number | null,"buffer_before_h"?: number | null,"catalog_id"?: string,"created_at"?: string,"deposit_amount"?: number | null,"flagged_for_review"?: boolean,"id"?: string,"instant_qty"?: number,"min_days_booking"?: number | null,"min_days_walkin"?: number | null,"notice_h"?: number | null,"photos"?: (string)[],"qty"?: number,"ready_today_count"?: number,"ready_today_on"?: boolean,"ready_today_updated_at"?: string | null,"request_qty"?: number,"shop_id"?: string,"updated_at"?: string,"visible"?: boolean
                   }
                   Relationships: [
                     {
@@ -272,6 +272,20 @@ isOneToOne: false
       referencedRelation: "shops"
       referencedColumns: ["id"]
     }
+                  ]
+                },"ranking_settings": {
+                  Row: {
+                    "boost": number,"cancellation": number,"distance": number,"id": boolean,"rating": number,"response": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "boost"?: number,"cancellation"?: number,"distance"?: number,"id"?: boolean,"rating"?: number,"response"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "boost"?: number,"cancellation"?: number,"distance"?: number,"id"?: boolean,"rating"?: number,"response"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"reviews": {
                   Row: {
@@ -503,6 +517,20 @@ isOneToOne: true
                   Relationships: [
                     
                   ]
+                },"stations": {
+                  Row: {
+                    "active": boolean,"created_at": string,"id": string,"lines": (string)[],"location": unknown,"name_en": string,"name_th": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_at"?: string,"id"?: string,"lines": (string)[],"location": unknown,"name_en": string,"name_th"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "active"?: boolean,"created_at"?: string,"id"?: string,"lines"?: (string)[],"location"?: unknown,"name_en"?: string,"name_th"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {
@@ -545,12 +573,31 @@ isOneToOne: true
 "is_shop_owner":
 { Args: { "p_shop_id": string }; Returns: boolean
                            },
+"longest_walkin":
+{ Args: { "p_bike_model_id": string,"p_max_days"?: number,"p_start": string }; Returns: number
+                           },
+"model_offer":
+{ Args: { "p_bike_model_id": string,"p_end": string,"p_start": string }; Returns: {
+              "free": number,"mode": string
+            }[]
+                           },
 "promotion_shop_id":
 { Args: { "p_promotion_id": string }; Returns: string
+                           },
+"rental_days":
+{ Args: { "p_end": string,"p_start": string }; Returns: number
+                           },
+"rental_price":
+{ Args: { "p_bike_model_id": string,"p_days": number }; Returns: number
                            },
 "repair_conflicts":
 { Args: { "p_bike_model_id": string,"p_from": string }; Returns: {
               "booking_id": string,"code": string,"end_at": string,"start_at": string
+            }[]
+                           },
+"search_offers":
+{ Args: { "p_catalog_id"?: string,"p_cc_max"?: number,"p_cc_min"?: number,"p_end"?: string,"p_lat"?: number,"p_lng"?: number,"p_min_rating"?: number,"p_now"?: boolean,"p_passport_not_held"?: boolean,"p_price_max_day"?: number,"p_radius_km"?: number,"p_shop_id"?: string,"p_start"?: string,"p_transmission"?: Database["public"]['Enums']["transmission"],"p_type"?: Database["public"]['Enums']["bike_type"] }; Returns: {
+              "bike_model_id": string,"boost": Database["public"]['Enums']["boost_level"],"catalog_id": string,"catalog_slug": string,"cc": number,"days": number,"deposit": number,"distance_km": number,"free_units": number,"make": string,"mode": string,"model": string,"per_day": number,"photo": string,"rating": number,"ready_today": boolean,"ready_updated_at": string,"review_count": number,"score": number,"shop_id": string,"shop_lat": number,"shop_lng": number,"shop_name": string,"shop_slug": string,"stock_photo": string,"total": number,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"walkin_max_days": number,"year_from": number,"year_to": number
             }[]
                            },
 "shop_coordinates":
@@ -561,11 +608,24 @@ isOneToOne: true
 "shop_extra_shop_id":
 { Args: { "p_extra_id": string }; Returns: string
                            },
+"shop_open_at":
+{ Args: { "p_at": string,"p_shop_id": string }; Returns: boolean
+                           },
 "shop_readiness":
 { Args: { "p_shop_id": string }; Returns: (string)[]
                            },
+"shop_stats":
+{ Args: { "p_shop_id": string }; Returns: {
+              "cancellation_rate": number,"rating": number,"response_rate": number,"review_count": number
+            }[]
+                           },
 "slugify":
 { Args: { "value": string }; Returns: string
+                           },
+"station_list":
+{ Args: { "p_include_inactive"?: boolean }; Returns: {
+              "active": boolean,"id": string,"lat": number,"lines": (string)[],"lng": number,"name_en": string,"name_th": string
+            }[]
                            },
 "submit_shop":
 { Args: { "p_accept_terms": boolean,"p_shop_id": string }; Returns: (string)[]

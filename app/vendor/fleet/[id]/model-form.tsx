@@ -45,7 +45,6 @@ export function ModelForm({
   shopDefaults,
   anchors,
   manual,
-  dailyAfter30,
   inclusions,
   overrides,
 }: {
@@ -69,7 +68,6 @@ export function ModelForm({
   shopDefaults: ShopBookingDefaults;
   anchors: Anchors;
   manual: ManualDays;
-  dailyAfter30: number | null;
   inclusions: Inclusions;
   overrides: InclusionOverrides | null;
 }) {
@@ -153,11 +151,7 @@ export function ModelForm({
       </div>
 
       <FormSection title={t("prices")}>
-        <PriceFields
-          initialAnchors={anchors}
-          initialManual={manual}
-          initialDailyAfter30={dailyAfter30}
-        />
+        <PriceFields initialAnchors={anchors} initialManual={manual} />
       </FormSection>
 
       <div className="space-y-1">

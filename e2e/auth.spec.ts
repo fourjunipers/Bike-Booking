@@ -6,17 +6,14 @@ test.skip(!!process.env.PLAYWRIGHT_BASE_URL, "needs local Supabase");
 
 test("admin signs in by email and sees the admin panel", async ({ page }) => {
   await signInByEmail(page, "admin@bike-booking.test", "/admin");
-  await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Approvals" })).toBeVisible();
-  await expect(
-    page.getByText("Signed in as admin@bike-booking.test"),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/ranking$/);
+  await expect(page.getByRole("heading", { name: "Ranking" })).toBeVisible();
 });
 
 test("a customer gets not-found at /admin", async ({ page }) => {
-  await signInByEmail(page, "customer@bike-booking.test", "/admin");
+  await signInByEmail(page, "customer@bike-booking.test", "/admin/ranking");
   await expect(page.getByText("This page could not be found.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Approvals" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Ranking" })).toHaveCount(0);
 });
 
 test("a new customer signs up by email and saves their profile", async ({
@@ -45,7 +42,8 @@ test("a new customer signs up by email and saves their profile", async ({
   await expect(page.getByLabel("Email and WhatsApp")).toBeChecked();
 });
 
-test("a shop owner sees their shop on the vendor dashboard", async ({
+// The vendor dashboard is hidden (shop data lives on Mango Works).
+test.skip("a shop owner sees their shop on the vendor dashboard", async ({
   page,
 }) => {
   await signInByEmail(page, "owner@bsr.test", "/vendor");
@@ -55,7 +53,7 @@ test("a shop owner sees their shop on the vendor dashboard", async ({
   await expect(page.getByText("Live · Owner")).toBeVisible();
 });
 
-test("the vendor dashboard follows the Thai locale cookie", async ({
+test.skip("the vendor dashboard follows the Thai locale cookie", async ({
   page,
   context,
   baseURL,
@@ -68,7 +66,7 @@ test("the vendor dashboard follows the Thai locale cookie", async ({
   await expect(page.getByText("เปิดให้บริการ · พนักงาน")).toBeVisible();
 });
 
-test("someone with no shop is offered to create one", async ({ page }) => {
+test.skip("someone with no shop is offered to create one", async ({ page }) => {
   await signInByEmail(page, uniqueEmail("e2e-noshop"), "/vendor");
   await expect(
     page.getByRole("heading", { name: "Create your shop" }),

@@ -2,6 +2,9 @@
 
 Oct 22, 2026 · Mark · Updated 3 Nov 2026 (owner decisions: per-model deposits, shop extras, date-window discounts, delivery minimum, no 6/12-month rates, bike catalog and model-first browsing, structured "What's included", referral program)
 
+
+> **Direction change (7 Nov 2026).** Bike-Booking is now the customer marketplace only. Shops, bikes, prices, availability, bookings and payments to shops live in the **Mango Works** platform; this app reaches them only through `lib/data/` (see `CLAUDE.md` and `docs/INTEGRATION.md`). Vendor-side work (Phase 2 screens, vendor parts of later phases) is stopped and hidden, not deleted. Sections about vendor screens describe what Mango Works now provides; the customer-facing behaviour here still applies to the marketplace.
+
 ## Overview
 
 A web-based marketplace where foreign customers find and book motorbikes from rental shops across Bangkok, then Thailand. Customers pay a 10% booking fee online (minimum ฿50) and pay the rest to the shop at pickup. The platform is branded separately from BSR; BSR Bike Shop is the first vendor.
@@ -165,7 +168,7 @@ Vendors enter up to five anchor totals per model; the system fills every day in 
 | 15–21 | 3,370, 3,540, 3,710, 3,890, 4,060, 4,230, 4,400 |
 | 22–30 | 4,520, 4,640, 4,770, 4,890, 5,010, 5,130, 5,260, 5,380, 5,500 |
 
-**Over 30 days:** every bike model has a required **price per day after 30 days**. Days 31 onwards cost that much each, and each further 30 days never costs more than the 30-day price. Example with ฿5,500 for 30 days and ฿150/day after: 45 days = ฿5,500 + 15 × ฿150 = ฿7,750. (Time-based extras keep the older rule: full months × the 30-day price plus the remaining days from the table, capped at the 30-day price.)
+**Over 30 days** (owner decision, 7 Nov 2026): there is no separate rate. Every day costs the 30-day price ÷ 30, so total = round(price(30) × days ÷ 30) to the nearest baht. Example with ฿5,500 for 30 days: 45 days = ฿8,250, 60 days = ฿11,000, 90 days = ฿16,500.
 
 **Validation:** the editor warns when a longer rental is cheaper than a shorter one, or when a day total is below the 1-day price.
 
@@ -238,12 +241,12 @@ The platform collects only the booking fee: 10% of the rental after promotions, 
 
 ## Customer screens
 
-Customers can browse without logging in; login is required at checkout.
+Customers can browse without logging in; login is required at checkout. A rental is priced in days: every started 24 hours is a day (10:00 Mon → 10:00 Tue is 1 day; → 10:30 Tue is 2 days). The turnaround between rentals is the shop's buffer after return, not a grace period on the price.
 
 | Screen | Contents |
 | --- | --- |
-| Home | Location box (GPS, address, BTS/MRT), date picker, bike type chips, "Get your bike now" button, featured shops, area links |
-| Search results | **Model-first.** List + map toggle. One card per catalog model: stock photo, model, "From ฿X/day" (lowest live price for the chosen dates), "N shops near you", promo badge |
+| Home | Location box (GPS, address, BTS/MRT station from an admin-editable list seeded from OpenStreetMap), date picker, bike type chips, "Get your bike now" button, featured shops, area links |
+| Search results | **Model-first.** List + map toggle. One card per catalog model: stock photo, model, "From ฿X/day" (lowest live price for the chosen dates), "N shops near you" (within 15 km, with a link to show shops further away), promo badge |
 | Filters | Dates, bike type, transmission, cc range, price range, Get your bike now, delivery, passport not held, deals, rating |
 | Sort | Recommended (ranking score, default), price, distance, rating |
 | Model page | Catalog specs and stock photo; every shop offering that model, each with total price for the dates, distance, deposit, badges (Instant, Delivers, Ready today); comparable "What's included" block; map with only those shops pinned |
@@ -259,7 +262,7 @@ Customers can browse without logging in; login is required at checkout.
 - When a shop has linked its Google Business Profile, its pages show the overall Google star rating, the number of Google reviews and up to 5 Google reviews (the most Google's Places API returns), with a link to all reviews on Google Maps.
 - Shown in a separate block from the platform's own reviews, with Google Maps attribution and each reviewer's name next to their review, as Google's Places policies require.
 - Only the place ID is stored. Rating and reviews are fetched from Google when the page is shown, because Google doesn't allow storing them. For the same reason the Google rating doesn't feed the ranking score or the rating filter; those use platform reviews only.
-- Not shown on search result cards, to keep API costs down.
+- Not shown on search result cards, to keep API costs down, and loaded only when the block scrolls into view.
 
 **Price breakdown shown at checkout (example, 14 days)**
 
@@ -362,7 +365,7 @@ Core tables in Supabase (Postgres); availability is computed from bookings, buff
 | shop_policies | shop_id, the structured "What's included", deposit and documents fields as shop defaults (incl. deposit_amount), notes |
 | bike_catalog | id, make, model, year_from, year_to, type, transmission, cc, abs, underseat_storage, usb_charger, key_type (keyless/keyed), description, stock_photo, status (requested/approved/rejected), requested_by_shop_id |
 | delivery_zones | shop_id, max_km, fee |
-| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), price_after_30, instant_qty, request_qty (rest = walk-ins only), buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h (null = shop default), ready_today_count, ready_today_on, ready_today_updated_at, visible, flagged_for_review; unique (shop_id, catalog_id) |
+| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), instant_qty, request_qty (rest = walk-ins only), buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h (null = shop default), ready_today_count, ready_today_on, ready_today_updated_at, visible, flagged_for_review; unique (shop_id, catalog_id) |
 | bike_model_downtime | bike_model_id, units, back_on (null = not known), note |
 | bike_model_policies | bike_model_id, the same "What's included", deposit and documents fields as shop_policies, all nullable (null = shop default) |
 | price_days | bike_model_id, day (1–30), total, is_anchor, is_manual |

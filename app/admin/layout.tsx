@@ -24,11 +24,10 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
               aria-label="Admin"
               className="mx-auto flex max-w-6xl flex-wrap px-2 py-1 text-sm"
             >
-              <NavLink href="/admin" exact>
-                Approvals
-              </NavLink>
-              <NavLink href="/admin/shops">Shops</NavLink>
-              <NavLink href="/admin/catalog">Bike catalog</NavLink>
+              {/* Approvals, Shops and Bike catalog are hidden: shop data
+                  lives on the Mango Works platform (lib/hidden-areas.ts). */}
+              <NavLink href="/admin/ranking">Ranking</NavLink>
+              <NavLink href="/admin/stations">Stations</NavLink>
             </nav>
           </div>
         }

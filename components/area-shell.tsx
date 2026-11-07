@@ -22,7 +22,6 @@ export function AreaShell({
   const width = wide ? "max-w-6xl" : "max-w-3xl";
   const areas = [
     { href: homeHref, label: "Customer" },
-    { href: "/vendor", label: "Vendor" },
     { href: "/admin", label: "Admin" },
     { href: accountHref, label: "Account" },
   ];

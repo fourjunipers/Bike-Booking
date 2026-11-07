@@ -161,21 +161,16 @@ function totalsOf(table: readonly (DayPrice | number)[]): number[] {
 }
 
 /**
- * Total for a rental of `days` days.
+ * Total for a rental of `days` days (owner decision, 2026-11-07).
  *
- * Bike models pass `dailyAfter30` (required for bikes, owner decision
- * 2026-11-04): days 31+ cost that much each, and each further 30 days never
- * costs more than the 30-day price. Example: 30 days ฿5,500 and ฿150/day after
- * → 45 days = 5,500 + 15 × 150 = 7,750.
- *
- * Without it (time-based extras): full months × the 30-day price, plus the
- * remaining days from the table, capped at the 30-day price.
- * Example: 45 days = 5,500 + 3,370 = 8,870.
+ * Up to 30 days: the day table. Over 30 days there is no separate rate:
+ * every day costs the 30-day price ÷ 30, so total = price(30) × days ÷ 30,
+ * rounded to the nearest baht (halves round up).
+ * Example: 30 days ฿5,500 → 45 days = ฿8,250, 60 days = ฿11,000.
  */
 export function priceForDays(
   table: readonly (DayPrice | number)[],
   days: number,
-  dailyAfter30?: number,
 ): number {
   if (!Number.isInteger(days) || days < 1) {
     throw new RangeError(
@@ -183,24 +178,10 @@ export function priceForDays(
     );
   }
   const totals = totalsOf(table);
+  if (days <= TABLE_DAYS) return totals[days - 1];
   const month = totals[TABLE_DAYS - 1];
-  if (dailyAfter30 !== undefined) {
-    assertPrice(dailyAfter30, "Daily price after 30 days");
-    if (days <= TABLE_DAYS) return totals[days - 1];
-    const extra = days - TABLE_DAYS;
-    const extraMonths = Math.floor(extra / TABLE_DAYS);
-    const extraRest = extra % TABLE_DAYS;
-    const fullExtraMonth = Math.min(TABLE_DAYS * dailyAfter30, month);
-    return (
-      month +
-      extraMonths * fullExtraMonth +
-      Math.min(extraRest * dailyAfter30, month)
-    );
-  }
-  const fullMonths = Math.floor(days / TABLE_DAYS);
-  const rest = days % TABLE_DAYS;
-  const restTotal = rest === 0 ? 0 : Math.min(totals[rest - 1], month);
-  return fullMonths * month + restTotal;
+  // Integer arithmetic: floor((month × days + 15) / 30) rounds half up.
+  return Math.floor((month * days + TABLE_DAYS / 2) / TABLE_DAYS);
 }
 
 /**
