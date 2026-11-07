@@ -39,7 +39,7 @@ export default async function ModelPage({
     supabase
       .from("bike_models")
       .select(
-        "id, shop_id, qty, instant_qty, request_qty, photos, deposit_amount, price_after_30, buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h, visible, catalog:bike_catalog (make, model, year_from, year_to, cc, type, transmission, status, abs, underseat_storage, usb_charger, key_type)",
+        "id, shop_id, qty, instant_qty, request_qty, photos, deposit_amount, buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h, visible, catalog:bike_catalog (make, model, year_from, year_to, cc, type, transmission, status, abs, underseat_storage, usb_charger, key_type)",
       )
       .eq("id", id)
       .eq("shop_id", shop.id)
@@ -115,7 +115,6 @@ export default async function ModelPage({
         shopDefaults={shopRules}
         anchors={anchors}
         manual={manual}
-        dailyAfter30={model.price_after_30}
         inclusions={shopDefaults}
         overrides={overrides ?? null}
       />

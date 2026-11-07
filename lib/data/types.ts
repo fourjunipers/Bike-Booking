@@ -158,9 +158,11 @@ export type Listing = {
   listingId: string;
   photoUrls: string[];
   deposit: number | null;
-  /** Totals for 1–30 days (index 0 = 1 day). */
+  /**
+   * Totals for 1–30 days (index 0 = 1 day). Longer rentals cost the 30-day
+   * total ÷ 30 per day (docs/INTEGRATION.md §4.2).
+   */
   dayPrices: number[];
-  pricePerDayAfter30: number | null;
   inclusions: Inclusions | null;
   extras: Extra[];
 };
@@ -171,7 +173,16 @@ export type Availability = {
   walkinMaxDays: number | null;
 };
 
-export type Quote = { days: number; total: number; perDay: number };
+export type Quote = {
+  days: number;
+  /** Rental for the days, before promotions. */
+  total: number;
+  /** Promotion discount (0 until promotions exist). */
+  discount: number;
+  /** What the marketplace fee is 10% of. */
+  rentalAfterPromotion: number;
+  perDay: number;
+};
 
 /** Signals the marketplace ranks shops by (docs/INTEGRATION.md). */
 export type ShopSignals = {

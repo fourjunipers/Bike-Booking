@@ -23,7 +23,9 @@ revoke insert, update, delete on public.ranking_settings from anon, authenticate
 create policy "Anyone reads ranking weights"
 on public.ranking_settings for select to anon, authenticated using (true);
 
--- Price for a number of days (lib/pricing.ts priceForDays with dailyAfter30) --
+-- Price for a number of days (lib/pricing.ts priceForDays, owner decision
+-- 2026-11-07): the day table up to 30 days; over 30, every day costs the
+-- 30-day price ÷ 30, so total = round(price(30) × days ÷ 30), halves up.
 
 create function public.rental_price(p_bike_model_id uuid, p_days int)
 returns int
@@ -32,22 +34,14 @@ stable
 security definer
 set search_path = ''
 as $$
-  with m as (
-    select m.price_after_30 as rate,
-      (select total from public.price_days where bike_model_id = m.id and day = 30) as month
-    from public.bike_models m
-    where m.id = p_bike_model_id
-  )
   select case
     when p_days is null or p_days < 1 then null
     when p_days <= 30 then
       (select total from public.price_days where bike_model_id = p_bike_model_id and day = p_days)
-    when m.rate is null or m.month is null then null
-    else m.month
-      + ((p_days - 30) / 30) * least(30 * m.rate, m.month)
-      + least(((p_days - 30) % 30) * m.rate, m.month)
-  end
-  from m;
+    else
+      (select floor((total::bigint * p_days + 15) / 30)::int
+       from public.price_days where bike_model_id = p_bike_model_id and day = 30)
+  end;
 $$;
 
 grant execute on function public.rental_price(uuid, int) to anon, authenticated;
@@ -317,7 +311,6 @@ begin
       and m.visible
       and cardinality(m.photos) > 0
       and c.status = 'approved'
-      and m.price_after_30 is not null
       and (select count(*) from public.price_days d where d.bike_model_id = m.id) = 30
       and (p_type is null or c.type = p_type)
       and (p_transmission is null or c.transmission = p_transmission)

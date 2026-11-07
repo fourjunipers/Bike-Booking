@@ -174,12 +174,12 @@
     "book": "Réserver",
     "bookingSoon": "La réservation en ligne arrive bientôt.",
     "priceTable": "Tarifs",
-    "after30": "Chaque jour après 30",
     "cancellation": "Annulation",
     "cancelFree": "Annulation gratuite plus de 3 jours avant le retrait.",
     "cancelLate": "Dans les 3 jours précédant le retrait, les frais de réservation ne sont pas remboursés.",
     "cancelVendor": "Si le loueur annule, les frais de réservation sont entièrement remboursés.",
-    "cancelDeclined": "Une demande refusée ou sans réponse ne coûte rien."
+    "cancelDeclined": "Une demande refusée ou sans réponse ne coûte rien.",
+    "over30Note": "Au-delà de 30 jours, chaque jour coûte le prix de 30 jours ÷ 30."
   },
   "BikeInfo": {
     "depositAndDocuments": "Caution et documents",

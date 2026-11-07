@@ -158,36 +158,24 @@ describe("modelSchema", () => {
 
 describe("parsePriceForm", () => {
   it("reads anchors and manual days, tolerating commas and ฿", () => {
-    const { anchors, manual, dailyAfter30, errors } = parsePriceForm({
+    const { anchors, manual, errors } = parsePriceForm({
       anchor_1: "650",
       anchor_7: "2,800",
       anchor_14: "",
       anchor_30: "฿6,200",
       manual_10: "3500",
-      price_after_30: "฿180",
     });
     expect(errors).toEqual({});
     expect(anchors).toEqual({ 1: 650, 7: 2800, 30: 6200 });
     expect(manual).toEqual({ 10: 3500 });
-    expect(dailyAfter30).toBe(180);
   });
 
-  it("requires days 1 and 30 and the price per day after 30 days", () => {
+  it("requires days 1 and 30", () => {
     const { errors } = parsePriceForm({ anchor_7: "100" });
     expect(errors).toEqual({
       anchor_1: "dayOneRequired",
       anchor_30: "dayThirtyRequired",
-      price_after_30: "afterThirtyRequired",
     });
-  });
-
-  it("rejects a bad price per day after 30 days", () => {
-    const { errors } = parsePriceForm({
-      anchor_1: "300",
-      anchor_30: "3000",
-      price_after_30: "0",
-    });
-    expect(errors).toEqual({ price_after_30: "invalid" });
   });
 });
 

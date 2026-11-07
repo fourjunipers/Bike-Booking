@@ -33,7 +33,6 @@ export type ErrorKey =
   | "tooManyPhotos"
   | "dayOneRequired"
   | "dayThirtyRequired"
-  | "afterThirtyRequired"
   | "splitTooBig"
   | "repairTooBig"
   | "priceRequired";
@@ -358,8 +357,6 @@ export const repairSchema = z.object({
 export function parsePriceForm(form: Record<string, unknown>): {
   anchors: Anchors;
   manual: Record<number, number>;
-  /** Price per day after the first 30 days (required for bike models). */
-  dailyAfter30: number | undefined;
   errors: Partial<Record<string, ErrorKey>>;
 } {
   const anchors: Anchors = {};
@@ -380,17 +377,13 @@ export function parsePriceForm(form: Record<string, unknown>): {
     errors.anchor_1 = "dayOneRequired";
   if (anchors[30] === undefined && !errors.anchor_30)
     errors.anchor_30 = "dayThirtyRequired";
-  const after = read("price_after_30");
-  if (after === null) errors.price_after_30 = "invalid";
-  else if (after === undefined) errors.price_after_30 = "afterThirtyRequired";
-  const dailyAfter30 = after ?? undefined;
   for (let day = 2; day < TABLE_DAYS; day++) {
     if ((ANCHOR_DAYS as readonly number[]).includes(day)) continue;
     const v = read(`manual_${day}`);
     if (v === null) errors[`manual_${day}`] = "invalid";
     else if (v !== undefined) manual[day] = v;
   }
-  return { anchors, manual, dailyAfter30, errors };
+  return { anchors, manual, errors };
 }
 
 // Extras -----------------------------------------------------------------------

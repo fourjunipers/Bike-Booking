@@ -88,42 +88,14 @@ describe("yearly closures", () => {
   });
 });
 
-describe("price per day after 30 days", () => {
-  it("is set on every seeded BSR model", async () => {
-    const { data } = await anon
-      .from("bike_models")
-      .select("id, price_after_30")
-      .eq("shop_id", seed.bsrShop);
-    expect(data?.length).toBeGreaterThan(0);
-    for (const m of data ?? []) expect(m.price_after_30).toBeGreaterThan(0);
-  });
-
-  it("is required before a shop can be submitted", async () => {
-    const { data: before } = await bsrOwner.rpc("shop_readiness", {
-      p_shop_id: seed.bsrShop,
+describe("prices", () => {
+  it("over 30 days cost the 30-day price ÷ 30 per day (2026-11-07)", async () => {
+    // BSR's PCX: ฿6,200 for 30 days → 45 days = 6,200 × 45 / 30 = 9,300.
+    const { data } = await anon.rpc("rental_price", {
+      p_bike_model_id: seed.bsrPcx,
+      p_days: 45,
     });
-    expect(before).not.toContain("model_prices");
-
-    const { data: pcx } = await service
-      .from("bike_models")
-      .select("price_after_30")
-      .eq("id", seed.bsrPcx)
-      .single();
-    await service
-      .from("bike_models")
-      .update({ price_after_30: null })
-      .eq("id", seed.bsrPcx);
-    try {
-      const { data: after } = await bsrOwner.rpc("shop_readiness", {
-        p_shop_id: seed.bsrShop,
-      });
-      expect(after).toContain("model_prices");
-    } finally {
-      await service
-        .from("bike_models")
-        .update({ price_after_30: pcx!.price_after_30 })
-        .eq("id", seed.bsrPcx);
-    }
+    expect(data).toBe(9300);
   });
 });
 

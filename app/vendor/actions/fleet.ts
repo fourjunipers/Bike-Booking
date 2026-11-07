@@ -227,17 +227,10 @@ export async function savePrices(
 ): Promise<ActionState> {
   const own = await ownModel(modelId);
   if (!own) return failed;
-  const { anchors, manual, dailyAfter30, errors } = parsePriceForm(
-    formObject(formData),
-  );
+  const { anchors, manual, errors } = parsePriceForm(formObject(formData));
   if (hasErrors(errors) || bikeAnchorErrors(anchors).length > 0)
     return invalid(errors);
   const table = fillDays(anchors, manual);
-  const { error: afterError } = await own.supabase
-    .from("bike_models")
-    .update({ price_after_30: dailyAfter30 })
-    .eq("id", modelId);
-  if (afterError) return failed;
   const { error } = await own.supabase.from("price_days").upsert(
     table.map((d) => ({
       bike_model_id: modelId,

@@ -21,7 +21,6 @@ import {
   listShopReviews,
 } from "@/lib/data";
 import { runSearch } from "@/lib/marketplace-search";
-import { priceForDays } from "@/lib/pricing";
 import { parseSearchParams, searchQuery } from "@/lib/search-params";
 
 export async function generateMetadata({
@@ -257,33 +256,13 @@ async function Listing({
                       {ts("forDays", { n: d })}
                     </th>
                     <td className="py-1.5 text-right font-medium">
-                      {formatBaht(
-                        priceForDays(
-                          listing.dayPrices,
-                          d,
-                          listing.pricePerDayAfter30 ?? undefined,
-                        ),
-                      )}
+                      {formatBaht(listing.dayPrices[d - 1])}
                     </td>
                   </tr>
                 ))}
-                {listing.pricePerDayAfter30 !== null && (
-                  <tr>
-                    <th
-                      scope="row"
-                      className="py-1.5 text-left font-normal text-muted-foreground"
-                    >
-                      {t("after30")}
-                    </th>
-                    <td className="py-1.5 text-right font-medium">
-                      {ts("perDayShort", {
-                        amount: formatBaht(listing.pricePerDayAfter30),
-                      })}
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
+            <p className="text-sm text-muted-foreground">{t("over30Note")}</p>
           </section>
 
           <section className="space-y-3 rounded-xl border bg-card p-4 shadow-sm md:p-6">

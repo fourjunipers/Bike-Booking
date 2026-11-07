@@ -306,7 +306,7 @@ export async function getListing(
   const db = createPublicClient();
   const { data: model } = await db
     .from("bike_models")
-    .select("id, photos, deposit_amount, price_after_30")
+    .select("id, photos, deposit_amount")
     .eq("shop_id", shopId)
     .eq("catalog_id", catalogId)
     .maybeSingle();
@@ -340,7 +340,6 @@ export async function getListing(
       model.deposit_amount,
     ),
     dayPrices: (prices ?? []).map((p) => p.total),
-    pricePerDayAfter30: model.price_after_30,
     inclusions: shopPolicy ? effectiveInclusions(shopPolicy, overrides) : null,
     extras,
   };
@@ -418,7 +417,14 @@ export async function getQuote(
     p_days: days,
   });
   if (total === null || total === undefined) return null;
-  return { days, total, perDay: Math.ceil(total / days) };
+  // TODO(phase-7): promotions (Mango Works returns the discount).
+  return {
+    days,
+    total,
+    discount: 0,
+    rentalAfterPromotion: total,
+    perDay: Math.ceil(total / days),
+  };
 }
 
 // Platform data: ranking signals and reviews ------------------------------------------

@@ -21,7 +21,7 @@ export default async function FleetPage() {
   const { data: models } = await supabase
     .from("bike_models")
     .select(
-      "id, qty, instant_qty, request_qty, photos, visible, ready_today_on, ready_today_count, ready_today_updated_at, price_after_30, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day), bike_model_downtime (id, units, back_on)",
+      "id, qty, instant_qty, request_qty, photos, visible, ready_today_on, ready_today_count, ready_today_updated_at, catalog:bike_catalog (make, model, year_from, year_to, cc, status), price_days (day), bike_model_downtime (id, units, back_on)",
     )
     .eq("shop_id", shop.id)
     .order("created_at");
@@ -34,7 +34,7 @@ export default async function FleetPage() {
       catalogPending: m.catalog?.status !== "approved",
       photo: photoUrl(supabaseUrl(), PHOTO_BUCKETS.model, m.photos[0]),
       hasPhoto: m.photos.length > 0,
-      hasPrices: m.price_days.length >= 30 && m.price_after_30 !== null,
+      hasPrices: m.price_days.length >= 30,
       instantQty: m.instant_qty,
       requestQty: m.request_qty,
       visible: m.visible,

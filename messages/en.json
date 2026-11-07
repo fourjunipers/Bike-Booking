@@ -106,7 +106,6 @@
     "termsRequired": "Tick the box to accept the vendor terms.",
     "notReady": "Some setup steps are still missing (see the checklist).",
     "hasBookings": "This model has bookings, so it can't be deleted. Untick \"Show to customers\" to hide it instead.",
-    "afterThirtyRequired": "The price per day after 30 days is required.",
     "splitTooBig": "Instant and Request together can't be more than the quantity.",
     "repairTooBig": "That's more bikes than are in service."
   },
@@ -466,12 +465,10 @@
     "anchor": "set",
     "edited": "edited",
     "reset": "Reset",
-    "over30": "For example, 45 days = {price45} and 60 days = {price60}.",
+    "over30": "Longer rentals cost your 30-day price ÷ 30 per day, e.g. 45 days = {price45} and 60 days = {price60}.",
     "needAnchors": "Enter the 1-day and 30-day totals to see the full table.",
     "warnBelowDayOne": "Day {day} costs less than 1 day.",
-    "warnCheaper": "Day {day} costs less than day {shorter}.",
-    "after30": "Price per day after 30 days (฿)",
-    "after30Hint": "Each day from day 31 costs this much. A further month never costs more than your 30-day price."
+    "warnCheaper": "Day {day} costs less than day {shorter}."
   },
   "Extras": {
     "title": "Extras",
@@ -663,12 +660,12 @@
     "book": "Book",
     "bookingSoon": "Online booking is coming soon.",
     "priceTable": "Prices",
-    "after30": "Each day after 30",
     "cancellation": "Cancellation",
     "cancelFree": "Free cancellation more than 3 days before pickup.",
     "cancelLate": "Within 3 days of pickup, the booking fee isn't refunded.",
     "cancelVendor": "If the shop cancels, the booking fee is refunded in full.",
-    "cancelDeclined": "Declined or unanswered requests cost nothing."
+    "cancelDeclined": "Declined or unanswered requests cost nothing.",
+    "over30Note": "Over 30 days, each day costs the 30-day price ÷ 30."
   },
   "BikeInfo": {
     "depositAndDocuments": "Deposit and documents",

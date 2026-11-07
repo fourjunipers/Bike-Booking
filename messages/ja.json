@@ -174,12 +174,12 @@
     "book": "予約する",
     "bookingSoon": "オンライン予約は近日公開予定です。",
     "priceTable": "料金",
-    "after30": "31日目以降の1日",
     "cancellation": "キャンセル",
     "cancelFree": "受け取りの3日より前なら無料でキャンセルできます。",
     "cancelLate": "受け取り3日前以降のキャンセルは予約手数料が返金されません。",
     "cancelVendor": "店舗がキャンセルした場合、予約手数料は全額返金されます。",
-    "cancelDeclined": "断られた、または返答のないリクエストは無料です。"
+    "cancelDeclined": "断られた、または返答のないリクエストは無料です。",
+    "over30Note": "30日を超える分は、1日あたり30日料金 ÷ 30 です。"
   },
   "BikeInfo": {
     "depositAndDocuments": "保証金と必要書類",

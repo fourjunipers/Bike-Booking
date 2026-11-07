@@ -174,12 +174,12 @@
     "book": "Reservar",
     "bookingSoon": "La reserva en línea llegará pronto.",
     "priceTable": "Precios",
-    "after30": "Cada día después de 30",
     "cancellation": "Cancelación",
     "cancelFree": "Cancelación gratuita con más de 3 días de antelación a la recogida.",
     "cancelLate": "En los 3 días antes de la recogida, la tarifa de reserva no se reembolsa.",
     "cancelVendor": "Si la tienda cancela, la tarifa de reserva se reembolsa por completo.",
-    "cancelDeclined": "Las solicitudes rechazadas o sin respuesta no cuestan nada."
+    "cancelDeclined": "Las solicitudes rechazadas o sin respuesta no cuestan nada.",
+    "over30Note": "Más de 30 días: cada día cuesta el precio de 30 días ÷ 30."
   },
   "BikeInfo": {
     "depositAndDocuments": "Depósito y documentos",

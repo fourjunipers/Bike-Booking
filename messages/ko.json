@@ -174,12 +174,12 @@
     "book": "예약하기",
     "bookingSoon": "온라인 예약은 곧 제공됩니다.",
     "priceTable": "요금",
-    "after30": "30일 이후 하루",
     "cancellation": "취소",
     "cancelFree": "픽업 3일 전까지는 무료로 취소할 수 있습니다.",
     "cancelLate": "픽업 3일 이내에 취소하면 예약 수수료는 환불되지 않습니다.",
     "cancelVendor": "숍이 취소하면 예약 수수료를 전액 환불합니다.",
-    "cancelDeclined": "거절되었거나 답변이 없는 요청은 비용이 들지 않습니다."
+    "cancelDeclined": "거절되었거나 답변이 없는 요청은 비용이 들지 않습니다.",
+    "over30Note": "30일을 넘으면 하루 요금은 30일 요금 ÷ 30입니다."
   },
   "BikeInfo": {
     "depositAndDocuments": "보증금과 서류",

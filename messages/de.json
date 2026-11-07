@@ -174,12 +174,12 @@
     "book": "Buchen",
     "bookingSoon": "Online-Buchung folgt bald.",
     "priceTable": "Preise",
-    "after30": "Jeder Tag nach 30",
     "cancellation": "Stornierung",
     "cancelFree": "Kostenlose Stornierung bis mehr als 3 Tage vor der Abholung.",
     "cancelLate": "Innerhalb von 3 Tagen vor der Abholung wird die Buchungsgebühr nicht erstattet.",
     "cancelVendor": "Storniert der Vermieter, wird die Buchungsgebühr vollständig erstattet.",
-    "cancelDeclined": "Abgelehnte oder unbeantwortete Anfragen kosten nichts."
+    "cancelDeclined": "Abgelehnte oder unbeantwortete Anfragen kosten nichts.",
+    "over30Note": "Über 30 Tage kostet jeder Tag den 30-Tage-Preis ÷ 30."
   },
   "BikeInfo": {
     "depositAndDocuments": "Kaution und Dokumente",

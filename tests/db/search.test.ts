@@ -99,18 +99,13 @@ describe("model_offer matches lib/availability", () => {
 });
 
 describe("rental_price and rental_days match lib", () => {
-  it.each([1, 7, 10, 30, 31, 45, 60, 75])("%i days", async (days) => {
-    const [{ data: rows }, { data: model }, { data: sql }] = await Promise.all([
+  it.each([1, 7, 10, 30, 31, 33, 45, 60, 75, 90])("%i days", async (days) => {
+    const [{ data: rows }, { data: sql }] = await Promise.all([
       anon.from("price_days").select("day, total").eq("bike_model_id", click),
-      anon
-        .from("bike_models")
-        .select("price_after_30")
-        .eq("id", click)
-        .single(),
       anon.rpc("rental_price", { p_bike_model_id: click, p_days: days }),
     ]);
     const table = [...rows!].sort((a, b) => a.day - b.day).map((r) => r.total);
-    expect(sql).toBe(priceForDays(table, days, model!.price_after_30!));
+    expect(sql).toBe(priceForDays(table, days));
   });
 
   it.each([

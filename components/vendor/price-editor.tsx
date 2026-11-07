@@ -24,11 +24,9 @@ import {
 export function PriceFields({
   initialAnchors,
   initialManual,
-  initialDailyAfter30,
 }: {
   initialAnchors: Anchors;
   initialManual: ManualDays;
-  initialDailyAfter30: number | null;
 }) {
   const t = useTranslations("Pricing");
   const markDirty = useMarkDirty();
@@ -38,7 +36,6 @@ export function PriceFields({
         ANCHOR_DAYS.map((d) => [d, initialAnchors[d]?.toString() ?? ""]),
       ) as Record<AnchorDay, string>,
   );
-  const [after30, setAfter30] = useState(initialDailyAfter30?.toString() ?? "");
   const [manual, setManual] = useState<Record<number, number>>(
     Object.fromEntries(
       Object.entries(initialManual).filter(([, v]) => v !== undefined),
@@ -84,13 +81,6 @@ export function PriceFields({
     }
   }, [parsedAnchors, table]);
 
-  const dailyAfter30 = useMemo(() => {
-    const n = Number(after30.replace(/[,\s฿]/g, ""));
-    return after30.trim() !== "" && Number.isSafeInteger(n) && n > 0
-      ? n
-      : undefined;
-  }, [after30]);
-
   const warnings = table ? pricingWarnings(table) : [];
   const warnDays = new Set(warnings.map((w) => w.day));
 
@@ -111,14 +101,6 @@ export function PriceFields({
           ))}
         </div>
       </fieldset>
-
-      <PriceInput
-        name="price_after_30"
-        label={`${t("after30")} (${t("required")})`}
-        hint={t("after30Hint")}
-        value={after30}
-        onChange={setAfter30}
-      />
 
       {Object.entries(activeManual).map(([day, v]) => (
         <input key={day} type="hidden" name={`manual_${day}`} value={v} />
@@ -186,14 +168,12 @@ export function PriceFields({
               </li>
             ))}
           </ol>
-          {dailyAfter30 !== undefined && (
-            <p className="text-sm text-muted-foreground">
-              {t("over30", {
-                price45: formatBaht(priceForDays(table, 45, dailyAfter30)),
-                price60: formatBaht(priceForDays(table, 60, dailyAfter30)),
-              })}
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground">
+            {t("over30", {
+              price45: formatBaht(priceForDays(table, 45)),
+              price60: formatBaht(priceForDays(table, 60)),
+            })}
+          </p>
           {warnings.length > 0 && (
             <ul role="alert" className="space-y-1 text-sm text-destructive">
               {warnings.map((w) => (

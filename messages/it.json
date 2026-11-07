@@ -174,12 +174,12 @@
     "book": "Prenota",
     "bookingSoon": "La prenotazione online arriverà presto.",
     "priceTable": "Prezzi",
-    "after30": "Ogni giorno dopo il 30°",
     "cancellation": "Cancellazione",
     "cancelFree": "Cancellazione gratuita fino a più di 3 giorni prima del ritiro.",
     "cancelLate": "Nei 3 giorni prima del ritiro la commissione di prenotazione non è rimborsata.",
     "cancelVendor": "Se il noleggio cancella, la commissione di prenotazione è rimborsata per intero.",
-    "cancelDeclined": "Le richieste rifiutate o senza risposta non costano nulla."
+    "cancelDeclined": "Le richieste rifiutate o senza risposta non costano nulla.",
+    "over30Note": "Oltre 30 giorni, ogni giorno costa il prezzo di 30 giorni ÷ 30."
   },
   "BikeInfo": {
     "depositAndDocuments": "Deposito e documenti",

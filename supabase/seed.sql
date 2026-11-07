@@ -338,13 +338,6 @@ cross join lateral (
   order by day asc limit 1
 ) b;
 
--- Price per day after 30 days. PLACEHOLDER for the owner to replace with BSR's
--- real rates: the 30-day price / 30, rounded to 10 baht.
-update public.bike_models m
-set price_after_30 = (round(p.total / 30.0 / 10) * 10)::int
-from public.price_days p
-where p.bike_model_id = m.id and p.day = 30;
-
 -- Extras (paid at the shop) ------------------------------------------------
 insert into public.shop_extras (
   id, shop_id, name, description, terms, price_kind, price_rental, price_1d, price_7d, price_30d, all_models, sort
@@ -483,15 +476,15 @@ insert into public.shop_policies (shop_id, helmets, deposit_amount, deposit_meth
 values ('b0000000-0000-4000-8000-000000000003', 1, 3000, '{cash}', 'held');
 
 insert into public.bike_models (
-  id, shop_id, catalog_id, photos, qty, instant_qty, request_qty, price_after_30,
+  id, shop_id, catalog_id, photos, qty, instant_qty, request_qty,
   ready_today_on, ready_today_count, ready_today_updated_at
 ) values
   ('c0000000-0000-4000-8000-000000000040', 'b0000000-0000-4000-8000-000000000003',
    'e0000000-0000-4000-8000-000000000024', array['/images/placeholder-bike.svg'],
-   2, 2, 0, 170, false, 0, null),
+   2, 2, 0, false, 0, null),
   ('c0000000-0000-4000-8000-000000000041', 'b0000000-0000-4000-8000-000000000003',
    'e0000000-0000-4000-8000-000000000010', array['/images/placeholder-bike.svg'],
-   2, 1, 1, 90, true, 1, now());
+   2, 1, 1, true, 1, now());
 
 with anchors (bike_model_id, day, total) as (
   values

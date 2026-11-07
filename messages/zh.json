@@ -174,12 +174,12 @@
     "book": "预订",
     "bookingSoon": "在线预订即将推出。",
     "priceTable": "价格",
-    "after30": "超过 30 天后每天",
     "cancellation": "取消政策",
     "cancelFree": "取车前 3 天以上可免费取消。",
     "cancelLate": "取车前 3 天内取消，预订费不予退还。",
     "cancelVendor": "如店铺取消，预订费全额退还。",
-    "cancelDeclined": "被拒绝或未回复的请求不收取任何费用。"
+    "cancelDeclined": "被拒绝或未回复的请求不收取任何费用。",
+    "over30Note": "超过 30 天，每天按 30 天价格 ÷ 30 计算。"
   },
   "BikeInfo": {
     "depositAndDocuments": "押金和证件",
