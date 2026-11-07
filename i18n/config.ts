@@ -30,6 +30,12 @@ export const customerNamespaces = [
   "Login",
   "Account",
   "Join",
+  "Search",
+  "Bikes",
+  "Bike",
+  "BikeInfo",
+  "Shop",
+  "Days",
 ] as const;
 
 /** Each language in its own script, for the language picker. */

@@ -18,6 +18,8 @@ export type OfferRow = Omit<
   | "stock_photo"
   | "photo"
   | "distance_km"
+  | "shop_lat"
+  | "shop_lng"
   | "deposit"
   | "mode"
   | "free_units"
@@ -30,6 +32,8 @@ export type OfferRow = Omit<
   stock_photo: string | null;
   photo: string | null;
   distance_km: number | null;
+  shop_lat: number | null;
+  shop_lng: number | null;
   deposit: number | null;
   /** "instant" | "request" for advance bookings, "now" for walk-ins. */
   mode: "instant" | "request" | "now" | null;

@@ -259,6 +259,8 @@ returns table (
   stock_photo text,
   photo text,
   boost public.boost_level,
+  shop_lat double precision,
+  shop_lng double precision,
   distance_km double precision,
   days int,
   total int,
@@ -294,6 +296,8 @@ begin
       m.id as model_id, s.id as sid, s.slug as sslug, s.name as sname,
       c.id as cid, c.slug as cslug, c.make, c.model, c.year_from, c.year_to, c.cc,
       c.type, c.transmission, c.stock_photo, m.photos[1] as photo, s.boost_level,
+      extensions.st_y(s.location::extensions.geometry) as slat,
+      extensions.st_x(s.location::extensions.geometry) as slng,
       case when here is null or s.location is null then null
         else extensions.st_distance(s.location, here) / 1000.0 end as km,
       m.qty, m.instant_qty, m.request_qty,
@@ -393,7 +397,7 @@ begin
   select
     z.model_id, z.sid, z.sslug, z.sname, z.cid, z.cslug, z.make, z.model,
     z.year_from, z.year_to, z.cc, z.type, z.transmission, z.stock_photo, z.photo,
-    z.boost_level, z.km, z.d, z.price, ceil(z.price::numeric / z.d)::int, z.dep,
+    z.boost_level, z.slat, z.slng, z.km, z.d, z.price, ceil(z.price::numeric / z.d)::int, z.dep,
     case when p_now then 'now' else z.offer_mode end,
     z.free_units, z.ready_today_on and z.ready_today_count >= 1, z.ready_today_updated_at,
     z.walkin_max, z.r, z.rc,

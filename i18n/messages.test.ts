@@ -19,9 +19,12 @@ function keys(messages: Messages, prefix = ""): string[] {
   );
 }
 
-/** {placeholders} in a message, so translations keep them all. */
+/**
+ * {placeholders} in a message, so translations keep them all. Only "{name}"
+ * or "{name, …": plural branches like "=0 {No shops}" are text, not names.
+ */
 function placeholders(text: unknown): string[] {
-  return [...String(text).matchAll(/\{(\w+)/g)].map((m) => m[1]).sort();
+  return [...String(text).matchAll(/\{(\w+)(?=[,}])/g)].map((m) => m[1]).sort();
 }
 
 function get(messages: Messages, key: string): unknown {

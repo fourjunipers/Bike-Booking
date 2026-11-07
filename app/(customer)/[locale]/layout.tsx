@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { AreaShell } from "@/components/area-shell";
@@ -16,7 +17,6 @@ export function generateStaticParams() {
   return customerLocales.map((locale) => ({ locale }));
 }
 
-// TODO(phase-3): real customer header (location, dates, account).
 export default async function CustomerLayout({
   children,
   params,
@@ -37,12 +37,21 @@ export default async function CustomerLayout({
       timeZone="Asia/Bangkok"
     >
       <div lang={locale} className="flex flex-1 flex-col">
-        <LanguageSuggestion />
+        {/* Both read the address, which on bike and shop pages is only
+            known per request: they stream in after the static shell. */}
+        <Suspense>
+          <LanguageSuggestion />
+        </Suspense>
         <AreaShell
           area="Customer"
+          wide
           homeHref={localePath(locale, "/")}
           accountHref={localePath(locale, "/account")}
-          nav={<LanguagePicker />}
+          nav={
+            <Suspense fallback={<div className="h-[53px] border-t" />}>
+              <LanguagePicker />
+            </Suspense>
+          }
         >
           {children}
         </AreaShell>

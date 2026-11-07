@@ -18,6 +18,8 @@ const row = (over: Partial<OfferRow>): OfferRow => ({
   stock_photo: null,
   photo: "x.webp",
   boost: "normal",
+  shop_lat: 13.7,
+  shop_lng: 100.6,
   distance_km: 2,
   days: 7,
   total: 2800,

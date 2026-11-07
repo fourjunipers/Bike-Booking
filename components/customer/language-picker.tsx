@@ -26,7 +26,7 @@ export function LanguagePicker() {
 
   return (
     <div className="border-t">
-      <div className="mx-auto flex max-w-3xl items-center justify-end gap-2 px-4 py-1 text-sm">
+      <div className="mx-auto flex max-w-6xl items-center justify-end gap-2 px-4 py-1 text-sm">
         <label htmlFor="language" className="text-muted-foreground">
           {t("label")}
         </label>
@@ -34,7 +34,7 @@ export function LanguagePicker() {
           id="language"
           value={locale}
           onChange={change}
-          className="h-11 rounded-md border bg-background px-2"
+          className="h-11 rounded-md border border-input bg-card px-2"
         >
           {customerLocales.map((l) => (
             <option key={l} value={l} lang={l}>
