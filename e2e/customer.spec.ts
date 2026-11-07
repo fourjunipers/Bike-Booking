@@ -92,3 +92,15 @@ test("search works in other languages", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("Honda NX500 2025")).toBeVisible();
 });
+
+test("the privacy notice says booking details go to the shop", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Privacy" }).click();
+  await expect(page).toHaveURL("/privacy");
+  await expect(
+    page.getByRole("heading", { name: "Sharing your booking with the shop" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Mango Works rental platform/)).toBeVisible();
+});

@@ -274,5 +274,21 @@
     "4": "Giovedì",
     "5": "Venerdì",
     "6": "Sabato"
+  },
+  "Privacy": {
+    "link": "Privacy",
+    "title": "Informativa sulla privacy",
+    "metaDescription": "Cosa raccogliamo, perché e con chi lo condividiamo.",
+    "draft": "Bozza: questa informativa sarà rivista prima del lancio.",
+    "collectTitle": "Cosa raccogliamo",
+    "collect": "I dati del tuo account (nome, email, telefono o WhatsApp, ID LINE se accedi con LINE) e, quando prenoti, la tua nazionalità, le date, la moto e gli extra. Conserviamo anche le tue ricerche per far funzionare il sito e un cookie che mantiene l'accesso.",
+    "shopsTitle": "Condivisione della prenotazione con il noleggio",
+    "shops": "Quando prenoti o richiedi una moto, condividiamo i dettagli della prenotazione con il noleggio: nome, email, telefono, nazionalità e ID LINE, oltre a date, moto ed extra. I noleggi gestiscono le prenotazioni sulla piattaforma di noleggio Mango Works, che conserva una scheda cliente per ogni noleggio presso cui prenoti. Il noleggio usa questi dati per organizzare il noleggio e contattarti.",
+    "paymentsTitle": "Pagamenti",
+    "payments": "I pagamenti sono gestiti da Stripe. Non vediamo né conserviamo mai il numero completo della tua carta.",
+    "googleTitle": "Servizi Google",
+    "google": "Mappe, ricerca indirizzi e recensioni Google provengono da Google, che può ricevere la tua posizione e informazioni sul dispositivo quando li usi.",
+    "choicesTitle": "Le tue scelte",
+    "choices": "Puoi vedere e modificare i tuoi dati nella pagina dell'account. Per ottenere una copia dei tuoi dati o chiederne la cancellazione, contattaci; le prenotazioni già condivise con un noleggio restano anche nei suoi archivi."
   }
 }

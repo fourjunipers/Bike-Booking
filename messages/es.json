@@ -274,5 +274,21 @@
     "4": "Jueves",
     "5": "Viernes",
     "6": "Sábado"
+  },
+  "Privacy": {
+    "link": "Privacidad",
+    "title": "Aviso de privacidad",
+    "metaDescription": "Qué datos recogemos, por qué y con quién los compartimos.",
+    "draft": "Borrador: este aviso se revisará antes del lanzamiento.",
+    "collectTitle": "Qué recogemos",
+    "collect": "Los datos de tu cuenta (nombre, email, teléfono o WhatsApp, ID de LINE si inicias sesión con LINE) y, al reservar, tu nacionalidad, las fechas, la moto y los extras. También guardamos tus búsquedas para que el sitio funcione y una cookie que mantiene tu sesión iniciada.",
+    "shopsTitle": "Compartir tu reserva con la tienda",
+    "shops": "Cuando reservas o solicitas una moto, compartimos los datos de la reserva con la tienda: nombre, email, teléfono, nacionalidad e ID de LINE, además de las fechas, la moto y los extras. Las tiendas gestionan sus reservas en la plataforma de alquiler Mango Works, que guarda una ficha de cliente para cada tienda en la que reservas. La tienda usa estos datos para preparar tu alquiler y contactarte.",
+    "paymentsTitle": "Pagos",
+    "payments": "Los pagos los gestiona Stripe. Nunca vemos ni guardamos el número completo de tu tarjeta.",
+    "googleTitle": "Servicios de Google",
+    "google": "Los mapas, la búsqueda de direcciones y las opiniones de Google vienen de Google, que puede recibir tu ubicación e información del dispositivo cuando los usas.",
+    "choicesTitle": "Tus opciones",
+    "choices": "Puedes ver y cambiar tus datos en la página de tu cuenta. Para obtener una copia de tus datos o pedir que se borren, contáctanos; las reservas ya compartidas con una tienda también quedan en los registros de esa tienda."
   }
 }

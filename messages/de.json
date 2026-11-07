@@ -274,5 +274,21 @@
     "4": "Donnerstag",
     "5": "Freitag",
     "6": "Samstag"
+  },
+  "Privacy": {
+    "link": "Datenschutz",
+    "title": "Datenschutzhinweis",
+    "metaDescription": "Was wir erheben, warum und mit wem wir es teilen.",
+    "draft": "Entwurf: Dieser Hinweis wird vor dem Start geprüft.",
+    "collectTitle": "Was wir erheben",
+    "collect": "Deine Kontodaten (Name, E-Mail, Telefon oder WhatsApp, LINE-ID bei Anmeldung mit LINE) und bei einer Buchung deine Staatsangehörigkeit, die Daten, das Motorrad und Extras. Außerdem speichern wir deine Suchen, damit die Seite funktioniert, und ein Cookie, das dich angemeldet hält.",
+    "shopsTitle": "Weitergabe deiner Buchung an den Vermieter",
+    "shops": "Wenn du ein Motorrad buchst oder anfragst, geben wir deine Buchungsdaten an den Vermieter weiter: Name, E-Mail, Telefon, Staatsangehörigkeit und LINE-ID sowie Daten, Motorrad und Extras. Vermieter verwalten ihre Buchungen auf der Vermietplattform Mango Works, die für jeden Vermieter, bei dem du buchst, einen Kundendatensatz führt. Der Vermieter nutzt diese Daten, um deine Miete vorzubereiten und dich zu kontaktieren.",
+    "paymentsTitle": "Zahlungen",
+    "payments": "Zahlungen werden von Stripe abgewickelt. Wir sehen und speichern deine vollständige Kartennummer nie.",
+    "googleTitle": "Google-Dienste",
+    "google": "Karten, Adresssuche und Google-Bewertungen kommen von Google, das bei der Nutzung deinen Standort und Geräteinformationen erhalten kann.",
+    "choicesTitle": "Deine Möglichkeiten",
+    "choices": "Auf deiner Kontoseite kannst du deine Daten sehen und ändern. Für eine Kopie deiner Daten oder deren Löschung kontaktiere uns; bereits an einen Vermieter weitergegebene Buchungen bleiben auch in dessen eigenen Unterlagen."
   }
 }

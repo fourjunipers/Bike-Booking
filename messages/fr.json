@@ -274,5 +274,21 @@
     "4": "Jeudi",
     "5": "Vendredi",
     "6": "Samedi"
+  },
+  "Privacy": {
+    "link": "Confidentialité",
+    "title": "Avis de confidentialité",
+    "metaDescription": "Ce que nous collectons, pourquoi et avec qui nous le partageons.",
+    "draft": "Brouillon : cet avis sera relu avant le lancement.",
+    "collectTitle": "Ce que nous collectons",
+    "collect": "Les informations de votre compte (nom, e-mail, téléphone ou WhatsApp, identifiant LINE si vous vous connectez avec LINE) et, lors d'une réservation, votre nationalité, les dates, la moto et les options. Nous conservons aussi vos recherches pour faire fonctionner le site, ainsi qu'un cookie qui vous garde connecté.",
+    "shopsTitle": "Partage de votre réservation avec le loueur",
+    "shops": "Lorsque vous réservez ou demandez une moto, nous partageons les détails de votre réservation avec le loueur : nom, e-mail, téléphone, nationalité et identifiant LINE, ainsi que les dates, la moto et les options. Les loueurs gèrent leurs réservations sur la plateforme de location Mango Works, qui conserve une fiche client pour chaque loueur chez qui vous réservez. Le loueur utilise ces informations pour organiser votre location et vous contacter.",
+    "paymentsTitle": "Paiements",
+    "payments": "Les paiements sont traités par Stripe. Nous ne voyons ni ne conservons jamais votre numéro de carte complet.",
+    "googleTitle": "Services Google",
+    "google": "Les cartes, la recherche d'adresse et les avis Google proviennent de Google, qui peut recevoir votre position et des informations sur votre appareil lorsque vous les utilisez.",
+    "choicesTitle": "Vos choix",
+    "choices": "Vous pouvez consulter et modifier vos informations sur votre page de compte. Pour obtenir une copie de vos données ou les faire supprimer, contactez-nous ; les réservations déjà partagées avec un loueur sont aussi conservées dans ses propres dossiers."
   }
 }

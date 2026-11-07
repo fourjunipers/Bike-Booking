@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { AreaShell } from "@/components/area-shell";
 import { LanguagePicker } from "@/components/customer/language-picker";
 import { LanguageSuggestion } from "@/components/customer/language-suggestion";
@@ -29,6 +30,7 @@ export default async function CustomerLayout({
   const messages = Object.fromEntries(
     customerNamespaces.map((ns) => [ns, all[ns]]),
   );
+  const tp = await getTranslations({ locale, namespace: "Privacy" });
 
   return (
     <NextIntlClientProvider
@@ -55,6 +57,19 @@ export default async function CustomerLayout({
         >
           {children}
         </AreaShell>
+        <footer className="border-t bg-card">
+          <nav
+            aria-label={tp("link")}
+            className="mx-auto flex max-w-6xl gap-4 px-4 py-4 text-sm"
+          >
+            <Link
+              href={localePath(locale, "/privacy")}
+              className="text-muted-foreground underline-offset-4 hover:underline"
+            >
+              {tp("link")}
+            </Link>
+          </nav>
+        </footer>
       </div>
     </NextIntlClientProvider>
   );

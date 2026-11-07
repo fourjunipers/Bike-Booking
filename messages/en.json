@@ -763,5 +763,21 @@
     "4": "Thursday",
     "5": "Friday",
     "6": "Saturday"
+  },
+  "Privacy": {
+    "link": "Privacy",
+    "title": "Privacy notice",
+    "metaDescription": "What we collect, why, and who we share it with.",
+    "draft": "Draft: this notice will be reviewed before launch.",
+    "collectTitle": "What we collect",
+    "collect": "Your account details (name, email, phone or WhatsApp, LINE ID if you sign in with LINE) and, when you book, your nationality, the dates, the bike and any extras. We also keep the searches you make so the site works, and a cookie that keeps you signed in.",
+    "shopsTitle": "Sharing your booking with the shop",
+    "shops": "When you book or request a bike, we share your booking details with the shop: your name, email, phone, nationality and LINE ID, plus the dates, bike and extras. Shops manage their bookings on the Mango Works rental platform, which keeps a customer record for each shop you book with. The shop uses these details to arrange your rental and contact you.",
+    "paymentsTitle": "Payments",
+    "payments": "Payments are handled by Stripe. We never see or store your full card number.",
+    "googleTitle": "Google services",
+    "google": "Maps, address search and Google reviews come from Google, which may receive your location and device information when you use them.",
+    "choicesTitle": "Your choices",
+    "choices": "You can see and change your details on your account page. To get a copy of your data or have it deleted, contact us; bookings already shared with a shop are also kept by that shop under its own records."
   }
 }

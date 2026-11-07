@@ -36,6 +36,7 @@ export const customerNamespaces = [
   "BikeInfo",
   "Shop",
   "Days",
+  "Privacy",
 ] as const;
 
 /** Each language in its own script, for the language picker. */

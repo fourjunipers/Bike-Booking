@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { signInByEmail, uniqueEmail } from "./helpers/auth";
 
-// Phase 2: vendor dashboard and admin approval. Needs the local Supabase
-// stack (seeded with `npx supabase db reset`) and its Mailpit inbox.
-test.skip(!!process.env.PLAYWRIGHT_BASE_URL, "needs local Supabase");
+// Phase 2: vendor dashboard and admin approval. Hidden since 2026-11-07:
+// shop data lives on the Mango Works platform (lib/hidden-areas.ts). Kept for
+// reference; these screens are no longer maintained.
+test.skip(true, "vendor dashboard hidden: shop data lives on Mango Works");
 
 test("a new vendor creates a shop and gets the setup checklist", async ({
   page,

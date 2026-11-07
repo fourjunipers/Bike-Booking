@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { defaultLocale, localePath, splitLocalePath } from "@/i18n/config";
+import { hiddenRedirect } from "@/lib/hidden-areas";
 
 /** Areas outside the customer site: no language prefix. */
 const nonCustomer = /^\/(vendor|admin|auth|api)(\/|$)/;
@@ -18,9 +19,13 @@ const signedInOnly = /^\/account(\/|$)/;
  * 2. Refreshes the Supabase session cookie before signed-in pages render, and
  *    sends signed-out visitors to sign in. This is only an optimistic check:
  *    the layouts verify access again (lib/auth/session.ts).
+ * 3. Redirects hidden shop-side screens (lib/hidden-areas.ts).
  */
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
+  const hidden = hiddenRedirect(pathname);
+  if (hidden) return redirectTo(request, hidden);
 
   if (nonCustomer.test(pathname)) {
     if (!dashboards.test(pathname)) return NextResponse.next();
@@ -29,6 +34,9 @@ export async function proxy(request: NextRequest) {
 
   const prefixed = pathname.split("/")[1] === defaultLocale;
   const { locale, path } = splitLocalePath(pathname);
+  const hiddenCustomer = hiddenRedirect(path, true);
+  if (hiddenCustomer)
+    return redirectTo(request, localePath(locale, hiddenCustomer));
   if (prefixed) {
     const url = request.nextUrl.clone();
     url.pathname = path;
@@ -47,6 +55,14 @@ export async function proxy(request: NextRequest) {
 
   if (!signedInOnly.test(path)) return respond();
   return withSession(request, respond, localePath(locale, "/login"));
+}
+
+/** A temporary redirect (these screens may come back), without the query. */
+function redirectTo(request: NextRequest, pathname: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  return NextResponse.redirect(url, 307);
 }
 
 async function withSession(
