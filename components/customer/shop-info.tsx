@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { mapsLink } from "@/lib/google-maps";
-import type { PublicShop } from "@/lib/public-data";
+import type { Review, Shop } from "@/lib/data";
 import { MapView } from "./map-view";
 
 // Monday first, as calendars in Thailand show it. 0 = Sunday.
@@ -12,27 +12,25 @@ export async function ShopInfo({
   shop,
 }: {
   locale: string;
-  shop: PublicShop;
+  shop: Shop;
 }) {
   const t = await getTranslations({ locale, namespace: "Shop" });
   const days = await getTranslations({ locale, namespace: "Days" });
-  const directions =
-    shop.lat !== null && shop.lng !== null
-      ? (shop.maps_url ?? mapsLink(shop.lat, shop.lng, shop.google_place_id))
-      : shop.maps_url;
+  const at = shop.location;
+  const directions = at
+    ? (shop.mapsUrl ?? mapsLink(at.lat, at.lng, shop.googlePlaceId))
+    : shop.mapsUrl;
   return (
     <div className="space-y-4">
-      {shop.lat !== null && shop.lng !== null && (
+      {at && (
         <MapView
-          pins={[
-            { id: shop.id, lat: shop.lat, lng: shop.lng, label: shop.name },
-          ]}
+          pins={[{ id: shop.id, lat: at.lat, lng: at.lng, label: shop.name }]}
           className="h-64"
         />
       )}
       <ul className="space-y-1 text-sm">
-        {shop.nearest_station && (
-          <li>{t("station", { station: shop.nearest_station })}</li>
+        {shop.nearestStation && (
+          <li>{t("station", { station: shop.nearestStation })}</li>
         )}
         {directions && (
           <li>
@@ -71,7 +69,7 @@ export async function PlatformReviews({
   reviews,
 }: {
   locale: string;
-  reviews: { rating: number; text: string | null; created_at: string }[];
+  reviews: Review[];
 }) {
   const t = await getTranslations({ locale, namespace: "Shop" });
   if (reviews.length === 0)

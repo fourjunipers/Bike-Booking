@@ -1,5 +1,5 @@
 import { isCustomerLocale } from "@/i18n/config";
-import { createPublicClient } from "@/lib/supabase/public";
+import { getShopById } from "@/lib/data";
 
 /**
  * Google rating and reviews for a live shop that linked its Google Business
@@ -31,17 +31,13 @@ export async function GET(
   if (!/^[0-9a-f-]{36}$/i.test(shopId))
     return new Response(null, { status: 404 });
 
-  const { data: shop } = await createPublicClient()
-    .from("shops")
-    .select("google_place_id")
-    .eq("id", shopId)
-    .maybeSingle();
-  if (!shop?.google_place_id) return new Response(null, { status: 404 });
+  const shop = await getShopById(shopId);
+  if (!shop?.googlePlaceId) return new Response(null, { status: 404 });
 
   const lang = new URL(request.url).searchParams.get("lang");
   const languageCode = isCustomerLocale(lang) ? lang : "en";
   const res = await fetch(
-    `https://places.googleapis.com/v1/places/${encodeURIComponent(shop.google_place_id)}?languageCode=${languageCode}`,
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(shop.googlePlaceId)}?languageCode=${languageCode}`,
     {
       headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": FIELDS },
       cache: "no-store",

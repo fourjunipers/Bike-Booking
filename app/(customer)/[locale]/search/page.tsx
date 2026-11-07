@@ -14,7 +14,8 @@ import {
   type CustomerLocale,
 } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
-import { getStations, searchOffers } from "@/lib/public-data";
+import { listStations } from "@/lib/data";
+import { runSearch } from "@/lib/marketplace-search";
 import { groupOffers, sortCards } from "@/lib/search";
 import {
   BIKE_TYPES,
@@ -68,24 +69,23 @@ async function Results({
 }) {
   const t = await getTranslations({ locale, namespace: "Search" });
   const p = parseSearchParams(await searchParams);
-  const [rows, stations] = await Promise.all([searchOffers(p), getStations()]);
-  const cards = sortCards(groupOffers(rows), p.sort);
+  const [offers, stations] = await Promise.all([runSearch(p), listStations()]);
+  const cards = sortCards(groupOffers(offers), p.sort);
   const near = p.lat !== undefined && !p.anyDistance;
   const base = localePath(locale, "/search");
 
   const pins = [
     ...new Map(
-      rows
-        .filter((r) => r.shop_lat !== null && r.shop_lng !== null)
-        .map((r) => [
-          r.shop_id,
-          {
-            id: r.shop_id,
-            lat: r.shop_lat!,
-            lng: r.shop_lng!,
-            label: r.shop_name,
-          },
-        ]),
+      offers.flatMap((o) =>
+        o.shop.location
+          ? [
+              [
+                o.shop.id,
+                { id: o.shop.id, ...o.shop.location, label: o.shop.name },
+              ] as const,
+            ]
+          : [],
+      ),
     ).values(),
   ];
 

@@ -11,18 +11,18 @@ import {
   type CustomerLocale,
 } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
-import { PHOTO_BUCKETS, photoUrl, SHOP_PLACEHOLDER } from "@/lib/photos";
-import { getShop, getShopReviews, searchOffers } from "@/lib/public-data";
+import { getShopBySlug, listShopReviews } from "@/lib/data";
+import { runSearch } from "@/lib/marketplace-search";
+import { SHOP_PLACEHOLDER } from "@/lib/photos";
 import { groupOffers, sortCards } from "@/lib/search";
 import { parseSearchParams, searchQuery } from "@/lib/search-params";
-import { supabaseUrl } from "@/lib/supabase/env";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/shops/[slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
   if (!isCustomerLocale(locale)) return {};
-  const shop = await getShop(slug);
+  const shop = await getShopBySlug(slug);
   if (!shop) return {};
   const t = await getTranslations({ locale, namespace: "Shop" });
   return {
@@ -62,13 +62,13 @@ async function ShopView({
   slug: string;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const shop = await getShop(slug);
+  const shop = await getShopBySlug(slug);
   if (!shop) notFound();
   const t = await getTranslations({ locale, namespace: "Shop" });
   const p = parseSearchParams(await searchParams);
   const [rows, reviews] = await Promise.all([
-    searchOffers(p, { shopId: shop.id }),
-    getShopReviews(shop.id),
+    runSearch(p, { shopId: shop.id }),
+    listShopReviews(shop.id),
   ]);
   const cards = sortCards(groupOffers(rows), "price");
   const query = searchQuery(p);
@@ -77,9 +77,9 @@ async function ShopView({
     <div className="space-y-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold">{shop.name}</h1>
-        {shop.nearest_station && (
+        {shop.nearestStation && (
           <p className="text-muted-foreground">
-            {t("station", { station: shop.nearest_station })}
+            {t("station", { station: shop.nearestStation })}
           </p>
         )}
       </header>
@@ -88,27 +88,21 @@ async function ShopView({
         className="flex snap-x gap-3 overflow-x-auto pb-2"
         aria-label={t("photos")}
       >
-        {(shop.photos.length > 0 ? shop.photos : [null]).map((photo, i) => (
-          <li
-            key={photo ?? "placeholder"}
-            className="w-4/5 shrink-0 snap-start sm:w-96"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- Storage URL, already resized */}
-            <img
-              src={photoUrl(
-                supabaseUrl(),
-                PHOTO_BUCKETS.shop,
-                photo,
-                SHOP_PLACEHOLDER,
-              )}
-              alt={t("photoN", { shop: shop.name, n: i + 1 })}
-              width={1600}
-              height={1200}
-              loading={i === 0 ? "eager" : "lazy"}
-              className="aspect-4/3 w-full rounded-xl border bg-muted object-cover"
-            />
-          </li>
-        ))}
+        {(shop.photoUrls.length > 0 ? shop.photoUrls : [SHOP_PLACEHOLDER]).map(
+          (photo, i) => (
+            <li key={photo} className="w-4/5 shrink-0 snap-start sm:w-96">
+              {/* eslint-disable-next-line @next/next/no-img-element -- already-sized image from the data adapter */}
+              <img
+                src={photo}
+                alt={t("photoN", { shop: shop.name, n: i + 1 })}
+                width={1600}
+                height={1200}
+                loading={i === 0 ? "eager" : "lazy"}
+                className="aspect-4/3 w-full rounded-xl border bg-muted object-cover"
+              />
+            </li>
+          ),
+        )}
       </ul>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -140,7 +134,7 @@ async function ShopView({
           <section className="space-y-3 rounded-xl border bg-card p-4 shadow-sm md:p-6">
             <h2 className="text-xl font-semibold">{t("reviews")}</h2>
             <PlatformReviews locale={locale} reviews={reviews} />
-            {shop.google_place_id && (
+            {shop.googlePlaceId && (
               <GoogleReviews shopId={shop.id} locale={locale} />
             )}
           </section>

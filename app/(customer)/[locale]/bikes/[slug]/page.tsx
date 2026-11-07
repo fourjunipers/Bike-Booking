@@ -12,18 +12,17 @@ import {
   type CustomerLocale,
 } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
-import { PHOTO_BUCKETS, photoUrl } from "@/lib/photos";
-import { getCatalogEntry, getListing, searchOffers } from "@/lib/public-data";
+import { getCatalogModel, getListing } from "@/lib/data";
+import { runSearch } from "@/lib/marketplace-search";
 import { sortOffers } from "@/lib/search";
 import { parseSearchParams, searchQuery } from "@/lib/search-params";
-import { supabaseUrl } from "@/lib/supabase/env";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/bikes/[slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
   if (!isCustomerLocale(locale)) return {};
-  const entry = await getCatalogEntry(slug);
+  const entry = await getCatalogModel(slug);
   if (!entry) return {};
   const t = await getTranslations({ locale, namespace: "Bike" });
   const name = modelName(entry);
@@ -63,17 +62,17 @@ async function Model({
   slug: string;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const entry = await getCatalogEntry(slug);
+  const entry = await getCatalogModel(slug);
   if (!entry) notFound();
   const t = await getTranslations({ locale, namespace: "Bike" });
   const tb = await getTranslations({ locale, namespace: "Bikes" });
   const p = parseSearchParams(await searchParams);
   const offers = sortOffers(
-    await searchOffers(p, { catalogId: entry.id }),
+    await runSearch(p, { catalogId: entry.id }),
     p.sort,
   );
   const listings = await Promise.all(
-    offers.map((o) => getListing(o.shop_id, entry.id)),
+    offers.map((o) => getListing(o.shop.id, entry.id)),
   );
   const query = searchQuery(p);
   const dated = Boolean((p.from && p.to) || p.now);
@@ -83,15 +82,15 @@ async function Model({
     [t("type"), tb(`type.${entry.type}`)],
     [t("transmission"), tb(`transmission.${entry.transmission}`)],
     entry.abs !== null && [t("abs"), entry.abs ? t("yes") : t("no")],
-    entry.underseat_storage !== null && [
+    entry.underseatStorage !== null && [
       t("storage"),
-      entry.underseat_storage ? t("yes") : t("no"),
+      entry.underseatStorage ? t("yes") : t("no"),
     ],
-    entry.usb_charger !== null && [
+    entry.usbCharger !== null && [
       t("usb"),
-      entry.usb_charger ? t("yes") : t("no"),
+      entry.usbCharger ? t("yes") : t("no"),
     ],
-    entry.key_type && [t("key"), t(`keyType.${entry.key_type}`)],
+    entry.keyType && [t("key"), t(`keyType.${entry.keyType}`)],
   ].filter(Boolean) as [string, string][];
 
   return (
@@ -104,13 +103,9 @@ async function Model({
       </Link>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- Storage URL, already resized */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- already-sized image from the data adapter */}
         <img
-          src={photoUrl(
-            supabaseUrl(),
-            PHOTO_BUCKETS.catalog,
-            entry.stock_photo,
-          )}
+          src={entry.photoUrl}
           alt={modelName(entry)}
           width={1600}
           height={1200}
@@ -142,11 +137,11 @@ async function Model({
           <ul className="space-y-3">
             {offers.map((o) => (
               <OfferCard
-                key={o.bike_model_id}
+                key={o.listingId}
                 locale={locale}
                 offer={o}
                 dated={dated}
-                href={`${localePath(locale, `/bikes/${entry.slug}/${o.shop_slug}`)}${query}`}
+                href={`${localePath(locale, `/bikes/${entry.slug}/${o.shop.slug}`)}${query}`}
               />
             ))}
           </ul>
@@ -159,14 +154,11 @@ async function Model({
 
       {offers.length > 0 && (
         <MapView
-          pins={offers
-            .filter((o) => o.shop_lat !== null && o.shop_lng !== null)
-            .map((o) => ({
-              id: o.shop_id,
-              lat: o.shop_lat!,
-              lng: o.shop_lng!,
-              label: o.shop_name,
-            }))}
+          pins={offers.flatMap((o) =>
+            o.shop.location
+              ? [{ id: o.shop.id, ...o.shop.location, label: o.shop.name }]
+              : [],
+          )}
           center={
             p.lat !== undefined && p.lng !== undefined
               ? { lat: p.lat, lng: p.lng }
@@ -186,10 +178,10 @@ async function Model({
               if (!listing?.inclusions) return null;
               return (
                 <article
-                  key={o.bike_model_id}
+                  key={o.listingId}
                   className="space-y-3 rounded-xl border bg-card p-4 shadow-sm"
                 >
-                  <h3 className="text-lg font-semibold">{o.shop_name}</h3>
+                  <h3 className="text-lg font-semibold">{o.shop.name}</h3>
                   <InclusionsList
                     locale={locale}
                     inc={listing.inclusions}

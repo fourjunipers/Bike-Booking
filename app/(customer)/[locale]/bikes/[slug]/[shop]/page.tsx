@@ -14,17 +14,15 @@ import {
 } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
 import { formatBaht } from "@/lib/money";
-import { PHOTO_BUCKETS, photoUrl } from "@/lib/photos";
-import { priceForDays } from "@/lib/pricing";
 import {
-  getCatalogEntry,
+  getCatalogModel,
   getListing,
-  getShop,
-  getShopReviews,
-  searchOffers,
-} from "@/lib/public-data";
+  getShopBySlug,
+  listShopReviews,
+} from "@/lib/data";
+import { runSearch } from "@/lib/marketplace-search";
+import { priceForDays } from "@/lib/pricing";
 import { parseSearchParams, searchQuery } from "@/lib/search-params";
-import { supabaseUrl } from "@/lib/supabase/env";
 
 export async function generateMetadata({
   params,
@@ -32,8 +30,8 @@ export async function generateMetadata({
   const { locale, slug, shop: shopSlug } = await params;
   if (!isCustomerLocale(locale)) return {};
   const [entry, shop] = await Promise.all([
-    getCatalogEntry(slug),
-    getShop(shopSlug),
+    getCatalogModel(slug),
+    getShopBySlug(shopSlug),
   ]);
   if (!entry || !shop) return {};
   const t = await getTranslations({ locale, namespace: "Bike" });
@@ -84,20 +82,20 @@ async function Listing({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [entry, shop] = await Promise.all([
-    getCatalogEntry(slug),
-    getShop(shopSlug),
+    getCatalogModel(slug),
+    getShopBySlug(shopSlug),
   ]);
   if (!entry || !shop) notFound();
   const listing = await getListing(shop.id, entry.id);
-  if (!listing || listing.prices.length < 30) notFound();
+  if (!listing || listing.dayPrices.length < 30) notFound();
   const t = await getTranslations({ locale, namespace: "Bike" });
   const ts = await getTranslations({ locale, namespace: "Search" });
   const p = parseSearchParams(await searchParams);
-  const [offer] = await searchOffers(p, {
+  const [offer] = await runSearch(p, {
     catalogId: entry.id,
     shopId: shop.id,
   });
-  const reviews = await getShopReviews(shop.id);
+  const reviews = await listShopReviews(shop.id);
   const name = modelName(entry);
   const dated = Boolean((p.from && p.to) || p.now);
 
@@ -119,10 +117,10 @@ async function Listing({
           >
             {shop.name}
           </Link>
-          {shop.nearest_station && (
+          {shop.nearestStation && (
             <span className="text-muted-foreground">
               {" "}
-              · {ts("nearStation", { station: shop.nearest_station })}
+              · {ts("nearStation", { station: shop.nearestStation })}
             </span>
           )}
         </p>
@@ -130,11 +128,11 @@ async function Listing({
 
       <section aria-label={t("photos")}>
         <ul className="flex snap-x gap-3 overflow-x-auto pb-2">
-          {listing.photos.map((photo, i) => (
+          {listing.photoUrls.map((photo, i) => (
             <li key={photo} className="w-4/5 shrink-0 snap-start sm:w-96">
-              {/* eslint-disable-next-line @next/next/no-img-element -- Storage URL, already resized */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- already-sized image from the data adapter */}
               <img
-                src={photoUrl(supabaseUrl(), PHOTO_BUCKETS.model, photo)}
+                src={photo}
                 alt={t("photoN", { name, n: i + 1 })}
                 width={1600}
                 height={1200}
@@ -166,12 +164,12 @@ async function Listing({
                     <p className="flex flex-wrap justify-between gap-2 font-medium">
                       <span>{e.name}</span>
                       <span>
-                        {e.price_kind === "rental"
+                        {e.price.kind === "rental"
                           ? t("perRental", {
-                              price: formatBaht(e.price_rental!),
+                              price: formatBaht(e.price.amount),
                             })
                           : t("perDayExtra", {
-                              price: formatBaht(e.price_1d!),
+                              price: formatBaht(e.price.perDay),
                             })}
                       </span>
                     </p>
@@ -197,7 +195,7 @@ async function Listing({
           <section className="space-y-3 rounded-xl border bg-card p-4 shadow-sm md:p-6">
             <h2 className="text-xl font-semibold">{t("reviews")}</h2>
             <PlatformReviews locale={locale} reviews={reviews} />
-            {shop.google_place_id && (
+            {shop.googlePlaceId && (
               <GoogleReviews shopId={shop.id} locale={locale} />
             )}
           </section>
@@ -208,9 +206,7 @@ async function Listing({
             {offer ? (
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-1.5">
-                  {offer.ready_today && (
-                    <Badge tone="now">{ts("readyNow")}</Badge>
-                  )}
+                  {offer.readyNow && <Badge tone="now">{ts("readyNow")}</Badge>}
                   {offer.mode === "instant" && (
                     <Badge tone="instant">{ts("instant")}</Badge>
                   )}
@@ -224,11 +220,11 @@ async function Listing({
                 <p className="text-sm text-muted-foreground">
                   {dated
                     ? ts("forDays", { n: offer.days })
-                    : ts("perDayShort", { amount: formatBaht(offer.per_day) })}
+                    : ts("perDayShort", { amount: formatBaht(offer.perDay) })}
                 </p>
-                {offer.mode === "now" && offer.walkin_max_days !== null && (
+                {offer.mode === "now" && offer.walkinMaxDays !== null && (
                   <p className="text-sm font-medium text-amber-800">
-                    {ts("upToDays", { n: offer.walkin_max_days })}
+                    {ts("upToDays", { n: offer.walkinMaxDays })}
                   </p>
                 )}
               </div>
@@ -263,15 +259,15 @@ async function Listing({
                     <td className="py-1.5 text-right font-medium">
                       {formatBaht(
                         priceForDays(
-                          listing.prices,
+                          listing.dayPrices,
                           d,
-                          listing.priceAfter30 ?? undefined,
+                          listing.pricePerDayAfter30 ?? undefined,
                         ),
                       )}
                     </td>
                   </tr>
                 ))}
-                {listing.priceAfter30 !== null && (
+                {listing.pricePerDayAfter30 !== null && (
                   <tr>
                     <th
                       scope="row"
@@ -281,7 +277,7 @@ async function Listing({
                     </th>
                     <td className="py-1.5 text-right font-medium">
                       {ts("perDayShort", {
-                        amount: formatBaht(listing.priceAfter30),
+                        amount: formatBaht(listing.pricePerDayAfter30),
                       })}
                     </td>
                   </tr>

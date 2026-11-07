@@ -5,9 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { SearchForm } from "@/components/customer/search-form";
 import { isCustomerLocale, localePath } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
-import { getFeaturedShops, getStations } from "@/lib/public-data";
-import { PHOTO_BUCKETS, SHOP_PLACEHOLDER, thumbUrl } from "@/lib/photos";
-import { supabaseUrl } from "@/lib/supabase/env";
+import { listFeaturedShops, listStations } from "@/lib/data";
 import { stationOptions } from "./station-options";
 
 export async function generateMetadata({
@@ -32,8 +30,8 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const t = await getTranslations({ locale, namespace: "Customer" });
   const ts = await getTranslations({ locale, namespace: "Search" });
   const [stations, featured] = await Promise.all([
-    getStations(),
-    getFeaturedShops(),
+    listStations(),
+    listFeaturedShops(),
   ]);
 
   return (
@@ -63,14 +61,9 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
                   href={localePath(locale, `/shops/${shop.slug}`)}
                   className="block focus-visible:outline-2"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail, already resized */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- already-sized image from the data adapter */}
                   <img
-                    src={thumbUrl(
-                      supabaseUrl(),
-                      PHOTO_BUCKETS.shop,
-                      shop.photos[0],
-                      SHOP_PLACEHOLDER,
-                    )}
+                    src={shop.thumbUrl}
                     alt=""
                     width={480}
                     height={360}
@@ -79,9 +72,9 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
                   />
                   <div className="space-y-1 p-4">
                     <h3 className="text-lg font-semibold">{shop.name}</h3>
-                    {shop.nearest_station && (
+                    {shop.nearestStation && (
                       <p className="text-sm text-muted-foreground">
-                        {ts("nearStation", { station: shop.nearest_station })}
+                        {ts("nearStation", { station: shop.nearestStation })}
                       </p>
                     )}
                   </div>

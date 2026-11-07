@@ -1,5 +1,5 @@
 import type { StationOption } from "@/components/customer/search-form";
-import type { Station } from "@/lib/public-data";
+import type { Station } from "@/lib/data";
 
 const LINE_LABELS: Record<string, string> = {
   BTS_SUKHUMVIT: "BTS",
@@ -22,7 +22,7 @@ export function stationOptions(
   return stations
     .map((s) => {
       const lines = [...new Set(s.lines.map((l) => LINE_LABELS[l] ?? l))];
-      const name = locale === "th" && s.name_th ? s.name_th : s.name_en;
+      const name = locale === "th" && s.nameTh ? s.nameTh : s.nameEn;
       return {
         id: s.id,
         name: `${name} (${lines.join(", ")})`,

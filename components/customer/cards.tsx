@@ -2,9 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { yearRange } from "@/lib/catalog";
 import { formatBaht } from "@/lib/money";
-import { PHOTO_BUCKETS, photoUrl, thumbUrl } from "@/lib/photos";
-import type { ModelCard, OfferRow } from "@/lib/search";
-import { supabaseUrl } from "@/lib/supabase/env";
+import type { ModelCard, RankedOffer } from "@/lib/search";
 
 /** A small coloured label: Instant, Request, Ready now, Featured. */
 export function Badge({
@@ -29,18 +27,14 @@ export function Badge({
   );
 }
 
+/** "Honda PCX 160 2026". */
 export function modelName(m: {
   make: string;
   model: string;
-  year_from?: number | null;
-  year_to?: number | null;
-  yearFrom?: number | null;
-  yearTo?: number | null;
+  yearFrom: number | null;
+  yearTo: number | null;
 }) {
-  const years = yearRange(
-    m.year_from ?? m.yearFrom ?? null,
-    m.year_to ?? m.yearTo ?? null,
-  );
+  const years = yearRange(m.yearFrom, m.yearTo);
   return `${m.make} ${m.model}${years ? ` ${years}` : ""}`;
 }
 
@@ -58,16 +52,15 @@ export async function ModelCardView({
 }) {
   const t = await getTranslations({ locale, namespace: "Search" });
   const tb = await getTranslations({ locale, namespace: "Bikes" });
-  const img = thumbUrl(supabaseUrl(), PHOTO_BUCKETS.catalog, card.stockPhoto);
   return (
     <li className="overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md">
       <Link
         href={href}
         className="flex h-full flex-col focus-visible:outline-2"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail, already resized */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- already-sized image from the data adapter */}
         <img
-          src={img}
+          src={card.thumbUrl}
           alt=""
           width={480}
           height={360}
@@ -119,21 +112,20 @@ export async function OfferCard({
   dated,
 }: {
   locale: string;
-  offer: OfferRow;
+  offer: RankedOffer;
   href: string;
   dated: boolean;
 }) {
   const t = await getTranslations({ locale, namespace: "Search" });
-  const img = thumbUrl(supabaseUrl(), PHOTO_BUCKETS.model, offer.photo);
   return (
     <li className="rounded-xl border bg-card shadow-sm">
       <Link
         href={href}
         className="grid gap-4 p-4 focus-visible:outline-2 sm:grid-cols-[8rem_1fr_auto] sm:items-center"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail, already resized */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- already-sized image from the data adapter */}
         <img
-          src={img}
+          src={offer.thumbUrl}
           alt=""
           width={480}
           height={360}
@@ -145,7 +137,7 @@ export async function OfferCard({
             {offer.boost === "featured" && (
               <Badge tone="featured">{t("featured")}</Badge>
             )}
-            {offer.ready_today && <Badge tone="now">{t("readyNow")}</Badge>}
+            {offer.readyNow && <Badge tone="now">{t("readyNow")}</Badge>}
             {offer.mode === "instant" && (
               <Badge tone="instant">{t("instant")}</Badge>
             )}
@@ -153,27 +145,26 @@ export async function OfferCard({
               <Badge tone="request">{t("request")}</Badge>
             )}
           </div>
-          <h3 className="text-lg font-semibold">{offer.shop_name}</h3>
+          <h3 className="text-lg font-semibold">{offer.shop.name}</h3>
           <p className="text-sm text-muted-foreground">
             {[
-              offer.distance_km !== null &&
-                t("km", { km: offer.distance_km.toFixed(1) }),
+              offer.distanceKm !== null &&
+                t("km", { km: offer.distanceKm.toFixed(1) }),
               offer.deposit !== null
                 ? t("deposit", { amount: formatBaht(offer.deposit) })
                 : t("noDeposit"),
-              offer.review_count >= 3 &&
-                offer.rating !== null &&
+              offer.rating !== null &&
                 t("rating", {
-                  rating: Number(offer.rating).toFixed(1),
-                  n: offer.review_count,
+                  rating: offer.rating.toFixed(1),
+                  n: offer.reviewCount,
                 }),
             ]
               .filter(Boolean)
               .join(" · ")}
           </p>
-          {offer.mode === "now" && offer.walkin_max_days !== null && (
+          {offer.mode === "now" && offer.walkinMaxDays !== null && (
             <p className="text-sm font-medium text-amber-800">
-              {t("upToDays", { n: offer.walkin_max_days })}
+              {t("upToDays", { n: offer.walkinMaxDays })}
             </p>
           )}
         </div>
@@ -184,14 +175,10 @@ export async function OfferCard({
           <p className="text-sm text-muted-foreground">
             {dated
               ? t("forDays", { n: offer.days })
-              : t("perDayShort", { amount: formatBaht(offer.per_day) })}
+              : t("perDayShort", { amount: formatBaht(offer.perDay) })}
           </p>
         </div>
       </Link>
     </li>
   );
-}
-
-export function photoSrc(bucket: keyof typeof PHOTO_BUCKETS, path: string) {
-  return photoUrl(supabaseUrl(), PHOTO_BUCKETS[bucket], path);
 }

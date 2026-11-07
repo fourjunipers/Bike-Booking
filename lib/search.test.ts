@@ -1,58 +1,127 @@
 import { describe, expect, it } from "vitest";
-import { groupOffers, sortCards, type OfferRow } from "./search";
+import type { Offer, ShopSignals } from "./data/types";
+import { DEFAULT_WEIGHTS } from "./ranking";
+import {
+  filterByRating,
+  groupOffers,
+  rankOffers,
+  sortCards,
+  type RankedOffer,
+} from "./search";
 
-const row = (over: Partial<OfferRow>): OfferRow => ({
-  bike_model_id: "m1",
-  shop_id: "s1",
-  shop_slug: "bsr",
-  shop_name: "BSR",
-  catalog_id: "c1",
-  catalog_slug: "honda-pcx-160",
-  make: "Honda",
-  model: "PCX 160",
-  year_from: 2026,
-  year_to: 2026,
-  cc: 160,
-  type: "city_scooter",
-  transmission: "automatic",
-  stock_photo: null,
-  photo: "x.webp",
-  boost: "normal",
-  shop_lat: 13.7,
-  shop_lng: 100.6,
-  distance_km: 2,
-  days: 7,
-  total: 2800,
-  per_day: 400,
-  deposit: 2000,
-  mode: "request",
-  free_units: 1,
-  ready_today: false,
-  ready_updated_at: null,
-  walkin_max_days: null,
+const offer = (
+  over: Partial<Offer> & {
+    modelId?: string;
+    modelName?: string;
+    shopId?: string;
+  } = {},
+): Offer => {
+  const {
+    modelId = "c1",
+    modelName = "PCX 160",
+    shopId = "s1",
+    ...rest
+  } = over;
+  return {
+    listingId: `${shopId}-${modelId}`,
+    shop: { id: shopId, slug: shopId, name: shopId, location: null },
+    model: {
+      id: modelId,
+      slug: `honda-${modelId}`,
+      make: "Honda",
+      model: modelName,
+      yearFrom: 2026,
+      yearTo: 2026,
+      cc: 160,
+      type: "city_scooter",
+      transmission: "automatic",
+      thumbUrl: "/x.svg",
+    },
+    thumbUrl: "/x.svg",
+    distanceKm: 2,
+    days: 7,
+    total: 2800,
+    perDay: 400,
+    deposit: 2000,
+    mode: "request",
+    freeUnits: 1,
+    readyNow: false,
+    readyUpdatedAt: null,
+    walkinMaxDays: null,
+    boost: "normal",
+    ...rest,
+  };
+};
+
+const ranked = (o: Offer, score = 0.4): RankedOffer => ({
+  ...o,
+  score,
   rating: null,
-  review_count: 0,
-  score: 0.4,
-  ...over,
+  reviewCount: 0,
+});
+
+describe("rankOffers", () => {
+  it("puts a boosted shop above an otherwise equal one", () => {
+    const [featured, normal] = rankOffers(
+      [
+        offer({ shopId: "a", boost: "featured" }),
+        offer({ shopId: "b", boost: "normal" }),
+      ],
+      [],
+      DEFAULT_WEIGHTS,
+    );
+    expect(featured.score).toBeGreaterThan(normal.score);
+  });
+
+  it("uses the shop's signals and counts ratings from 3 reviews", () => {
+    const signals: ShopSignals[] = [
+      {
+        shopId: "a",
+        rating: 4.8,
+        reviewCount: 2,
+        responseRate: null,
+        cancellationRate: null,
+      },
+      {
+        shopId: "b",
+        rating: 4.2,
+        reviewCount: 10,
+        responseRate: 1,
+        cancellationRate: 0,
+      },
+    ];
+    const [a, b] = rankOffers(
+      [offer({ shopId: "a" }), offer({ shopId: "b" })],
+      signals,
+      DEFAULT_WEIGHTS,
+    );
+    expect(a.rating).toBeNull();
+    expect(b.rating).toBe(4.2);
+    expect(b.score).toBeGreaterThan(a.score);
+  });
+
+  it("filters by rating only shops with enough reviews", () => {
+    const offers = [
+      { ...ranked(offer({ shopId: "a" })), rating: 4.5, reviewCount: 5 },
+      { ...ranked(offer({ shopId: "b" })), rating: null, reviewCount: 1 },
+    ];
+    expect(filterByRating(offers, 4).map((o) => o.shop.id)).toEqual(["a"]);
+    expect(filterByRating(offers, undefined)).toHaveLength(2);
+  });
 });
 
 describe("groupOffers", () => {
   it("makes one card per model with the lowest price and shop count", () => {
     const cards = groupOffers([
-      row({}),
-      row({
-        bike_model_id: "m2",
-        shop_id: "s2",
-        per_day: 350,
-        mode: "instant",
-        distance_km: 5,
-        score: 0.6,
-      }),
-      row({ catalog_id: "c2", catalog_slug: "honda-click", model: "Click" }),
+      ranked(offer({})),
+      ranked(
+        offer({ shopId: "s2", perDay: 350, mode: "instant", distanceKm: 5 }),
+        0.6,
+      ),
+      ranked(offer({ modelId: "c2", modelName: "Click" })),
     ]);
     expect(cards).toHaveLength(2);
-    const pcx = cards.find((c) => c.catalogId === "c1")!;
-    expect(pcx).toMatchObject({
+    expect(cards.find((c) => c.catalogId === "c1")).toMatchObject({
       fromPerDay: 350,
       shops: 2,
       instant: true,
@@ -65,30 +134,20 @@ describe("groupOffers", () => {
 
 describe("sortCards", () => {
   const cards = groupOffers([
-    row({
-      catalog_id: "a",
-      model: "A",
-      per_day: 500,
-      score: 0.3,
-      distance_km: 1,
-    }),
-    row({
-      catalog_id: "b",
-      model: "B",
-      per_day: 300,
-      score: 0.9,
-      distance_km: 9,
-    }),
+    ranked(
+      offer({ modelId: "a", modelName: "A", perDay: 500, distanceKm: 1 }),
+      0.3,
+    ),
+    ranked(
+      offer({ modelId: "b", modelName: "B", perDay: 300, distanceKm: 9 }),
+      0.9,
+    ),
   ]);
   it("sorts by ranking, price or distance", () => {
-    expect(sortCards(cards, "recommended").map((c) => c.model)).toEqual([
-      "B",
-      "A",
-    ]);
-    expect(sortCards(cards, "price").map((c) => c.model)).toEqual(["B", "A"]);
-    expect(sortCards(cards, "distance").map((c) => c.model)).toEqual([
-      "A",
-      "B",
-    ]);
+    const names = (sort: Parameters<typeof sortCards>[1]) =>
+      sortCards(cards, sort).map((c) => c.model);
+    expect(names("recommended")).toEqual(["B", "A"]);
+    expect(names("price")).toEqual(["B", "A"]);
+    expect(names("distance")).toEqual(["A", "B"]);
   });
 });

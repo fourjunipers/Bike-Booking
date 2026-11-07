@@ -1,59 +1,79 @@
 /**
- * Model-first search (SPEC "Customer screens"): search_offers() returns one
- * row per shop offer; customers see one card per catalog model with the
- * lowest "From ฿X/day" and how many shops offer it. Pure functions.
+ * Model-first search (SPEC "Customer screens"). The data adapter returns one
+ * offer per shop listing; the marketplace ranks them (ranking stays here, not
+ * on the platform), applies its own filters, and shows one card per catalog
+ * model with the lowest "From ฿X/day" and how many shops offer it.
+ * Pure functions.
  */
 
-import type { Database } from "./supabase/database.types";
+import type { Offer, RankingWeights, ShopSignals } from "./data/types";
+import { rankScore } from "./ranking";
 import type { Sort } from "./search-params";
 
-type GeneratedRow =
-  Database["public"]["Functions"]["search_offers"]["Returns"][number];
-
-/** A search_offers() row. Generated types can't tell which columns may be null. */
-export type OfferRow = Omit<
-  GeneratedRow,
-  | "year_from"
-  | "year_to"
-  | "stock_photo"
-  | "photo"
-  | "distance_km"
-  | "shop_lat"
-  | "shop_lng"
-  | "deposit"
-  | "mode"
-  | "free_units"
-  | "ready_updated_at"
-  | "walkin_max_days"
-  | "rating"
-> & {
-  year_from: number | null;
-  year_to: number | null;
-  stock_photo: string | null;
-  photo: string | null;
-  distance_km: number | null;
-  shop_lat: number | null;
-  shop_lng: number | null;
-  deposit: number | null;
-  /** "instant" | "request" for advance bookings, "now" for walk-ins. */
-  mode: "instant" | "request" | "now" | null;
-  free_units: number | null;
-  ready_updated_at: string | null;
-  walkin_max_days: number | null;
+export type RankedOffer = Offer & {
+  score: number;
+  /** Marketplace rating, counted only from 3 reviews. */
   rating: number | null;
+  reviewCount: number;
 };
 
-export type ModelCard = {
+/** Scores offers with the shops' signals, distance normalised over the set. */
+export function rankOffers(
+  offers: readonly Offer[],
+  signals: readonly ShopSignals[],
+  weights: RankingWeights,
+): RankedOffer[] {
+  const byShop = new Map(signals.map((s) => [s.shopId, s]));
+  const km = offers
+    .map((o) => o.distanceKm)
+    .filter((d): d is number => d !== null);
+  const nearest = km.length ? Math.min(...km) : null;
+  const furthest = km.length ? Math.max(...km) : null;
+  return offers.map((o) => {
+    const s = byShop.get(o.shop.id);
+    return {
+      ...o,
+      score: rankScore(
+        {
+          boost: o.boost,
+          rating: s?.rating ?? null,
+          reviewCount: s?.reviewCount ?? 0,
+          responseRate: s?.responseRate ?? null,
+          cancellationRate: s?.cancellationRate ?? null,
+          distanceKm: o.distanceKm,
+        },
+        nearest,
+        furthest,
+        weights,
+      ),
+      rating: s && s.reviewCount >= 3 ? s.rating : null,
+      reviewCount: s?.reviewCount ?? 0,
+    };
+  });
+}
+
+/** The rating filter: only shops with at least 3 reviews averaging minRating. */
+export function filterByRating(
+  offers: readonly RankedOffer[],
+  minRating: number | undefined,
+): RankedOffer[] {
+  if (minRating === undefined) return [...offers];
+  return offers.filter((o) => o.rating !== null && o.rating >= minRating);
+}
+
+export type ModelCard = Pick<
+  Offer["model"],
+  | "slug"
+  | "make"
+  | "model"
+  | "yearFrom"
+  | "yearTo"
+  | "cc"
+  | "type"
+  | "transmission"
+  | "thumbUrl"
+> & {
   catalogId: string;
-  slug: string;
-  make: string;
-  model: string;
-  yearFrom: number | null;
-  yearTo: number | null;
-  cc: number;
-  type: OfferRow["type"];
-  transmission: OfferRow["transmission"];
-  stockPhoto: string | null;
   /** Lowest price per day among the shops (for the chosen dates). */
   fromPerDay: number;
   shops: number;
@@ -68,49 +88,48 @@ export type ModelCard = {
   bestRating: number | null;
 };
 
-export function groupOffers(rows: readonly OfferRow[]): ModelCard[] {
+export function groupOffers(offers: readonly RankedOffer[]): ModelCard[] {
   const cards = new Map<string, ModelCard>();
-  for (const r of rows) {
-    const card = cards.get(r.catalog_id);
-    const rating = r.review_count >= 3 ? Number(r.rating) : null;
+  for (const o of offers) {
+    const card = cards.get(o.model.id);
     if (!card) {
-      cards.set(r.catalog_id, {
-        catalogId: r.catalog_id,
-        slug: r.catalog_slug,
-        make: r.make,
-        model: r.model,
-        yearFrom: r.year_from,
-        yearTo: r.year_to,
-        cc: r.cc,
-        type: r.type,
-        transmission: r.transmission,
-        stockPhoto: r.stock_photo,
-        fromPerDay: r.per_day,
+      cards.set(o.model.id, {
+        catalogId: o.model.id,
+        slug: o.model.slug,
+        make: o.model.make,
+        model: o.model.model,
+        yearFrom: o.model.yearFrom,
+        yearTo: o.model.yearTo,
+        cc: o.model.cc,
+        type: o.model.type,
+        transmission: o.model.transmission,
+        thumbUrl: o.model.thumbUrl,
+        fromPerDay: o.perDay,
         shops: 1,
-        instant: r.mode === "instant",
-        request: r.mode === "request",
-        readyNow: r.ready_today,
-        featured: r.boost === "featured",
-        score: r.score,
-        nearestKm: r.distance_km,
-        bestRating: rating,
+        instant: o.mode === "instant",
+        request: o.mode === "request",
+        readyNow: o.readyNow,
+        featured: o.boost === "featured",
+        score: o.score,
+        nearestKm: o.distanceKm,
+        bestRating: o.rating,
       });
       continue;
     }
-    card.fromPerDay = Math.min(card.fromPerDay, r.per_day);
+    card.fromPerDay = Math.min(card.fromPerDay, o.perDay);
     card.shops += 1;
-    card.instant ||= r.mode === "instant";
-    card.request ||= r.mode === "request";
-    card.readyNow ||= r.ready_today;
-    card.featured ||= r.boost === "featured";
-    card.score = Math.max(card.score, r.score);
-    if (r.distance_km !== null)
+    card.instant ||= o.mode === "instant";
+    card.request ||= o.mode === "request";
+    card.readyNow ||= o.readyNow;
+    card.featured ||= o.boost === "featured";
+    card.score = Math.max(card.score, o.score);
+    if (o.distanceKm !== null)
       card.nearestKm =
         card.nearestKm === null
-          ? r.distance_km
-          : Math.min(card.nearestKm, r.distance_km);
-    if (rating !== null)
-      card.bestRating = Math.max(card.bestRating ?? 0, rating);
+          ? o.distanceKm
+          : Math.min(card.nearestKm, o.distanceKm);
+    if (o.rating !== null)
+      card.bestRating = Math.max(card.bestRating ?? 0, o.rating);
   }
   return [...cards.values()];
 }
@@ -138,17 +157,20 @@ export function sortCards(cards: ModelCard[], sort: Sort): ModelCard[] {
 }
 
 /** One model's offers, best first (for the model page). */
-export function sortOffers(rows: readonly OfferRow[], sort: Sort): OfferRow[] {
-  const sorted = [...rows];
+export function sortOffers(
+  offers: readonly RankedOffer[],
+  sort: Sort,
+): RankedOffer[] {
+  const sorted = [...offers];
   const last = Number.POSITIVE_INFINITY;
   sorted.sort((a, b) => {
     switch (sort) {
       case "price":
         return a.total - b.total;
       case "distance":
-        return (a.distance_km ?? last) - (b.distance_km ?? last);
+        return (a.distanceKm ?? last) - (b.distanceKm ?? last);
       case "rating":
-        return Number(b.rating ?? 0) - Number(a.rating ?? 0);
+        return (b.rating ?? 0) - (a.rating ?? 0);
       default:
         return b.score - a.score;
     }
