@@ -29,6 +29,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
               </NavLink>
               <NavLink href="/admin/shops">Shops</NavLink>
               <NavLink href="/admin/catalog">Bike catalog</NavLink>
+              <NavLink href="/admin/stations">Stations</NavLink>
+              <NavLink href="/admin/ranking">Ranking</NavLink>
             </nav>
           </div>
         }

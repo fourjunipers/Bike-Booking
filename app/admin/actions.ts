@@ -240,3 +240,99 @@ async function removeFolder(
     .map((f) => `${folder}/${f.name}`);
   if (paths.length > 0) await db.storage.from(bucket).remove(paths);
 }
+
+const weight = (formData: FormData, key: string) => {
+  const n = Number(String(formData.get(key) ?? "").trim());
+  return Number.isFinite(n) && n >= 0 && n <= 10 ? n : null;
+};
+
+/** Ranking weights (SPEC "Admin screens and ranking"). */
+export async function saveRankingWeights(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const keys = [
+    "boost",
+    "rating",
+    "response",
+    "cancellation",
+    "distance",
+  ] as const;
+  const values = Object.fromEntries(keys.map((k) => [k, weight(formData, k)]));
+  const errors = Object.fromEntries(
+    keys.filter((k) => values[k] === null).map((k) => [k, "range"]),
+  );
+  if (Object.keys(errors).length > 0) return invalid(errors);
+  if (keys.every((k) => values[k] === 0)) return invalid({ boost: "range" });
+  const { error } = await createAdminClient()
+    .from("ranking_settings")
+    .update({
+      ...(values as Record<(typeof keys)[number], number>),
+      updated_at: now().toISOString(),
+    })
+    .eq("id", true);
+  if (error) return failed;
+  refresh();
+  return savedState;
+}
+
+const STATION_LINES = [
+  "BTS_SUKHUMVIT",
+  "BTS_SILOM",
+  "BTS_GOLD",
+  "MRT_BLUE",
+  "MRT_PURPLE",
+  "MRT_YELLOW",
+  "MRT_PINK",
+  "ARL",
+  "SRT_DARK_RED",
+  "SRT_LIGHT_RED",
+];
+
+/** Adds (stationId null) or edits a BTS/MRT station. */
+export async function saveStation(
+  stationId: string | null,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const nameEn = String(formData.get("name_en") ?? "").trim();
+  const nameTh = String(formData.get("name_th") ?? "").trim();
+  const lines = formData
+    .getAll("lines")
+    .map(String)
+    .filter((l) => STATION_LINES.includes(l));
+  const lat = Number(formData.get("lat"));
+  const lng = Number(formData.get("lng"));
+  const errors: Record<string, string> = {};
+  if (nameEn.length < 1 || nameEn.length > 80) errors.name_en = "required";
+  if (nameTh.length > 80) errors.name_th = "tooLong";
+  if (lines.length === 0) errors.lines = "required";
+  // Roughly Thailand, to catch swapped or mistyped coordinates.
+  if (!(lat > 5 && lat < 21)) errors.lat = "range";
+  if (!(lng > 97 && lng < 106)) errors.lng = "range";
+  if (Object.keys(errors).length > 0) return invalid(errors);
+  const row = {
+    name_en: nameEn,
+    name_th: nameTh || null,
+    lines,
+    location: `SRID=4326;POINT(${lng} ${lat})`,
+  };
+  const db = createAdminClient();
+  const { error } = stationId
+    ? await db.from("stations").update(row).eq("id", stationId)
+    : await db.from("stations").insert(row);
+  if (error) return failed;
+  refresh();
+  return savedState;
+}
+
+export async function setStationActive(formData: FormData) {
+  await requireAdmin();
+  await createAdminClient()
+    .from("stations")
+    .update({ active: formData.get("active") === "true" })
+    .eq("id", id(formData));
+  refresh();
+}

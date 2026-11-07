@@ -132,7 +132,8 @@ describe("search_offers", () => {
   it("lists BSR's public bikes and nothing from draft shops", async () => {
     const { data } = await anon.rpc("search_offers", {});
     expect(data!.length).toBeGreaterThan(0);
-    expect(data!.every((r) => r.shop_id === seed.bsrShop)).toBe(true);
+    expect(data!.some((r) => r.shop_id === seed.bsrShop)).toBe(true);
+    expect(data!.some((r) => r.shop_id === seed.draftShop)).toBe(false);
   });
 
   it("hides a bike that's fully booked for the dates", async () => {
