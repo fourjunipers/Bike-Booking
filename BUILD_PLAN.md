@@ -2,6 +2,8 @@
 
 Phased build plan for the motorbike rental marketplace. Product behaviour is defined in `SPEC.md`; standing rules are in `CLAUDE.md`. Build **one phase at a time**. Plan, get approval, build, test, then stop and summarise.
 
+> **Direction change (7 Nov 2026).** Bike-Booking is now the customer marketplace only. Shops, bikes, prices, availability, bookings and payments to shops live in the **Mango Works** platform; this app reaches them only through `lib/data/` (see `CLAUDE.md` and `docs/INTEGRATION.md`). Vendor-side work (Phase 2 screens, vendor parts of later phases) is stopped and hidden, not deleted. The booking phases (4, 5, 5b, 6) will be re-planned around `createBooking` and Mango Works events before they start; their text below is the original plan, kept for reference.
+
 ---
 
 ## How to use this file (for the owner)
@@ -91,6 +93,8 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 ---
 
 ## Phase 2: Vendor side and admin approval
+
+> Superseded (7 Nov 2026): built and merged, now hidden. Vendors manage shops in Mango Works.
 
 **Goal:** a vendor can create a shop, add their fleet from the bike catalog with prices, deposits, inclusions and extras, and submit it. Admin can approve it and maintains the catalog.
 
@@ -186,6 +190,8 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 
 ## Phase 4: Booking engine (no real payments yet)
 
+> To be re-planned: bookings are created on Mango Works through `createBooking` (`docs/INTEGRATION.md` §3.12); double-booking protection and status changes move there.
+
 **Goal:** the full booking lifecycle works end to end. Payments are simulated with a test "mark as paid" button that Phase 5 replaces.
 
 **Tasks**
@@ -261,6 +267,8 @@ Phased build plan for the motorbike rental marketplace. Product behaviour is def
 ---
 
 ## Phase 5: Payments (Stripe, test mode)
+
+> To be re-planned: the customer still pays only the 10% fee (min ฿50) online, 3 days before pickup, taken via Stripe Connect as an application fee on marketplace bookings; the rest is paid to the shop under its Mango Works settings.
 
 **Goal:** real fee collection with pay-later, PromptPay, failures, refunds and receipts.
 

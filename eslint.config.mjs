@@ -19,10 +19,7 @@ const eslintConfig = defineConfig([
       "lib/marketplace-search.ts",
     ],
     // Customer accounts and sign-in are the marketplace's own data.
-    ignores: [
-      "app/(customer)/*/account/**",
-      "app/(customer)/*/login/**",
-    ],
+    ignores: ["app/(customer)/*/account/**", "app/(customer)/*/login/**"],
     rules: {
       "no-restricted-imports": [
         "error",

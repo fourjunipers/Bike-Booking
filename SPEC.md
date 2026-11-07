@@ -2,6 +2,9 @@
 
 Oct 22, 2026 · Mark · Updated 3 Nov 2026 (owner decisions: per-model deposits, shop extras, date-window discounts, delivery minimum, no 6/12-month rates, bike catalog and model-first browsing, structured "What's included", referral program)
 
+
+> **Direction change (7 Nov 2026).** Bike-Booking is now the customer marketplace only. Shops, bikes, prices, availability, bookings and payments to shops live in the **Mango Works** platform; this app reaches them only through `lib/data/` (see `CLAUDE.md` and `docs/INTEGRATION.md`). Vendor-side work (Phase 2 screens, vendor parts of later phases) is stopped and hidden, not deleted. Sections about vendor screens describe what Mango Works now provides; the customer-facing behaviour here still applies to the marketplace.
+
 ## Overview
 
 A web-based marketplace where foreign customers find and book motorbikes from rental shops across Bangkok, then Thailand. Customers pay a 10% booking fee online (minimum ฿50) and pay the rest to the shop at pickup. The platform is branded separately from BSR; BSR Bike Shop is the first vendor.

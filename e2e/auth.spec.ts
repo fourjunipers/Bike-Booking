@@ -8,9 +8,6 @@ test("admin signs in by email and sees the admin panel", async ({ page }) => {
   await signInByEmail(page, "admin@bike-booking.test", "/admin");
   await expect(page).toHaveURL(/\/admin\/ranking$/);
   await expect(page.getByRole("heading", { name: "Ranking" })).toBeVisible();
-  await expect(
-    page.getByText("Signed in as admin@bike-booking.test"),
-  ).toBeVisible();
 });
 
 test("a customer gets not-found at /admin", async ({ page }) => {

@@ -6,7 +6,17 @@ Standing instructions for every session in this repo. Read this file, then `SPEC
 
 A web-based motorbike rental marketplace for Thailand (Bangkok first). Foreign customers search and book bikes from local rental shops. The platform collects only a booking fee (10% of the rental after promotions, minimum ฿50). The customer pays the rest to the shop at pickup. Vendor revenue never passes through the platform.
 
-Three roles: **customer**, **vendor** (shop owner + staff), **admin** (platform owner).
+Three roles: **customer**, **vendor** (shop owner + staff), **admin** (platform owner). Vendors work in Mango Works, not here (see below).
+
+## Architecture: a marketplace front end on Mango Works (decision 2026-11-07)
+
+Bike-Booking is the **customer-facing marketplace**. It does **not** own shop data and has **no vendor backend**. Shops, bike models, units, prices, availability, bookings and payments to shops live in **Mango Works**, a separate rental-management platform (its own repo). A booking made here becomes a Mango Works order with `channel = "marketplace"`.
+
+- **All shop data goes through `lib/data/`** (`import … from "@/lib/data"`). Pages, components and API routes never query a database client for shops, bikes, prices, availability or bookings; ESLint enforces this. `lib/data/current-db.ts` is a **temporary** implementation on this project's own database; it will be swapped for the Mango Works API without UI changes. `docs/INTEGRATION.md` lists every adapter function, the data it needs and the rules it must follow: keep it in step with `lib/data/types.ts`.
+- **Mango Works owns** pricing and availability rules: the day table, the price per day after 30 days, "every started 24 hours is a day", buffers, the Instant / Request / walk-ins-only split, minimum notice and days, opening hours and closures. The marketplace displays what the adapter returns and never recalculates them.
+- **The marketplace owns** customer accounts and login (LINE, Google, email), search and model-first browsing, shop ranking (boost levels and weights here; shop signals come from the adapter), the station list, the booking fee (10% of the rental after promotions, min ฿50, paid online 3 days before pickup, via Stripe Connect as an application fee on marketplace bookings only), request-to-book vs instant at checkout, the referral program, SEO and analytics. The customer pays the rest to the shop under the shop's own settings in Mango Works; `createBooking` already allows full online payment later.
+- **Customer details** sent with each booking: name, email, phone, nationality, LINE ID (Mango Works keeps a customer record per shop). The privacy notice (`/privacy`) says booking details are shared with the shop.
+- **Vendor screens are hidden, not deleted.** `/vendor`, admin approvals, shops and bike catalog, and shop staff invites redirect (`lib/hidden-areas.ts`). Don't build on them; their code and tables stay until Mango Works replaces them.
 
 `SPEC.md` is the source of truth for behaviour. If code and spec disagree, the spec wins. If the spec is unclear or seems wrong, stop and ask. Do not guess.
 
@@ -43,17 +53,18 @@ Before relying on any third-party API behaviour (Supabase Auth providers, Stripe
 
 - **Money:** store all amounts as **integers in the shop's currency** in the database (`int`). Every shop is Thai baht for now (`shops.currency` = THB; bookings copy it). Convert to satang (×100) only at the Stripe boundary, in one helper (`lib/money.ts`). Don't assume THB in new code where the currency is at hand: other countries may follow (see `docs/decisions.md`).
 - **Time:** store `timestamptz` in UTC. All business logic (shop hours, cut-offs, "today", the 3-days-before payment date) runs in **Asia/Bangkok**. Use one date helper module (`lib/time.ts`) and never call `new Date()` for business rules outside it.
-- **Pure logic in `lib/`, fully unit-tested:** pricing autofill (`lib/pricing.ts`), fee calculation (`lib/fees.ts`), availability rules (`lib/availability.ts`), cancellation rules (`lib/cancellation.ts`), booking state transitions (`lib/booking-state.ts`).
-- **Booking status changes only through `lib/booking-state.ts`.** It validates the transition and writes a `booking_events` row. Nothing else updates `bookings.status` directly.
+- **Pure logic in `lib/`, fully unit-tested:** fee calculation (`lib/fees.ts`), ranking (`lib/ranking.ts`, `lib/search.ts`), cancellation rules for the marketplace fee (`lib/cancellation.ts`). Pricing and availability (`lib/pricing.ts`, `lib/availability.ts`, `lib/rental-days.ts`) now belong to Mango Works: they remain only as the reference for `docs/INTEGRATION.md` and the temporary adapter.
+- **Booking status lives in Mango Works.** The marketplace reads it through `lib/data` (`getBooking`) and never writes booking rows directly.
 - **Security:** Row Level Security on every table. Customers see only their own bookings. Vendor staff see only their shop's data. Admin uses the service role on server routes only. Never expose the service role key to the client.
 - **Server-side checks:** prices, fees, availability and permissions are always recalculated on the server. Never trust amounts sent from the browser.
-- **Double-booking protection:** booking creation runs in a Postgres function (RPC) inside a transaction that locks the bike model row (`SELECT ... FOR UPDATE`) before checking availability.
+- **Double-booking protection** is Mango Works' job inside `createBooking`; the marketplace must handle "no longer available" answers gracefully.
 - **Idempotency:** Stripe calls use idempotency keys. Webhook handlers (Stripe, LINE) must be safe to receive the same event twice.
 - **Webhooks:** verify signatures (Stripe signing secret, LINE channel secret) before doing anything.
 - **Folder layout:**
   - `app/(customer)/...`: public site
-  - `app/vendor/...`: vendor dashboard
-  - `app/admin/...`: admin panel
+  - `app/vendor/...`: vendor dashboard (hidden; superseded by Mango Works)
+  - `app/admin/...`: admin panel (marketplace screens: ranking, stations)
+  - `lib/data/`: the data adapter, the only way to shop data
   - `app/api/...`: webhooks and cron routes
   - `lib/`: business logic
   - `components/`: shared UI
