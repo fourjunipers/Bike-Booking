@@ -168,7 +168,7 @@ Vendors enter up to five anchor totals per model; the system fills every day in 
 | 15–21 | 3,370, 3,540, 3,710, 3,890, 4,060, 4,230, 4,400 |
 | 22–30 | 4,520, 4,640, 4,770, 4,890, 5,010, 5,130, 5,260, 5,380, 5,500 |
 
-**Over 30 days:** every bike model has a required **price per day after 30 days**. Days 31 onwards cost that much each, and each further 30 days never costs more than the 30-day price. Example with ฿5,500 for 30 days and ฿150/day after: 45 days = ฿5,500 + 15 × ฿150 = ฿7,750. (Time-based extras keep the older rule: full months × the 30-day price plus the remaining days from the table, capped at the 30-day price.)
+**Over 30 days** (owner decision, 7 Nov 2026): there is no separate rate. Every day costs the 30-day price ÷ 30, so total = round(price(30) × days ÷ 30) to the nearest baht. Example with ฿5,500 for 30 days: 45 days = ฿8,250, 60 days = ฿11,000, 90 days = ฿16,500.
 
 **Validation:** the editor warns when a longer rental is cheaper than a shorter one, or when a day total is below the 1-day price.
 
@@ -365,7 +365,7 @@ Core tables in Supabase (Postgres); availability is computed from bookings, buff
 | shop_policies | shop_id, the structured "What's included", deposit and documents fields as shop defaults (incl. deposit_amount), notes |
 | bike_catalog | id, make, model, year_from, year_to, type, transmission, cc, abs, underseat_storage, usb_charger, key_type (keyless/keyed), description, stock_photo, status (requested/approved/rejected), requested_by_shop_id |
 | delivery_zones | shop_id, max_km, fee |
-| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), price_after_30, instant_qty, request_qty (rest = walk-ins only), buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h (null = shop default), ready_today_count, ready_today_on, ready_today_updated_at, visible, flagged_for_review; unique (shop_id, catalog_id) |
+| bike_models | id, shop_id, catalog_id, photos, qty, deposit_amount (null = shop default), instant_qty, request_qty (rest = walk-ins only), buffer_before_h, buffer_after_h, min_days_walkin, min_days_booking, notice_h (null = shop default), ready_today_count, ready_today_on, ready_today_updated_at, visible, flagged_for_review; unique (shop_id, catalog_id) |
 | bike_model_downtime | bike_model_id, units, back_on (null = not known), note |
 | bike_model_policies | bike_model_id, the same "What's included", deposit and documents fields as shop_policies, all nullable (null = shop default) |
 | price_days | bike_model_id, day (1–30), total, is_anchor, is_manual |
