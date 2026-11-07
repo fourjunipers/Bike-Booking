@@ -221,7 +221,7 @@ export function SearchForm({
           name="now"
           value="1"
           size="lg"
-          className="h-12 bg-emerald-600 px-6 text-base text-white hover:bg-emerald-700"
+          className="h-12 bg-emerald-700 px-6 text-base text-white hover:bg-emerald-800"
         >
           {t("getBikeNow")}
         </Button>
