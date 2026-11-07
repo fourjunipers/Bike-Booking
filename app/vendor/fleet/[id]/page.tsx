@@ -1,14 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import {
-  deleteModel,
-  saveModel,
-  saveModelInclusions,
-  savePrices,
-} from "@/app/vendor/actions/fleet";
-import { InclusionsForm } from "@/components/vendor/inclusions-form";
-import { PriceEditor } from "@/components/vendor/price-editor";
+import { deleteModel, saveModelPage } from "@/app/vendor/actions/fleet";
 import { requireVendorShop } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
 import {
@@ -113,42 +106,21 @@ export default async function ModelPage({
         </p>
       </header>
 
-      <section className="space-y-4 rounded-lg border p-4 md:p-6">
-        <h2 className="text-lg font-semibold">{t("details")}</h2>
-        <ModelForm
-          action={saveModel.bind(null, id)}
-          shopId={shop.id}
-          modelId={id}
-          model={model}
-          shopDeposit={shopDefaults.deposit_amount}
-          shopDefaults={shopRules}
-        />
-      </section>
+      <ModelForm
+        action={saveModelPage.bind(null, id)}
+        shopId={shop.id}
+        modelId={id}
+        model={model}
+        shopDeposit={shopDefaults.deposit_amount}
+        shopDefaults={shopRules}
+        anchors={anchors}
+        manual={manual}
+        dailyAfter30={model.price_after_30}
+        inclusions={shopDefaults}
+        overrides={overrides ?? null}
+      />
 
-      <section className="space-y-4 rounded-lg border p-4 md:p-6">
-        <h2 className="text-lg font-semibold">{t("prices")}</h2>
-        <PriceEditor
-          action={savePrices.bind(null, id)}
-          initialAnchors={anchors}
-          initialManual={manual}
-          initialDailyAfter30={model.price_after_30}
-        />
-      </section>
-
-      <section className="space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold">{t("included")}</h2>
-          <p className="text-sm text-muted-foreground">{t("includedHint")}</p>
-        </div>
-        <InclusionsForm
-          mode="model"
-          action={saveModelInclusions.bind(null, id)}
-          shop={shopDefaults}
-          overrides={overrides}
-        />
-      </section>
-
-      <section className="space-y-3 rounded-lg border p-4 md:p-6">
+      <section className="space-y-3 rounded-xl border bg-card p-4 shadow-sm md:p-6">
         <h2 className="text-lg font-semibold">{t("extras")}</h2>
         {appliesHere.length > 0 ? (
           <ul className="list-disc space-y-1 pl-5">
@@ -170,7 +142,7 @@ export default async function ModelPage({
         </Link>
       </section>
 
-      <section className="space-y-3 rounded-lg border border-destructive/40 p-4 md:p-6">
+      <section className="space-y-3 rounded-xl border border-destructive/40 bg-card p-4 shadow-sm md:p-6">
         <h2 className="text-lg font-semibold">{t("deleteTitle")}</h2>
         <p className="text-sm text-muted-foreground">{t("deleteHint")}</p>
         <DeleteModelForm action={deleteModel.bind(null, id)} />

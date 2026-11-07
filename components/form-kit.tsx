@@ -4,8 +4,11 @@ import {
   createContext,
   startTransition,
   useActionState,
+  useCallback,
   useContext,
+  useEffect,
   useId,
+  useState,
 } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -16,15 +19,28 @@ import type { ActionState } from "@/lib/forms";
  * prop so React doesn't reset the fields after a failed save; every field
  * reads its error from context and shows it translated, linked by
  * aria-describedby (CLAUDE.md accessibility rules).
+ *
+ * A settings page is one form with one Save button (owner request,
+ * 2026-11-06): `sticky` keeps the Save bar at the bottom of the screen and
+ * `warnUnsaved` asks before leaving with unsaved edits.
  */
 
-type FormContextValue = { errors: Partial<Record<string, string>> };
-const FormContext = createContext<FormContextValue>({ errors: {} });
+type FormContextValue = {
+  errors: Partial<Record<string, string>>;
+  /** For changes that aren't typing, e.g. a photo added or a −/+ tap. */
+  markDirty: () => void;
+};
+const FormContext = createContext<FormContextValue>({
+  errors: {},
+  markDirty: () => {},
+});
 
-export const inputClass =
-  "block h-11 w-full rounded-md border bg-background px-3 aria-invalid:border-destructive";
+/** Input look without a width, for inputs that set their own (e.g. w-16). */
+export const inputBase =
+  "block h-11 rounded-md border border-input bg-card px-3 aria-invalid:border-destructive";
+export const inputClass = `${inputBase} w-full`;
 export const textareaClass =
-  "block min-h-24 w-full rounded-md border bg-background px-3 py-2 aria-invalid:border-destructive";
+  "block min-h-24 w-full rounded-md border border-input bg-card px-3 py-2 aria-invalid:border-destructive";
 
 export function ActionForm({
   action,
@@ -33,6 +49,8 @@ export function ActionForm({
   className = "space-y-5",
   confirm,
   onSaved,
+  sticky = false,
+  warnUnsaved = false,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   children: React.ReactNode;
@@ -42,16 +60,33 @@ export function ActionForm({
   className?: string;
   /** Asks before submitting (e.g. deleting). */
   confirm?: string;
+  /** Keeps the Save bar stuck to the bottom of the screen. */
+  sticky?: boolean;
+  /** Asks before leaving the page with unsaved edits. */
+  warnUnsaved?: boolean;
 }) {
   const t = useTranslations("Common");
   const [state, dispatch, pending] = useActionState(action, { status: "idle" });
   const errors = state.status === "invalid" ? state.errors : {};
+  const [dirty, setDirty] = useState(false);
+  const markDirty = useCallback(() => setDirty(true), []);
+
+  // A successful save clears the unsaved flag.
+  const [seen, setSeen] = useState(state);
+  if (state !== seen) {
+    setSeen(state);
+    if (state.status === "saved") setDirty(false);
+  }
+
+  useUnsavedWarning(warnUnsaved && dirty, t("leaveConfirm"));
 
   return (
-    <FormContext.Provider value={{ errors }}>
+    <FormContext.Provider value={{ errors, markDirty }}>
       <form
         className={className}
         noValidate
+        onInput={markDirty}
+        onChange={markDirty}
         onSubmit={(event) => {
           event.preventDefault();
           if (confirm && !window.confirm(confirm)) return;
@@ -60,12 +95,26 @@ export function ActionForm({
         }}
       >
         {children}
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" size="lg" className="h-11" disabled={pending}>
+        <div
+          className={
+            sticky
+              ? "sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t bg-card/95 px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur md:mx-0 md:rounded-lg md:border"
+              : "flex flex-wrap items-center gap-3"
+          }
+        >
+          <Button
+            type="submit"
+            size="lg"
+            className="h-11 px-6"
+            disabled={pending}
+          >
             {pending ? t("saving") : (submitLabel ?? t("save"))}
           </Button>
           <p role="status" aria-live="polite" className="text-sm">
-            {state.status === "saved" && !state.notice && t("saved")}
+            {warnUnsaved && dirty && !pending && state.status !== "invalid" && (
+              <span className="font-medium text-amber-700">{t("unsaved")}</span>
+            )}
+            {state.status === "saved" && !state.notice && !dirty && t("saved")}
             {state.status === "invalid" && (
               <span className="text-destructive">
                 {errors.form ? (
@@ -94,6 +143,45 @@ export function ActionForm({
 
 export function useFieldError(name: string): string | undefined {
   return useContext(FormContext).errors[name];
+}
+
+/** Marks the surrounding form as changed (for edits that aren't typing). */
+export function useMarkDirty(): () => void {
+  return useContext(FormContext).markDirty;
+}
+
+/**
+ * While `active`, asks before the page is closed or reloaded, and before an
+ * in-app link is followed. (The browser's own Back button can't be stopped.)
+ */
+function useUnsavedWarning(active: boolean, message: string) {
+  useEffect(() => {
+    if (!active) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
+      const link = (event.target as Element | null)?.closest?.("a[href]");
+      if (!(link instanceof HTMLAnchorElement) || link.target === "_blank")
+        return;
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.hash) return;
+      if (!window.confirm(message)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [active, message]);
 }
 
 function ErrorText({ code }: { code: string }) {
@@ -327,23 +415,31 @@ export function CheckboxGroup({
 }
 
 export function FormSection({
+  id,
   title,
   description,
   children,
 }: {
+  /** Anchor for links from the setup checklist, e.g. "hours". */
+  id?: string;
   title: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-4 rounded-lg border p-4 md:p-6">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">{title}</h2>
+    <section
+      id={id}
+      className="overflow-hidden rounded-xl border bg-card shadow-sm"
+    >
+      <div className="space-y-1 border-b bg-section px-4 py-3 md:px-6">
+        <h2 className="text-lg font-semibold text-section-foreground">
+          {title}
+        </h2>
         {description && (
           <p className="text-sm text-muted-foreground">{description}</p>
         )}
       </div>
-      {children}
+      <div className="space-y-4 p-4 md:p-6">{children}</div>
     </section>
   );
 }

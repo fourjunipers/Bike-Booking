@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ActionForm, inputClass, useFieldError } from "@/components/form-kit";
+import { inputClass, useFieldError, useMarkDirty } from "@/components/form-kit";
 import { Button } from "@/components/ui/button";
-import type { ActionState } from "@/lib/forms";
 import { formatBaht } from "@/lib/money";
 import {
   ANCHOR_DAYS,
@@ -16,25 +15,23 @@ import {
   type ManualDays,
 } from "@/lib/pricing";
 
-type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;
-
 /**
  * SPEC "Pricing": anchors at the top, the 30-day table below filled live by
  * lib/pricing.ts (the server recalculates on save). Hand-edited days are
- * highlighted and can be reset to the autofill.
+ * highlighted and can be reset to the autofill. Fields only: the bike page
+ * has one form and one Save button.
  */
-export function PriceEditor({
-  action,
+export function PriceFields({
   initialAnchors,
   initialManual,
   initialDailyAfter30,
 }: {
-  action: Action;
   initialAnchors: Anchors;
   initialManual: ManualDays;
   initialDailyAfter30: number | null;
 }) {
   const t = useTranslations("Pricing");
+  const markDirty = useMarkDirty();
   const [anchors, setAnchors] = useState<Record<AnchorDay, string>>(
     () =>
       Object.fromEntries(
@@ -98,7 +95,7 @@ export function PriceEditor({
   const warnDays = new Set(warnings.map((w) => w.day));
 
   return (
-    <ActionForm action={action} submitLabel={t("save")}>
+    <div className="space-y-5">
       <fieldset className="space-y-2">
         <legend className="font-medium">{t("anchors")}</legend>
         <p className="text-sm text-muted-foreground">{t("anchorsHint")}</p>
@@ -174,13 +171,14 @@ export function PriceEditor({
                     variant="ghost"
                     size="sm"
                     className="h-8 px-1 text-xs"
-                    onClick={() =>
+                    onClick={() => {
+                      markDirty();
                       setManual((m) => {
                         const next = { ...m };
                         delete next[row.day];
                         return next;
-                      })
-                    }
+                      });
+                    }}
                   >
                     {t("reset")}
                   </Button>
@@ -211,7 +209,7 @@ export function PriceEditor({
       ) : (
         <p className="text-sm text-muted-foreground">{t("needAnchors")}</p>
       )}
-    </ActionForm>
+    </div>
   );
 }
 

@@ -22,6 +22,11 @@ export async function approveShop(formData: FormData) {
   await requireAdmin();
   const shopId = id(formData);
   const db = createAdminClient();
+  // Vendors may submit early (2026-11-06); only a complete shop goes live.
+  const { data: missing } = await db.rpc("shop_readiness", {
+    p_shop_id: shopId,
+  });
+  if (!missing || missing.length > 0) return;
   await db
     .from("shops")
     .update({
@@ -189,4 +194,49 @@ export async function reviewCatalogRequest(formData: FormData) {
     .eq("id", id(formData))
     .eq("status", "requested");
   refresh();
+}
+
+/**
+ * Deletes a shop that isn't live (e.g. one the admin won't approve), with its
+ * bikes, settings and photos. Live shops are suspended instead, so their
+ * bookings and history stay.
+ */
+export async function deleteShop(formData: FormData) {
+  await requireAdmin();
+  const shopId = id(formData);
+  const db = createAdminClient();
+  const { data: shop } = await db
+    .from("shops")
+    .select("status")
+    .eq("id", shopId)
+    .maybeSingle();
+  if (!shop || shop.status === "live") return;
+
+  // Photos live in folders named after the shop (and its models).
+  await removeFolder(db, PHOTO_BUCKETS.shop, shopId);
+  const { data: models } = await db
+    .from("bike_models")
+    .select("id")
+    .eq("shop_id", shopId);
+  for (const m of models ?? [])
+    await removeFolder(db, PHOTO_BUCKETS.model, `${shopId}/${m.id}`);
+
+  const { error } = await db.from("shops").delete().eq("id", shopId);
+  if (error) throw new Error(`Couldn't delete shop: ${error.message}`);
+  refresh();
+  redirect("/admin/shops");
+}
+
+async function removeFolder(
+  db: ReturnType<typeof createAdminClient>,
+  bucket: string,
+  folder: string,
+) {
+  const { data: files } = await db.storage
+    .from(bucket)
+    .list(folder, { limit: 1000 });
+  const paths = (files ?? [])
+    .filter((f) => f.id !== null)
+    .map((f) => `${folder}/${f.name}`);
+  if (paths.length > 0) await db.storage.from(bucket).remove(paths);
 }

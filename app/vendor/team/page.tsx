@@ -40,7 +40,7 @@ export default async function TeamPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t("members")}</h2>
-        <ul className="divide-y rounded-lg border">
+        <ul className="divide-y rounded-xl border bg-card shadow-sm">
           {(members ?? []).map((m) => (
             <li
               key={m.user_id}

@@ -14,8 +14,23 @@ export async function signInByEmail(page: Page, email: string, next: string) {
     await clearInbox(email);
     await page.goto(`/login?next=${encodeURIComponent(next)}`);
     await page.getByLabel("Email").fill(email);
-    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-    await expect(page.getByRole("status")).toContainText("Check your email");
+    // Supabase also limits how often one address can ask for a link. Many
+    // tests sign in as the same seeded owner, so wait and retry when refused.
+    const sent = page
+      .getByRole("status")
+      .filter({ hasText: "Check your email" });
+    const refused = page
+      .getByRole("alert")
+      .filter({ hasText: "Couldn't send" });
+    for (let attempt = 1; ; attempt++) {
+      await page
+        .getByRole("button", { name: "Email me a sign-in link" })
+        .click();
+      await expect(sent.or(refused)).toBeVisible({ timeout: 15_000 });
+      if (await sent.isVisible()) break;
+      if (attempt === 5) throw new Error(`Sign-in link refused for ${email}`);
+      await page.waitForTimeout(2_000);
+    }
 
     const link = await waitForSignInLink(email);
     await page.goto(link);

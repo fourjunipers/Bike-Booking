@@ -47,7 +47,10 @@ export default async function ExtrasPage() {
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
           {extras.map((e) => (
-            <li key={e.id} className="space-y-2 rounded-lg border p-4">
+            <li
+              key={e.id}
+              className="space-y-2 rounded-xl border bg-card p-4 shadow-sm"
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <h2 className="font-semibold">{e.name}</h2>
                 <span className="text-sm">

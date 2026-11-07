@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { setBoost, setShopSuspended } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
-import { inputClass } from "@/components/form-kit";
+import { inputBase } from "@/components/form-kit";
 import { requireAdmin } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatBangkok } from "@/lib/time";
@@ -25,7 +25,7 @@ export default async function AdminShopsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Shops</h1>
-      <ul className="divide-y rounded-lg border">
+      <ul className="divide-y rounded-xl border bg-card shadow-sm">
         {sorted.map((s) => (
           <li
             key={s.id}
@@ -54,7 +54,7 @@ export default async function AdminShopsPage() {
                 id={`boost-${s.id}`}
                 name="boost_level"
                 defaultValue={s.boost_level}
-                className={`${inputClass} w-36`}
+                className={`${inputBase} w-36`}
               >
                 <option value="featured">Featured</option>
                 <option value="preferred">Preferred</option>

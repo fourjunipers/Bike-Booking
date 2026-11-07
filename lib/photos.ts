@@ -66,3 +66,43 @@ export function fitWithin(
     height: Math.round(height * scale),
   };
 }
+
+/** Largest file a photo bucket accepts (storage migration), in bytes. */
+export const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Why a photo couldn't be added. Keys under "Photos.problem" in messages. */
+export type PhotoProblem =
+  "heic" | "notImage" | "unreadable" | "tooLarge" | "permission" | "failed";
+
+/**
+ * Problems we can tell from the file before trying. iPhone photos are often
+ * HEIC, which Chrome, Edge and Firefox can't open.
+ */
+export function photoFileProblem(file: {
+  name: string;
+  type: string;
+}): PhotoProblem | null {
+  const type = file.type.toLowerCase();
+  if (/\.(heic|heif)$/i.test(file.name) || /heic|heif/.test(type))
+    return "heic";
+  if (type !== "" && !type.startsWith("image/")) return "notImage";
+  return null;
+}
+
+/** Maps a Storage upload error to a problem the vendor can act on. */
+export function uploadErrorProblem(error: {
+  message?: string;
+  statusCode?: string | number;
+}): PhotoProblem {
+  const status = Number(error.statusCode);
+  const message = (error.message ?? "").toLowerCase();
+  if (status === 413 || /exceed|too large|payload/.test(message))
+    return "tooLarge";
+  if (
+    status === 403 ||
+    status === 401 ||
+    /row-level security|unauthori/.test(message)
+  )
+    return "permission";
+  return "failed";
+}

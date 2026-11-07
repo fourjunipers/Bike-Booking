@@ -18,39 +18,40 @@ test("a new vendor creates a shop and gets the setup checklist", async ({
     page.getByRole("heading", { name: "Get your shop ready" }),
   ).toBeVisible();
 
-  // Submitting early lists what's missing and keeps the shop a draft.
+  // The terms are the only thing needed to submit; the rest can come later.
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(
+    page.getByText("Tick the box to accept the vendor terms."),
+  ).toBeVisible();
   await page.getByLabel("I accept the vendor terms").check();
-  await page.getByRole("button", { name: "Submit for review" }).click();
-  await expect(
-    page.getByText("Some setup steps are still missing"),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Draft (not visible to customers)"),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(page.getByText("Waiting for approval")).toBeVisible();
 });
 
-test("the owner sees BSR's fleet and edits a quantity inline", async ({
+test("the owner sees BSR's fleet and takes a bike off the website", async ({
   page,
 }) => {
   await signInByEmail(page, "owner@bsr.test", "/vendor/fleet");
   await expect(page.getByRole("heading", { name: "Fleet" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Honda NX500/ })).toBeVisible();
 
-  const qty = page.getByLabel("Quantity of Honda PCX 160 2026");
-  // Change it from whatever it is, then wait for the restore to save so the
-  // next run starts from the same value.
-  const before = await qty.inputValue();
-  await qty.fill(before === "2" ? "3" : "2");
-  await qty.blur();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Saved" }).first(),
-  ).toBeVisible();
-  const restored = page.waitForResponse(
-    (r) => r.request().method() === "POST" && r.ok(),
-  );
-  await qty.fill(before);
-  await qty.blur();
-  await restored;
+  const row = page
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("link", { name: "Honda PCX 160 2026" }) });
+  const live = row.getByRole("switch", {
+    name: "Live on website: Honda PCX 160 2026",
+  });
+  await expect(live).toBeChecked();
+  await expect(row).toHaveAttribute("data-status", "listed");
+
+  await live.locator("..").click();
+  await expect(row).toHaveAttribute("data-status", "hidden");
+  await expect(row.getByRole("status")).toContainText("Saved");
+
+  // Back on, so the next run starts the same way.
+  await live.locator("..").click();
+  await expect(row).toHaveAttribute("data-status", "listed");
+  await expect(row.getByRole("status")).toContainText("Saved");
 });
 
 test("a touring model shows its own deposit and inclusion overrides", async ({
@@ -120,13 +121,42 @@ test("shop settings has Store information and Default settings tabs", async ({
   ).toHaveAttribute("aria-current", "page");
   await tabs.getByRole("link", { name: "Default settings" }).click();
   await expect(page).toHaveURL("/vendor/settings/defaults");
-  await expect(page.getByLabel("Minimum days, walk-ins")).toHaveValue("1");
+  await expect(page.getByLabel("Minimum rental period (walk-ins)")).toHaveValue(
+    "1",
+  );
   await expect(
     page.getByRole("heading", { name: "Riding usage restrictions" }),
   ).toBeVisible();
 
   await page.goto("/vendor/settings/included");
   await expect(page).toHaveURL("/vendor/settings/defaults");
+});
+
+test("store information saves with one button and warns about unsaved edits", async ({
+  page,
+}) => {
+  await signInByEmail(page, "owner@bsr.test", "/vendor/settings");
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
+    1,
+  );
+
+  const lineId = page.getByLabel("LINE ID");
+  const before = await lineId.inputValue();
+  await lineId.fill(`${before}x`);
+  await expect(page.getByText("Unsaved changes")).toBeVisible();
+
+  // Leaving asks first; dismissing keeps the edit on the page.
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("link", { name: "Fleet" }).click();
+  await expect(page).toHaveURL("/vendor/settings");
+  await expect(lineId).toHaveValue(`${before}x`);
+
+  // Restore and save, so the next run starts the same way.
+  await lineId.fill(before);
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Saved." }),
+  ).toBeVisible();
 });
 
 test("staff can't open the Team page", async ({ page }) => {

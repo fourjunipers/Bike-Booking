@@ -42,11 +42,11 @@ Every shop is hidden until admin approves it; after approval, major edits go liv
 | Opening hours | Per weekday; pickups and returns only within hours |
 | Holiday closures | Date ranges, optionally repeating every year on the same dates (e.g. Songkran); blocks pickups and returns |
 | Contact | WhatsApp number and LINE ID; shown to customer only after confirmation |
-| Same-day cut-off | Vendor-chosen, e.g. 2 hours before closing |
+| Booking cut off time | Vendor-chosen, e.g. 2 hours before closing |
 | Default buffers | Before pickup and after return, in hours; models can override |
 | Minimum rental length | Days, set separately for walk-ins and advance bookings; models can override |
 | Minimum notice | Hours before pickup that an advance booking must be made (e.g. 24, to wash and check the bike); models can override. Walk-ins skip it |
-| Request response window | Default 2 hours. The clock runs only during opening hours: a request made while the shop is closed starts counting when it next opens |
+| Request response window | Default 2 hours, at most 4 hours. The clock runs only during opening hours: a request made while the shop is closed starts counting when it next opens |
 
 **What's included, deposit and documents** (structured fields, shown as a comparable block on model pages, shop listings and at checkout)
 

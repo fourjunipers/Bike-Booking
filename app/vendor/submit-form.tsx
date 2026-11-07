@@ -9,7 +9,7 @@ export function SubmitForm({ ready }: { ready: boolean }) {
   const t = useTranslations("Home");
   return (
     <ActionForm action={submitForReview} submitLabel={t("submit")}>
-      <div className="space-y-3 rounded-lg border p-4">
+      <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
         <h3 className="font-semibold">{t("termsTitle")}</h3>
         <ol className="list-decimal space-y-1 pl-5">
           <li>{t("term1")}</li>
@@ -20,7 +20,7 @@ export function SubmitForm({ ready }: { ready: boolean }) {
         <CheckboxField name="accept_terms" label={t("acceptTerms")} />
       </div>
       {!ready && (
-        <p className="text-sm text-muted-foreground">{t("notReadyHint")}</p>
+        <p className="text-sm text-muted-foreground">{t("submitEarlyHint")}</p>
       )}
     </ActionForm>
   );

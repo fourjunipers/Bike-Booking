@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const linkClass =
-  "inline-flex min-h-11 items-center rounded-md px-3 hover:bg-muted aria-[current=page]:font-semibold aria-[current=page]:underline aria-[current=page]:underline-offset-4";
+  "inline-flex min-h-11 items-center rounded-md px-3 font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground aria-[current=page]:font-semibold";
 
 /**
  * A navigation link that marks the current section (aria-current + style).

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { isLocale, localeCookie } from "@/i18n/config";
 import { getCurrentUser, vendorShopForAction } from "@/lib/auth/session";
 import {
+  mergeStates,
   failed,
   hasErrors,
   invalid,
@@ -147,40 +148,6 @@ export async function saveHours(
   return savedState;
 }
 
-export async function addClosure(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const shop = await ownerShop();
-  if (!shop) return failed;
-  const parsed = closureSchema.safeParse(formObject(formData));
-  if (!parsed.success) return invalid(fieldErrors(parsed.error));
-  const supabase = await createClient();
-  const { error } = await supabase.from("shop_closures").insert({
-    shop_id: shop.id,
-    start_date: parsed.data.start_date,
-    end_date: parsed.data.end_date,
-    note: parsed.data.note ?? null,
-    repeats_yearly: parsed.data.repeats_yearly,
-  });
-  if (error) return failed;
-  refresh();
-  return savedState;
-}
-
-export async function deleteClosure(formData: FormData) {
-  const shop = await ownerShop();
-  const id = String(formData.get("id") ?? "");
-  if (!shop || !id) return;
-  const supabase = await createClient();
-  await supabase
-    .from("shop_closures")
-    .delete()
-    .eq("id", id)
-    .eq("shop_id", shop.id);
-  refresh();
-}
-
 export async function saveContacts(
   _prev: ActionState,
   formData: FormData,
@@ -254,12 +221,91 @@ export async function submitForReview(
     p_accept_terms: formData.get("accept_terms") === "on",
   });
   if (error) return failed;
-  if (missing && missing.length > 0) {
-    const errors: Record<string, string> = {};
-    if (missing.includes("terms")) errors.accept_terms = "termsRequired";
-    if (missing.some((code) => code !== "terms")) errors.form = "notReady";
-    return invalid(errors);
+  // Only the terms block submitting; other missing steps are for the admin
+  // (approval needs a complete shop) and stay on the vendor's checklist.
+  if (missing?.includes("terms"))
+    return invalid({ accept_terms: "termsRequired" });
+  refresh();
+  return savedState;
+}
+
+/**
+ * Holiday closures from the Store information form: `closures` is JSON with
+ * the ids kept and the new entries. Removed ones are deleted.
+ */
+export async function saveClosures(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const shop = await ownerShop();
+  if (!shop) return failed;
+  let parsed: { keep?: unknown; add?: unknown };
+  try {
+    parsed = JSON.parse(String(formData.get("closures") ?? "{}"));
+  } catch {
+    return invalid({ closures: "invalid" });
+  }
+  const keep = Array.isArray(parsed.keep)
+    ? parsed.keep.filter(
+        (id): id is string =>
+          typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id),
+      )
+    : [];
+  const add = [];
+  for (const entry of Array.isArray(parsed.add) ? parsed.add : []) {
+    const r = closureSchema.safeParse(
+      Object.fromEntries(
+        Object.entries(entry ?? {}).map(([k, v]) => [
+          k,
+          k === "repeats_yearly" ? (v ? "on" : undefined) : (v ?? ""),
+        ]),
+      ),
+    );
+    if (!r.success) return invalid({ closures: "invalid" });
+    add.push(r.data);
+  }
+
+  const supabase = await createClient();
+  let remove = supabase.from("shop_closures").delete().eq("shop_id", shop.id);
+  if (keep.length > 0) remove = remove.not("id", "in", `(${keep.join(",")})`);
+  const { error: removeError } = await remove;
+  if (removeError) return failed;
+  if (add.length > 0) {
+    const { error } = await supabase.from("shop_closures").insert(
+      add.map((c) => ({
+        shop_id: shop.id,
+        start_date: c.start_date,
+        end_date: c.end_date,
+        note: c.note ?? null,
+        repeats_yearly: c.repeats_yearly,
+      })),
+    );
+    if (error) return failed;
   }
   refresh();
   return savedState;
+}
+
+/** Store information's one Save button: profile, hours, closures, contacts. */
+export async function saveStoreInformation(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return mergeStates([
+    await saveProfile(prev, formData),
+    await saveHours(prev, formData),
+    await saveClosures(prev, formData),
+    await saveContacts(prev, formData),
+  ]);
+}
+
+/** Default settings' one Save button: booking rules and "What's included". */
+export async function saveShopDefaults(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return mergeStates([
+    await saveBookingSettings(prev, formData),
+    await saveShopInclusions(prev, formData),
+  ]);
 }
