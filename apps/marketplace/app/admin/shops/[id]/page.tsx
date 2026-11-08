@@ -16,11 +16,11 @@ import {
   INCLUSION_FIELDS,
   type Inclusions,
 } from "@/lib/inclusions";
-import { formatBaht } from "@/lib/money";
+import { formatBaht } from "@mango/core/money";
 import { photoUrl, PHOTO_BUCKETS, SHOP_PLACEHOLDER } from "@/lib/photos";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { supabaseUrl } from "@/lib/supabase/env";
-import { formatBangkok } from "@/lib/time";
+import { createAdminClient } from "@mango/db/admin";
+import { supabaseUrl } from "@mango/db/env";
+import { formatBangkok } from "@mango/core/time";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

@@ -3,8 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { setExtraActive } from "@/app/vendor/actions/extras";
 import { Button } from "@/components/ui/button";
 import { requireVendorShop } from "@/lib/auth/session";
-import { formatBaht } from "@/lib/money";
-import { createClient } from "@/lib/supabase/server";
+import { formatBaht } from "@mango/core/money";
+import { createClient } from "@mango/db/server";
 import { getVendorLocale } from "@/i18n/vendor";
 
 export default async function ExtrasPage() {

@@ -14,7 +14,7 @@ import {
   type ActionState,
 } from "@/lib/forms";
 import { isOwnPhotoPath, PHOTO_BUCKETS } from "@/lib/photos";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 import {
   bookingSettingsSchema,
   closureSchema,

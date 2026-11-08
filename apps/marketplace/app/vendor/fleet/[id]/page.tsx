@@ -9,8 +9,8 @@ import {
   type InclusionOverrides,
   type Inclusions,
 } from "@/lib/inclusions";
-import type { Anchors, ManualDays } from "@/lib/pricing";
-import { createClient } from "@/lib/supabase/server";
+import type { Anchors, ManualDays } from "@mango/core/pricing";
+import { createClient } from "@mango/db/server";
 import { getVendorLocale } from "@/i18n/vendor";
 import { DeleteModelForm, ModelForm } from "./model-form";
 

@@ -3,10 +3,10 @@ import {
   offerFor,
   type HeldBooking,
   type ModelStock,
-} from "@/lib/availability";
-import { priceForDays } from "@/lib/pricing";
-import { rentalDays } from "@/lib/rental-days";
-import { bangkokDateTime } from "@/lib/time";
+} from "@mango/core/availability";
+import { priceForDays } from "@mango/core/pricing";
+import { rentalDays } from "@mango/core/rental-days";
+import { bangkokDateTime } from "@mango/core/time";
 import { anonClient, seed, serviceClient, type Db } from "./helpers";
 
 // Phase 3: the SQL availability, price and search functions follow the same

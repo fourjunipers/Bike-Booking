@@ -2,7 +2,7 @@ import type { EmailOtpType, User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNextPath } from "@/lib/auth/redirect";
 import { syncRoleAfterSignIn } from "@/lib/auth/sync-role";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 
 /**
  * Magic links land here in one of two shapes:

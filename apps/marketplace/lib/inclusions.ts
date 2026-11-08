@@ -5,7 +5,7 @@
  * override lives on bike_models.deposit_amount.
  */
 
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@mango/db/database.types";
 
 type Enums = Database["public"]["Enums"];
 type ShopPolicies = Database["public"]["Tables"]["shop_policies"]["Row"];

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { yearRange } from "@/lib/catalog";
-import { formatBaht } from "@/lib/money";
+import { formatBaht } from "@mango/core/money";
 import type { ModelCard, RankedOffer } from "@/lib/search";
 
 /** A small coloured label: Instant, Request, Ready now, Featured. */

@@ -4,7 +4,7 @@
  * Pure parsing and building; invalid values are dropped, not errors.
  */
 
-import { bangkokDateTime } from "./time";
+import { bangkokDateTime } from "@mango/core/time";
 
 export const BIKE_TYPES = [
   "city_scooter",

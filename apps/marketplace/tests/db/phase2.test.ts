@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { fillDays, type Anchors } from "@/lib/pricing";
+import { fillDays, type Anchors } from "@mango/core/pricing";
 import {
   anonClient,
   createUser,

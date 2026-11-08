@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/session";
 import { failed, invalid, savedState, type ActionState } from "@/lib/forms";
 import { PHOTO_BUCKETS } from "@/lib/photos";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { now } from "@/lib/time";
+import { createAdminClient } from "@mango/db/admin";
+import { now } from "@mango/core/time";
 import {
   catalogEntrySchema,
   fieldErrors,

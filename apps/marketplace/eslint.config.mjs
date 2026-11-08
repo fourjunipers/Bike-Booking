@@ -1,12 +1,10 @@
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
-import prettier from "eslint-config-prettier/flat";
+import { defineConfig } from "eslint/config";
+import { nextApp } from "@mango/config/eslint/next";
+import { appImportPatterns } from "@mango/config/eslint/boundaries";
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  prettier,
+  // Next.js rules, Prettier, and "never import from another app".
+  ...nextApp("marketplace"),
   // Marketplace rule (docs/INTEGRATION.md): customer pages, components and
   // API routes reach shop data only through "@/lib/data", never a database
   // client, so the Mango Works API can replace it without UI changes.
@@ -25,8 +23,10 @@ const eslintConfig = defineConfig([
         "error",
         {
           patterns: [
+            // Repeated here because this block replaces the app-wide option.
+            ...appImportPatterns("marketplace"),
             {
-              group: ["@/lib/supabase/*", "@/lib/data/current-db"],
+              group: ["@mango/db", "@mango/db/*", "@/lib/data/current-db"],
               message:
                 "Use @/lib/data for shop data (see docs/INTEGRATION.md).",
             },
@@ -35,16 +35,6 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-    "playwright-report/**",
-    "test-results/**",
-  ]),
 ]);
 
 export default eslintConfig;

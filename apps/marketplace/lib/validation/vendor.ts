@@ -16,7 +16,7 @@ import {
   type Inclusions,
 } from "@/lib/inclusions";
 import { MAX_MODEL_PHOTOS, MAX_SHOP_PHOTOS } from "@/lib/photos";
-import { ANCHOR_DAYS, TABLE_DAYS, type Anchors } from "@/lib/pricing";
+import { ANCHOR_DAYS, TABLE_DAYS, type Anchors } from "@mango/core/pricing";
 
 export type ErrorKey =
   | "required"

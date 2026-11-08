@@ -1,7 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 import { notifyChannels, profileFormSchema } from "@/lib/validation/profile";
 
 type Field = "name" | "whatsapp" | "notify";

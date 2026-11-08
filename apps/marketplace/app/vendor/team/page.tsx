@@ -2,8 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { cancelInvite, removeMember } from "@/app/vendor/actions/team";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, requireShopOwner } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
-import { now } from "@/lib/time";
+import { createClient } from "@mango/db/server";
+import { now } from "@mango/core/time";
 import { getVendorLocale } from "@/i18n/vendor";
 import { InviteForm } from "./invite-form";
 

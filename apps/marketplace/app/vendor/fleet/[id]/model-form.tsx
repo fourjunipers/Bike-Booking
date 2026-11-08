@@ -16,10 +16,10 @@ import { Button } from "@/components/ui/button";
 import { InclusionsFields } from "@/components/vendor/inclusions-form";
 import { PriceFields } from "@/components/vendor/price-editor";
 import type { InclusionOverrides, Inclusions } from "@/lib/inclusions";
-import type { Anchors, ManualDays } from "@/lib/pricing";
+import type { Anchors, ManualDays } from "@mango/core/pricing";
 import { shrinkSplit, walkinOnlyUnits } from "@/lib/fleet";
 import type { ActionState } from "@/lib/forms";
-import { formatBaht } from "@/lib/money";
+import { formatBaht } from "@mango/core/money";
 import { MAX_MODEL_PHOTOS, PHOTO_BUCKETS } from "@/lib/photos";
 
 type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;

@@ -3,9 +3,9 @@ import { getTranslations } from "next-intl/server";
 import { requireVendorShop } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
 import { photoUrl, PHOTO_BUCKETS } from "@/lib/photos";
-import { supabaseUrl } from "@/lib/supabase/env";
-import { createClient } from "@/lib/supabase/server";
-import { bangkokDateString, now } from "@/lib/time";
+import { supabaseUrl } from "@mango/db/env";
+import { createClient } from "@mango/db/server";
+import { bangkokDateString, now } from "@mango/core/time";
 import { getVendorLocale } from "@/i18n/vendor";
 import { FleetTable, type FleetRow } from "./fleet-table";
 

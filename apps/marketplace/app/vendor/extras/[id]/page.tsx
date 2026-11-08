@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { deleteExtra, saveExtra } from "@/app/vendor/actions/extras";
 import { requireShopOwner } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 import { getVendorLocale } from "@/i18n/vendor";
 import { DeleteExtraForm, ExtraForm } from "./extra-form";
 

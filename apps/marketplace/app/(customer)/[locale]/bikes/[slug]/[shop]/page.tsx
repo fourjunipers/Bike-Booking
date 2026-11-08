@@ -13,7 +13,7 @@ import {
   type CustomerLocale,
 } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
-import { formatBaht } from "@/lib/money";
+import { formatBaht } from "@mango/core/money";
 import {
   getCatalogModel,
   getListing,

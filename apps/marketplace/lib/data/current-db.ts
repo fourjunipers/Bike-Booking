@@ -14,8 +14,8 @@ import {
   SHOP_PLACEHOLDER,
   type PhotoBucket,
 } from "@/lib/photos";
-import { supabaseUrl } from "@/lib/supabase/env";
-import { createPublicClient } from "@/lib/supabase/public";
+import { supabaseUrl } from "@mango/db/env";
+import { createPublicClient } from "@mango/db/public";
 import type {
   Availability,
   Booking,

@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { SettingsTabs } from "@/components/vendor/settings-tabs";
 import { requireShopOwner } from "@/lib/auth/session";
 import { INCLUSION_FIELDS, type Inclusions } from "@/lib/inclusions";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 import { getVendorLocale } from "@/i18n/vendor";
 import { ShopDefaultsForm } from "../forms";
 

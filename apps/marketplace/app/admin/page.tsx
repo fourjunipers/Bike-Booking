@@ -2,8 +2,8 @@ import Link from "next/link";
 import { SignOutButton } from "@/components/sign-out-button";
 import { requireAdmin } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { formatBangkok } from "@/lib/time";
+import { createAdminClient } from "@mango/db/admin";
+import { formatBangkok } from "@mango/core/time";
 
 /** Approval queue: new shops, flagged edits on live shops, catalog requests. */
 export default async function AdminPage() {

@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { SettingsTabs } from "@/components/vendor/settings-tabs";
 import { requireShopOwner } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 import { getVendorLocale } from "@/i18n/vendor";
 import { StoreInformationForm } from "./forms";
 

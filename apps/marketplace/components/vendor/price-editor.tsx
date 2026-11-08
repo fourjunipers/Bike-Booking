@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { inputClass, useFieldError, useMarkDirty } from "@/components/form-kit";
 import { Button } from "@/components/ui/button";
-import { formatBaht } from "@/lib/money";
+import { formatBaht } from "@mango/core/money";
 import {
   ANCHOR_DAYS,
   fillDays,
@@ -13,7 +13,7 @@ import {
   type AnchorDay,
   type Anchors,
   type ManualDays,
-} from "@/lib/pricing";
+} from "@mango/core/pricing";
 
 /**
  * SPEC "Pricing": anchors at the top, the 30-day table below filled live by

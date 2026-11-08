@@ -6,8 +6,8 @@ import { textareaClass } from "@/components/form-kit";
 import { requireAdmin } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
 import { photoUrl, PHOTO_BUCKETS } from "@/lib/photos";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { supabaseUrl } from "@/lib/supabase/env";
+import { createAdminClient } from "@mango/db/admin";
+import { supabaseUrl } from "@mango/db/env";
 import { CatalogForm } from "./catalog-form";
 
 /** /admin/catalog/new adds an approved entry; /admin/catalog/<id> edits or reviews. */

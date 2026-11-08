@@ -14,8 +14,8 @@ import {
   type PhotoBucket,
   type PhotoProblem,
 } from "@/lib/photos";
-import { createClient } from "@/lib/supabase/client";
-import { supabaseUrl } from "@/lib/supabase/env";
+import { createClient } from "@mango/db/client";
+import { supabaseUrl } from "@mango/db/env";
 
 /**
  * Picks, resizes (WebP, longest edge 1,600 px) and uploads photos straight to

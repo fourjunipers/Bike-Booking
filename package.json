@@ -1,0 +1,25 @@
+{
+  "name": "mango-works",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @mango/marketplace",
+    "build": "npm run build -w @mango/marketplace",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:db": "npm run test:db -w @mango/marketplace",
+    "test:e2e": "npm run test:e2e -w @mango/marketplace",
+    "db:types": "npm run db:types -w @mango/db"
+  },
+  "devDependencies": {
+    "supabase": "^2.121.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -1,6 +1,6 @@
 import "server-only";
 import type { User } from "@supabase/supabase-js";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@mango/db/admin";
 import { isAdminEmail, parseAdminEmails } from "./admin-emails";
 
 /**

@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 
 /**
  * Data access layer for the signed-in user. Every read here touches cookies,

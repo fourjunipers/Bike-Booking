@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { requireVendorShop } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 import { getVendorLocale } from "@/i18n/vendor";
 import { CatalogPicker, RequestModelForm } from "./picker";
 

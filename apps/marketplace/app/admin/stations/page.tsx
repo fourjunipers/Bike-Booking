@@ -1,7 +1,7 @@
 import { saveStation, setStationActive } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@mango/db/admin";
 import { StationForm } from "./station-form";
 
 /**

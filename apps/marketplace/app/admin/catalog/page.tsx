@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@mango/db/admin";
 
 export default async function AdminCatalogPage({
   searchParams,

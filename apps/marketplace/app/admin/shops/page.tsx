@@ -3,8 +3,8 @@ import { setBoost, setShopSuspended } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { inputBase } from "@/components/form-kit";
 import { requireAdmin } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { formatBangkok } from "@/lib/time";
+import { createAdminClient } from "@mango/db/admin";
+import { formatBangkok } from "@mango/core/time";
 
 const STATUS_ORDER = { pending: 0, live: 1, draft: 2, suspended: 3 } as const;
 

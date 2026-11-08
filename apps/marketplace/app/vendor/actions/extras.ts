@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { vendorShopForAction } from "@/lib/auth/session";
 import { failed, invalid, type ActionState } from "@/lib/forms";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 import { extraSchema, fieldErrors, formObject } from "@/lib/validation/vendor";
 
 async function ownerShop() {

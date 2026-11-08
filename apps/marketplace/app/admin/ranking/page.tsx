@@ -1,7 +1,7 @@
 import { saveRankingWeights } from "@/app/admin/actions";
 import { ActionForm, TextField } from "@/components/form-kit";
 import { requireAdmin } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@mango/db/admin";
 
 const FACTORS = [
   ["boost", "Admin boost", "Featured 1.0 · Preferred 0.6 · Normal 0.3"],

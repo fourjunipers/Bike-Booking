@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { vendorShopForAction } from "@/lib/auth/session";
 import { failed, type ActionState } from "@/lib/forms";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@mango/db/server";
 
 async function ownerShop() {
   const shop = await vendorShopForAction();

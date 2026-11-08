@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { isShopClosedOn, type Closure } from "@/lib/closures";
+import { isShopClosedOn, type Closure } from "@mango/core/closures";
 import {
   anonClient,
   seed,

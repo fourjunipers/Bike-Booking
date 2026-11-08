@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { Inclusions } from "@/lib/inclusions";
-import { formatBaht } from "@/lib/money";
+import { formatBaht } from "@mango/core/money";
 
 /**
  * "What's included", deposit and documents for customers, in their language.

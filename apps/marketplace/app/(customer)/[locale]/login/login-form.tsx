@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { isCustomerLocale, localePath } from "@/i18n/config";
 import { providerOrder, type OAuthProvider } from "@/lib/auth/providers";
 import { safeNextPath } from "@/lib/auth/redirect";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@mango/db/client";
 
 const providerLabels = {
   google: "google",
