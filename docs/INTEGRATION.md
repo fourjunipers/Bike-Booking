@@ -1,8 +1,14 @@
 # Integration: Bike-Booking marketplace ↔ Mango Works platform
 
-Status: approved 7 Nov 2026, with the owner's answers to the open questions (§6) and the over-30-days pricing change (§4.2). Source of truth for the types: `lib/data/types.ts`.
+> **8 Nov 2026: one contract, one repo, one database.** This file merges two copies: Bike-Booking's `docs/INTEGRATION.md`, used as the base because it is newer, and the 7 Nov draft kept in the old `mango-works-platform` repo (`docs/MARKETPLACE-INTEGRATION.md`). It is now the single contract between the platform and the marketplace. In this document, "Bike-Booking" means the marketplace (brand Moto Mangos, `apps/marketplace`). "Mango Works" means the rental management platform (`apps/platform`; product name not chosen yet).
+>
+> There is now one shared Supabase database (docs/platform/SPEC.md › Repository and database). So "the Mango Works API" below means SQL functions in a `marketplace_api` schema that return only shops with `marketplace_listed` and `marketplace_approved`. After platform Phase 3, `createBooking` becomes one database function that inserts the order under the overlap lock.
+>
+> The whole-baht and Bangkok-only rules below hold until that adapter switch. After it, amounts are integer minor units with a currency, and markets arrive (docs/platform/SPEC.md › Built for any country).
 
-Bike-Booking is the customer marketplace. **Mango Works** is the rental-management platform that owns shop data: shops, bike models and units, prices, availability, bookings and payments to shops. The marketplace reads and writes that data only through one adapter, `lib/data/`. Today the adapter reads this project's own database (`lib/data/current-db.ts`, temporary). When the Mango Works API exists, the adapter calls it instead, with the same functions and types, and no page changes.
+Status: approved 7 Nov 2026, with the owner's answers to the open questions (§6) and the over-30-days pricing change (§4.2). Source of truth for the types: `apps/marketplace/lib/data/types.ts`.
+
+Bike-Booking is the customer marketplace. **Mango Works** is the rental-management platform that owns shop data: shops, bike models and units, prices, availability, bookings and payments to shops. The marketplace reads and writes that data only through one adapter, `apps/marketplace/lib/data/`. Today the adapter reads this project's own database (`apps/marketplace/lib/data/current-db.ts`, temporary). When the Mango Works API exists, the adapter calls it instead, with the same functions and types, and no page changes.
 
 This document lists every adapter function, what it needs from Mango Works, and the rules Mango Works must apply so customers see the same answers they see today.
 
@@ -110,7 +116,7 @@ What a listing must satisfy to be returned (today's rules, §4):
 
 ### 3.7 `getListing(shopId, catalogId): Listing | null`
 Needs: `listingId, photoUrls[], deposit, dayPrices[30] (totals for 1…30 days), inclusions, extras[]`. There is no separate price for longer rentals: they derive from the 30-day total (§4.2).
-- `inclusions`: the shop's "What's included" defaults with this listing's overrides applied (helmets and helmet types, gloves, jacket, rain gear, phone holder, USB charger, top box, side panniers, riding area, km limit, medical cover, deposit methods, passport policy, licence, minimum age, experience, notes). Field list: `lib/inclusions.ts`.
+- `inclusions`: the shop's "What's included" defaults with this listing's overrides applied (helmets and helmet types, gloves, jacket, rain gear, phone holder, USB charger, top box, side panniers, riding area, km limit, medical cover, deposit methods, passport policy, licence, minimum age, experience, notes). Field list: `apps/marketplace/lib/inclusions.ts`.
 - `extras[]`: `{ id, name, description, terms, price }` with `price` either `{ kind: "rental", amount }` or `{ kind: "time", perDay, per7Days, per30Days }`; only active extras that apply to this listing.
 
 ### 3.8 `getAvailability(listingId, start, end): Availability`
@@ -161,17 +167,17 @@ The booking as above, current status. The marketplace also needs, in the booking
 
 ## 4. Rules Mango Works must match
 
-These are what the temporary implementation does today. Unit-tested TypeScript versions are in `lib/` (named below); the SQL versions in `supabase/migrations/20261107000200_search.sql` follow them, and `tests/db/search.test.ts` checks both give the same answers.
+These are what the temporary implementation does today. Unit-tested TypeScript versions are in `packages/core` (`@mango/core`, named below); the SQL versions in `supabase/migrations/20261107000200_search.sql` follow them, and `apps/marketplace/tests/db/search.test.ts` checks both give the same answers.
 
-### 4.1 Rental days (`lib/rental-days.ts`)
+### 4.1 Rental days (`packages/core/src/rental-days.ts`)
 Every started 24 hours is a day: `days = max(1, ceil((end − start) / 24 h))`. 10:00 Mon → 10:00 Tue is 1 day; → 10:00 Wed is 2 days; → 10:30 Tue is 2 days. There is no grace period on the price; the time a bike needs between rentals is the shop's buffer after return.
 
-### 4.2 Price for a number of days (`lib/pricing.ts`, `priceForDays`)
+### 4.2 Price for a number of days (`packages/core/src/pricing.ts`, `priceForDays`)
 - Each listing has a total for every length from 1 to 30 days. Shops enter anchors (1 and 30 days required, 7/14/21 optional); the days between are filled at equal steps, rounded to the nearest ฿10, and any single day can be edited by hand.
 - Up to 30 days: the table's total.
 - Over 30 days there is no separate rate (owner decision, 7 Nov 2026): every day costs the 30-day total ÷ 30, so `total = round(price(30) × days ÷ 30)` to the nearest baht, halves rounded up. Example, price(30) = ฿5,500: 45 days = ฿8,250, 60 days = ฿11,000, 90 days = ฿16,500.
 
-### 4.3 Units free for a period (`lib/availability.ts`, `offerFor`)
+### 4.3 Units free for a period (`packages/core/src/availability.ts`, `offerFor`)
 Bikes are a pool: no booking is tied to a particular bike. For a period from `start` to `end`:
 1. Widen the period and every booking by the listing's buffers (before pickup, after return; listing value, else shop default).
 2. Bookings that hold a unit: `confirmed_unpaid`, `paid`, `picked_up` (later also pending delivery requests on Instant units).
@@ -198,12 +204,12 @@ A listing is offered for walk-ins now when:
 Walk-ins skip the minimum notice. A walk-in booking holds a unit like any booking, and reduces the ready count by 1; the shop adds it back when the bike is ready again.
 
 ### 4.6 Opening hours, closures, notice, minimum days
-- Pickups and returns must fall within the shop's hours for that Bangkok weekday, and not on a closure date. A closure that repeats yearly matches the same month and day every year from its first year, including closures that run over New Year (`lib/closures.ts`).
+- Pickups and returns must fall within the shop's hours for that Bangkok weekday, and not on a closure date. A closure that repeats yearly matches the same month and day every year from its first year, including closures that run over New Year (`packages/core/src/closures.ts`).
 - Advance bookings start at least the minimum notice (hours) after now; walk-ins skip it.
 - Minimum rental days: one value for walk-ins, one for advance bookings. Listing value, else shop default.
 
 ### 4.7 Deposit and inclusions
-The deposit shown is the listing's own amount, else the shop default (`null` = no money deposit). "What's included" is the shop's defaults with the listing's overrides applied (`lib/inclusions.ts`).
+The deposit shown is the listing's own amount, else the shop default (`null` = no money deposit). "What's included" is the shop's defaults with the listing's overrides applied (`apps/marketplace/lib/inclusions.ts`).
 
 ## 5. Booking statuses (from SPEC.md)
 `pending_vendor` → `confirmed_unpaid` (accepted) | `declined` | `expired` (no reply in the window);
@@ -224,4 +230,4 @@ Mango Works maps its own order states to these statuses through `request_status`
 7. **Search at scale:** Mango Works may use a precomputed index; the response shape stays the same.
 
 ## 7. Where the temporary implementation reads from (for reference)
-`lib/data/current-db.ts` on this project's Supabase database: tables `shops`, `shop_hours`, `shop_closures`, `shop_policies`, `bike_catalog`, `bike_models`, `bike_model_policies`, `bike_model_downtime`, `price_days`, `shop_extras`, `reviews`, `ranking_settings`, `stations`; functions `search_offers`, `model_offer`, `longest_walkin`, `rental_days`, `rental_price`, `shop_stats`, `shop_coordinates`, `station_list`. `createBooking` and `getBooking` are stubs until the booking phases. The old `bike_models.price_after_30` column was dropped with the pricing change (migration `20261108000100`).
+`apps/marketplace/lib/data/current-db.ts` on this project's Supabase database: tables `shops`, `shop_hours`, `shop_closures`, `shop_policies`, `bike_catalog`, `bike_models`, `bike_model_policies`, `bike_model_downtime`, `price_days`, `shop_extras`, `reviews`, `ranking_settings`, `stations`; functions `search_offers`, `model_offer`, `longest_walkin`, `rental_days`, `rental_price`, `shop_stats`, `shop_coordinates`, `station_list`. `createBooking` and `getBooking` are stubs until the booking phases. The old `bike_models.price_after_30` column was dropped with the pricing change (migration `20261108000100`).

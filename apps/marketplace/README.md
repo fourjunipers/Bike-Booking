@@ -1,6 +1,8 @@
 # Motorbike rental marketplace
 
-Bangkok motorbike rental marketplace. Product behaviour: [SPEC.md](SPEC.md). Build phases: [BUILD_PLAN.md](BUILD_PLAN.md). Rules for working on the code: [CLAUDE.md](CLAUDE.md). Decisions: [docs/decisions.md](docs/decisions.md).
+Bangkok motorbike rental marketplace. Product behaviour: [SPEC.md](../../docs/marketplace/SPEC.md). Build phases: [BUILD_PLAN.md](../../docs/marketplace/BUILD_PLAN.md). Rules for working on the code: [CLAUDE.md](CLAUDE.md) and the root [CLAUDE.md](../../CLAUDE.md). Decisions: [decisions.md](../../docs/marketplace/decisions.md).
+
+This app lives in the `mango-works` monorepo at `apps/marketplace`. Run `npm install` once at the repo root; the commands below work from this folder or from the root (`npm run <script> -w @mango/marketplace`).
 
 ## Requirements
 
@@ -11,7 +13,7 @@ Bangkok motorbike rental marketplace. Product behaviour: [SPEC.md](SPEC.md). Bui
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in the values
+cp .env.example .env.local   # in apps/marketplace; then fill in the values
 npx playwright install chromium
 ```
 
@@ -26,9 +28,9 @@ npx playwright install chromium
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:db` | Security (RLS) tests against local Supabase |
 | `npm run test:e2e` | End-to-end tests (Playwright, builds and serves on port 3100; sign-in tests need local Supabase) |
-| `npx supabase start` | Start local Supabase (needs Docker) |
-| `npx supabase db reset` | Recreate the local database from `supabase/migrations` and load `supabase/seed.sql` |
-| `npm run db:types` | Regenerate `lib/supabase/database.types.ts` after a migration |
+| `npx supabase start` (repo root) | Start local Supabase (needs Docker) |
+| `npx supabase db reset` (repo root) | Recreate the local database from `supabase/migrations` and load `supabase/seed.sql` |
+| `npm run db:types` (repo root) | Regenerate `packages/db/src/database.types.ts` after a migration |
 
 ## Signing in locally
 
