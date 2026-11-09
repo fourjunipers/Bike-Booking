@@ -2,16 +2,25 @@
 
 What's done, open decisions and known issues, across both apps. Update this at the end of every session so the next one starts clean.
 
-## Status (8 Nov 2026)
+## Status (9 Nov 2026)
 
 | Track | Where it stands |
 | --- | --- |
-| Repo | **Step R** (monorepo restructure) on branch `restructure-monorepo`. Move-only: no behaviour or database change |
-| Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee and fee lifecycle are on the `booking-flow` branch, not merged (see below) |
-| Platform (`apps/platform`) | README only. Phase 0 (foundations) is next after Step R |
-| Database | One Supabase project, 27 migrations in `supabase/migrations`. Live = today's Bike-Booking project (migrations only from `main`); a staging project is still to be created |
+| Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
+| Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag are on `marketplace/booking-fees` (PR open, not merged). Nothing uses them yet |
+| Platform (`apps/platform`) | README only. Phase 0 (foundations) is next |
+| Database | 27 migrations in `supabase/migrations`. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), created; no migrations pushed yet |
 
-## Step R: done in this branch
+## marketplace/booking-fees (9 Nov 2026)
+
+- From `booking-flow` (commit `ec7de98`) only: `lib/fees.ts`, `lib/fee-lifecycle.ts`, `lib/flags.ts`, `lib/fees.test.ts`, `lib/fee-lifecycle.test.ts` (23 tests). The WIP `marketplace_bookings` migration and everything else stayed behind. `booking-flow` is kept on GitHub for now.
+- `fees.ts` no longer hard-codes the ฿50 minimum: `bookingFee(rental, feeMinimum)` and `priceBreakdown(…, feeMinimum)` take the market's minimum (decisions 2026-11-08: each market has its own). Amounts are integers in one currency unit (whole baht today), checked locally rather than with `assertWholeBaht`. The caller (checkout, not built) supplies the minimum: ฿50 for Bangkok until markets arrive at the adapter switch.
+- `fee-lifecycle.test.ts` uses UTC instants instead of `bangkokDateTime`; the rules themselves already work on instants.
+- `BOOKING_ENABLED` is off unless set to exactly `"true"`, and nothing imports `flags.ts` yet, so the site is unchanged whatever the value. Added to `.env.example`. `PLATFORM_EVENTS_SECRET` from `booking-flow`'s `.env.example` was not brought over (nothing uses it).
+- The `marketplace` branch (fully merged into `main`) was deleted locally and on GitHub: git can't hold both `marketplace` and `marketplace/…` branches.
+- Nothing moved to `packages/core`: the fee and its states are marketplace-owned (`docs/INTEGRATION.md`), not shared rules.
+
+## Step R: done (merged in PR #5)
 
 - `apps/marketplace`: the Bike-Booking app, moved with `git mv` so history is kept.
 - `packages/core` (`@mango/core`): rental-days, pricing, availability, closures, money, time, with their tests. Logic unchanged.
@@ -22,15 +31,15 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 ## Next
 
-1. Owner: update the Netlify site settings (steps in the Step R PR), compare the deploy preview with bike-booking-th.netlify.app, and merge.
-2. Owner: rename the GitHub repo to `mango-works`, check Netlify still points at it, and archive `mango-works-platform`.
-3. Marketplace follow-up branch: copy `fees.ts`, `fee-lifecycle.ts`, `flags.ts` and their 23 tests from `booking-flow` into `apps/marketplace/lib`. Drop the WIP `marketplace_bookings` migration; marketplace bookings are designed with platform Phase 3.
-4. Platform Phase 0: `platform/phase-0-foundations`.
+1. Owner: review and merge the `marketplace/booking-fees` PR; then delete `booking-flow` (marketplace bookings are designed with platform Phase 3).
+2. Owner: archive `mango-works-platform` if not done yet.
+3. Platform Phase 0: `platform/phase-0-foundations`.
 
 ## Open
 
 - Platform product name.
-- Staging Supabase project: not created yet.
+- Booking-fee rounding after the move to minor units: today the fee rounds to the nearest whole baht because amounts are whole baht. Once amounts are minor units, `bookingFee` rounds to the nearest minor unit (satang). Decide at the adapter switch whether the fee should still round to a whole major unit.
+- "3 days before pickup" in `lib/fee-lifecycle.ts` is exactly 72 hours. In a market with daylight saving that can differ by an hour from 3 calendar days at the same wall-clock time. Decide which the SPEC means before such a market goes live.
 
 ## Hard-coded Thailand assumptions (inventory, not fixed)
 
@@ -62,6 +71,8 @@ Marketplace paths are relative to `apps/marketplace/`. Line numbers are as of th
 | File:line | What | Target |
 | --- | --- | --- |
 | `lib/data/types.ts:233-234` | `NewBooking.payment.currency: "THB"` literal type | AS |
+| `lib/fee-lifecycle.ts:21-25` | Charge 3 days and cancel unpaid 2 days before pickup as fixed 72 h / 48 h, no daylight-saving check (see Open) | AS |
+| `lib/fees.test.ts:5` | Test fixture uses the Bangkok fee minimum (50, whole baht); the code takes it as an argument | none |
 | `lib/data/types.ts:235` | `referralCode` passes through; there are no per-market referral rules in code yet (the referral program isn't built) | AS |
 | `i18n/request.ts:14` | next-intl `timeZone: "Asia/Bangkok"` | AS |
 | `app/(customer)/[locale]/layout.tsx:39` | `timeZone="Asia/Bangkok"` on the customer intl provider | AS |
