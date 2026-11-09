@@ -92,8 +92,10 @@ function currencyExponent(currency: string): number {
   if (!/^[A-Z]{3}$/.test(currency)) {
     throw new RangeError(`Expected an ISO 4217 code, got ${currency}`);
   }
-  return new Intl.NumberFormat("en", { style: "currency", currency })
-    .resolvedOptions().maximumFractionDigits!;
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency,
+  }).resolvedOptions().maximumFractionDigits!;
 }
 
 function assertMinorUnits(amount: number): void {
