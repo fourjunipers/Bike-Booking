@@ -16,7 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        workspace: ["@mango/marketplace", "@mango/core", "@mango/db"]
+        workspace:
+          ["@mango/marketplace", "@mango/platform", "@mango/core", "@mango/db"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,3 +31,48 @@ jobs:
         run: npm run lint -w ${{ matrix.workspace }} --if-present
       - name: Unit tests
         run: npm run test -w ${{ matrix.workspace }} --if-present
+
+  # Platform tests that need a database: tenant isolation (RLS) and the
+  # Playwright click-through, against a throwaway local Supabase with every
+  # migration applied. Nothing here touches staging or live.
+  platform-db:
+    name: "@mango/platform: RLS + Playwright"
+    runs-on: ubuntu-latest
+    env:
+      # Throwaway password for this run's demo users.
+      DEMO_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - run: npm ci
+      - name: Start Supabase (applies all migrations and supabase/seed.sql)
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
+      - name: Write apps/platform/.env.local for the local stack
+        run: |
+          eval "$(supabase status -o env | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=')"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } > apps/platform/.env.local
+      - name: RLS and team tests
+        run: npm run test:db -w @mango/platform
+      - name: Demo seed
+        run: npm run seed -w @mango/platform
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/platform
+      - name: Playwright (phone and desktop)
+        run: npm run test:e2e -w @mango/platform
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: platform-playwright
+          path: apps/platform/test-results
+          retention-days: 7
