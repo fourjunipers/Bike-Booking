@@ -219,7 +219,7 @@ The platform collects only the booking fee: 10% of the rental after promotions, 
 | Get your bike now | Charged at booking | Paid at booking |
 | Request mode | Saved/charged only after vendor accepts | Link sent only after vendor accepts |
 
-**Failed card charge:** retry after 12 hours and email + WhatsApp the customer to update the card; unpaid 48 hours before pickup → booking cancelled and vendor notified.
+**Failed card charge:** retry after 12 hours and email + WhatsApp the customer to update the card; unpaid 2 days before pickup → booking cancelled and vendor notified. Fee deadlines ("3 days before pickup", "2 days before pickup") are calendar days at the pickup's clock time in the shop's time zone, not fixed hours (owner decision, 9 Nov 2026).
 
 **Abuse guard:** a saved card (or immediate payment) is required for every booking. A customer can hold only one unpaid booking for overlapping dates; bookings on different dates are unlimited, so trip planners can book several bikes across a route.
 

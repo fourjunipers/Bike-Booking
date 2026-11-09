@@ -14,8 +14,14 @@ What's done, open decisions and known issues, across both apps. Update this at t
 ## marketplace/booking-fees (9 Nov 2026)
 
 - From `booking-flow` (commit `ec7de98`) only: `lib/fees.ts`, `lib/fee-lifecycle.ts`, `lib/flags.ts`, `lib/fees.test.ts`, `lib/fee-lifecycle.test.ts` (23 tests). The WIP `marketplace_bookings` migration and everything else stayed behind. `booking-flow` is kept on GitHub for now.
-- `fees.ts` no longer hard-codes the ฿50 minimum: `bookingFee(rental, feeMinimum)` and `priceBreakdown(…, feeMinimum)` take the market's minimum (decisions 2026-11-08: each market has its own). Amounts are integers in one currency unit (whole baht today), checked locally rather than with `assertWholeBaht`. The caller (checkout, not built) supplies the minimum: ฿50 for Bangkok until markets arrive at the adapter switch.
-- `fee-lifecycle.test.ts` uses UTC instants instead of `bangkokDateTime`; the rules themselves already work on instants.
+- `fees.ts` takes the market's fee settings: `bookingFee(rental, market)` and `priceBreakdown(…, market)` with `MarketFeeSettings = { currency, feeMinimum, feeRoundingUnit? }`. Amounts are integer minor units of `currency` (THB satang, JPY yen); the exponent comes from `Intl`. No ฿50 or THB in the code. The caller (checkout, not built) supplies the settings: THB, ฿50 minimum, rounding 1 for Bangkok until markets arrive at the adapter switch. Because the adapter still returns whole baht, checkout must convert to satang before calling.
+- `fee-lifecycle.ts` takes the shop's IANA time zone on every function. `lib/zoned-time.ts` (`addCalendarDays`) does the DST-aware calendar arithmetic with `Intl` only, no new dependency.
+- Tests: 8 fee, 20 lifecycle (the original 23, reworked, plus DST cases), 6 zoned-time.
+
+### Decided (9 Nov 2026, owner)
+
+- **Fee rounding:** the booking fee rounds to whole currency units, halves up, whatever the minor units of the rental. The rounding unit is a per-market setting (`feeRoundingUnit`, in whole units, default 1; e.g. 10 → nearest ฿10).
+- **Fee deadlines:** "charged 3 days before pickup" and "unpaid 2 days before pickup → cancelled" are calendar days at the pickup's clock time in the shop's time zone, not 72/48 hours. Across a DST change the gap is 71 or 73 hours. A clock time skipped by a spring-forward change moves forward by the gap; a repeated one takes the earlier instant. `docs/marketplace/SPEC.md` (Failed card charge) updated from "48 hours" to match.
 - `BOOKING_ENABLED` is off unless set to exactly `"true"`, and nothing imports `flags.ts` yet, so the site is unchanged whatever the value. Added to `.env.example`. `PLATFORM_EVENTS_SECRET` from `booking-flow`'s `.env.example` was not brought over (nothing uses it).
 - The `marketplace` branch (fully merged into `main`) was deleted locally and on GitHub: git can't hold both `marketplace` and `marketplace/…` branches.
 - Nothing moved to `packages/core`: the fee and its states are marketplace-owned (`docs/INTEGRATION.md`), not shared rules.
@@ -38,8 +44,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 ## Open
 
 - Platform product name.
-- Booking-fee rounding after the move to minor units: today the fee rounds to the nearest whole baht because amounts are whole baht. Once amounts are minor units, `bookingFee` rounds to the nearest minor unit (satang). Decide at the adapter switch whether the fee should still round to a whole major unit.
-- "3 days before pickup" in `lib/fee-lifecycle.ts` is exactly 72 hours. In a market with daylight saving that can differ by an hour from 3 calendar days at the same wall-clock time. Decide which the SPEC means before such a market goes live.
+- Shared time-zone helper: `lib/zoned-time.ts` is generic (any IANA zone, DST-aware). It may belong in `@mango/core/time` when platform Phase 2 gives that module a time-zone argument; not moved without the owner's say.
 
 ## Hard-coded Thailand assumptions (inventory, not fixed)
 
@@ -71,8 +76,7 @@ Marketplace paths are relative to `apps/marketplace/`. Line numbers are as of th
 | File:line | What | Target |
 | --- | --- | --- |
 | `lib/data/types.ts:233-234` | `NewBooking.payment.currency: "THB"` literal type | AS |
-| `lib/fee-lifecycle.ts:21-25` | Charge 3 days and cancel unpaid 2 days before pickup as fixed 72 h / 48 h, no daylight-saving check (see Open) | AS |
-| `lib/fees.test.ts:5` | Test fixture uses the Bangkok fee minimum (50, whole baht); the code takes it as an argument | none |
+| `lib/fees.test.ts`, `lib/fee-lifecycle.test.ts` | Test fixtures use THB / ฿50 and `Asia/Bangkok`; the code takes currency, minimum and time zone as arguments | none |
 | `lib/data/types.ts:235` | `referralCode` passes through; there are no per-market referral rules in code yet (the referral program isn't built) | AS |
 | `i18n/request.ts:14` | next-intl `timeZone: "Asia/Bangkok"` | AS |
 | `app/(customer)/[locale]/layout.tsx:39` | `timeZone="Asia/Bangkok"` on the customer intl provider | AS |
