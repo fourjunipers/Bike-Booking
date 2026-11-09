@@ -8,8 +8,36 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | --- | --- |
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
-| Platform (`apps/platform`) | README only. Phase 0 (foundations) is next |
-| Database | 27 migrations in `supabase/migrations`. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), created; no migrations pushed yet |
+| Platform (`apps/platform`) | **Phase 0** (foundations) on `platform/phase-0-foundations`, PR open: auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. Phase 1 (fleet) is next |
+| Database | 30 migrations in `supabase/migrations` (27 + 3 platform on the Phase 0 branch). Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore); see Phase 0 for what's pushed |
+
+## Platform Phase 0: foundations (branch `platform/phase-0-foundations`, 9 Nov 2026)
+
+**Built**
+- Migrations (`20261109000100`–`300`, all `_platform_`): `tenants` (name, slug, country, currency, timezone, locale; no defaults, time zone checked by a trigger), `memberships` (owner, manager, staff, mechanic, driver; one user can be in several tenants), RLS helpers in a `platform_private` schema the API doesn't expose, `tenant_members()` for the team list, `set_member_role()` / `remove_member()` (owners change anyone; managers only staff, mechanics and drivers; a tenant always keeps an owner), and `platform_rls_report()` (service role only) listing every table with a `tenant_id`.
+- `apps/platform` (Next.js 16, same versions as the marketplace, plus `@sentry/nextjs`): sign-in by email + password, email link, Google and LINE (buttons from `NEXT_PUBLIC_AUTH_PROVIDERS`); shop picker for people in several shops; `/[tenant]/…` shell with a sidebar on wide screens and a tab bar on phones; the 4 staff tabs (Dashboard, Orders, New order, Maintenance) laid out with "Arrives in Phase N" placeholders; Team and Shop settings for owners and managers; "You and this device" page with language (EN/TH), appearance (match device/light/dark) and tab bar position (top/bottom), each a per-device cookie; installable PWA (manifest, icons, service worker with an offline page); Sentry, off when the DSN is blank.
+- Roles: owners, managers and staff see all 4 tabs; mechanics Dashboard + Maintenance and open on Maintenance; drivers Dashboard + Orders. Team and Shop settings: owners and managers.
+- Demo seed: `npm run seed -w @mango/platform` (local) and `npm run seed:staging` — BSR Bike Shop (TH/THB/Asia/Bangkok) with a user per role, Saigon Scooters (VN/VND/Asia/Ho_Chi_Minh), and `both@demo.test` in both. Password = `DEMO_PASSWORD` in `apps/platform/.env.local` (the repo is public, so never committed).
+- Tests: 35 unit; 26 DB tests (`npm run test:db -w @mango/platform`), incl. the acceptance check that no member of one tenant, in any role, can read any row of the other, for every table the RLS report lists (new tables are covered automatically); 18 Playwright tests at 375 px and 1280 px.
+- CI: platform added to the matrix; new job starts a local Supabase in CI and runs the RLS tests, the seed and Playwright.
+- Netlify: `apps/platform/netlify.toml` + ignore script. Marketplace ignore script no longer rebuilds for `supabase/`-only commits.
+
+**Decided (9 Nov 2026, owner)**
+- Sentry added; DSN from env, no-op when unset.
+- Staff language and tab bar position are per-device cookies; no `/th` URL prefix.
+- Every platform Netlify context points at staging until Gate A.
+- Branded sign-in emails deferred (Supabase default emails until then).
+- The marketplace `profiles` trigger stays: every auth user, staff included, gets a marketplace profile.
+- Desktop works fully for every staff-app screen: same pages, sidebar instead of the tab bar; forms are native inputs and selects, so mouse and keyboard work everywhere.
+
+**Deferred / known issues**
+- Inviting team members is Phase 11 (spec). Until then members are added by the seed script or by Mango Works with the service role. Owners and managers can change roles and remove members.
+- Tenant columns for later phases (plan, VAT, Stripe, LINE channel, booking rules, marketplace switches, distance unit) are added by those phases.
+- Google and LINE sign-in need the OAuth apps registered under Mango Works and enabled in staging (steps in the PR). Not tested end to end yet; email sign-in is.
+- Sentry source-map upload isn't set up (needs `withSentryConfig` and an auth token), so browser stack traces are minified.
+- "Pull down to refresh" on the Dashboard is a Refresh button (installed apps have no browser pull-to-refresh). A gesture can come with Phase 3's data.
+- The UI and manifest say "Mango Works" until the product name is chosen.
+- 2FA, session list and audit log viewer: Phase 11.
 
 ## Step 2: marketplace/booking-fees, done (merged in PR #6, 9 Nov 2026)
 
@@ -37,8 +65,9 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 ## Next
 
-1. Owner: archive `mango-works-platform` if not done yet.
-2. Platform Phase 0: `platform/phase-0-foundations`.
+1. Owner: create the platform Netlify site (settings in the Phase 0 PR), register Google and LINE sign-in for staging, review and merge the Phase 0 PR.
+2. Owner: archive `mango-works-platform` if not done yet.
+3. Platform Phase 1: fleet (`platform/phase-1-fleet`).
 
 ## Open
 
