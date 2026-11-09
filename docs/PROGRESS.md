@@ -7,11 +7,11 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | Track | Where it stands |
 | --- | --- |
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
-| Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag are on `marketplace/booking-fees` (PR open, not merged). Nothing uses them yet |
+| Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | README only. Phase 0 (foundations) is next |
 | Database | 27 migrations in `supabase/migrations`. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), created; no migrations pushed yet |
 
-## marketplace/booking-fees (9 Nov 2026)
+## Step 2: marketplace/booking-fees, done (merged in PR #6, 9 Nov 2026)
 
 - From `booking-flow` (commit `ec7de98`) only: `lib/fees.ts`, `lib/fee-lifecycle.ts`, `lib/flags.ts`, `lib/fees.test.ts`, `lib/fee-lifecycle.test.ts` (23 tests). The WIP `marketplace_bookings` migration and everything else stayed behind. `booking-flow` is kept on GitHub for now.
 - `fees.ts` takes the market's fee settings: `bookingFee(rental, market)` and `priceBreakdown(…, market)` with `MarketFeeSettings = { currency, feeMinimum, feeRoundingUnit? }`. Amounts are integer minor units of `currency` (THB satang, JPY yen); the exponent comes from `Intl`. No ฿50 or THB in the code. The caller (checkout, not built) supplies the settings: THB, ฿50 minimum, rounding 1 for Bangkok until markets arrive at the adapter switch. Because the adapter still returns whole baht, checkout must convert to satang before calling.
@@ -37,9 +37,8 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 ## Next
 
-1. Owner: review and merge the `marketplace/booking-fees` PR; then delete `booking-flow` (marketplace bookings are designed with platform Phase 3).
-2. Owner: archive `mango-works-platform` if not done yet.
-3. Platform Phase 0: `platform/phase-0-foundations`.
+1. Owner: archive `mango-works-platform` if not done yet.
+2. Platform Phase 0: `platform/phase-0-foundations`.
 
 ## Open
 
