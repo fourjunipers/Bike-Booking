@@ -1,8 +1,13 @@
 /**
  * When the marketplace fee is charged, and what happens to it when a booking
- * changes (SPEC "Payments and cancellation", owner decisions 2026-11-07/08).
+ * changes (SPEC "Payments and cancellation", owner decisions 2026-11-07/08/09).
  * The fee is the only money the marketplace takes; its states are owned
  * here, not by Mango Works. Pure functions; times are instants.
+ *
+ * Deadlines are calendar days at the same clock time in the shop's time zone
+ * (decision 2026-11-09): pickup 10:00 on the 30th → charged 10:00 on the
+ * 27th, unpaid fee cancels at 10:00 on the 28th, even across a
+ * daylight-saving change.
  *
  * Charging:
  * - Pickup within 3 days (including walk-ins): charged at booking, for
@@ -17,11 +22,12 @@
  *   charged. Within 3 days, or a no-show: the fee is kept.
  */
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-/** The fee is charged this long before pickup. */
-export const CHARGE_LEAD_MS = 3 * DAY_MS;
-/** An unpaid fee cancels the booking this long before pickup. */
-export const PAYMENT_DEADLINE_MS = 2 * DAY_MS;
+import { addCalendarDays } from "./zoned-time";
+
+/** The fee is charged this many calendar days before pickup. */
+export const CHARGE_LEAD_DAYS = 3;
+/** An unpaid fee cancels the booking this many calendar days before pickup. */
+export const PAYMENT_DEADLINE_DAYS = 2;
 
 export type FeeStatus =
   /** Request waiting for the shop; nothing charged or scheduled yet. */
@@ -40,19 +46,33 @@ export type BookingKind = "instant" | "request" | "now";
 
 export type FeePlan = { status: FeeStatus; chargeAt: Date | null };
 
+/** When the fee is charged for a pickup: 3 calendar days before, shop time. */
+export function chargeDate(start: Date, shopTimeZone: string): Date {
+  return addCalendarDays(start, -CHARGE_LEAD_DAYS, shopTimeZone);
+}
+
+/** When an unpaid fee cancels the booking (failed card, unpaid link). */
+export function paymentDeadline(start: Date, shopTimeZone: string): Date {
+  return addCalendarDays(start, -PAYMENT_DEADLINE_DAYS, shopTimeZone);
+}
+
+/** Pickup is within 3 days: the charge date has come. */
+function withinChargeLead(now: Date, chargeAt: Date): boolean {
+  return now.getTime() >= chargeAt.getTime();
+}
+
 /** The fee plan when a booking is made. */
 export function feeAtBooking(
   kind: BookingKind,
   now: Date,
   start: Date,
+  shopTimeZone: string,
 ): FeePlan {
-  if (kind === "now" || start.getTime() - now.getTime() <= CHARGE_LEAD_MS)
+  const chargeAt = chargeDate(start, shopTimeZone);
+  if (kind === "now" || withinChargeLead(now, chargeAt))
     return { status: "due", chargeAt: now };
   if (kind === "request") return { status: "awaiting_shop", chargeAt: null };
-  return {
-    status: "scheduled",
-    chargeAt: new Date(start.getTime() - CHARGE_LEAD_MS),
-  };
+  return { status: "scheduled", chargeAt };
 }
 
 /** The fee plan once the shop accepts a request. */
@@ -60,20 +80,13 @@ export function feeWhenAccepted(
   current: FeeStatus,
   now: Date,
   start: Date,
+  shopTimeZone: string,
 ): FeePlan {
   // Already charged at booking (pickup was within 3 days): nothing to do.
   if (current !== "awaiting_shop") return { status: current, chargeAt: null };
-  if (start.getTime() - now.getTime() <= CHARGE_LEAD_MS)
-    return { status: "due", chargeAt: now };
-  return {
-    status: "scheduled",
-    chargeAt: new Date(start.getTime() - CHARGE_LEAD_MS),
-  };
-}
-
-/** When an unpaid fee cancels the booking (failed card, unpaid link). */
-export function paymentDeadline(start: Date): Date {
-  return new Date(start.getTime() - PAYMENT_DEADLINE_MS);
+  const chargeAt = chargeDate(start, shopTimeZone);
+  if (withinChargeLead(now, chargeAt)) return { status: "due", chargeAt: now };
+  return { status: "scheduled", chargeAt };
 }
 
 export type EndingEvent =
@@ -92,6 +105,7 @@ export function feeWhenEnded(
   current: FeeStatus,
   now: Date,
   start: Date,
+  shopTimeZone: string,
 ): { status: FeeStatus; action: FeeAction } {
   const paid = current === "paid";
   // Already settled: never refund twice or keep a refunded fee.
@@ -111,9 +125,9 @@ export function feeWhenEnded(
     case "cancelled_vendor":
       return refundOrVoid;
     case "cancelled_customer":
-      return start.getTime() - now.getTime() > CHARGE_LEAD_MS
-        ? refundOrVoid
-        : keepOrVoid;
+      return withinChargeLead(now, chargeDate(start, shopTimeZone))
+        ? keepOrVoid
+        : refundOrVoid;
     case "no_show":
       return keepOrVoid;
     case "cancelled_unpaid":
