@@ -8,9 +8,11 @@ if [ -z "$CACHED_COMMIT_REF" ] || [ "$CACHED_COMMIT_REF" = "$COMMIT_REF" ]; then
   exit 1
 fi
 
+# supabase/ is left out on purpose: migrations don't change the marketplace
+# build, and marketplace code that needs a schema change also touches
+# apps/marketplace or packages/db (generated types).
 git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- \
   apps/marketplace \
   packages \
-  supabase \
   package.json \
   package-lock.json
