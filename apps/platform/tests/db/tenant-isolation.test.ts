@@ -22,7 +22,11 @@ import {
 let a: TestTenant;
 let b: TestTenant;
 let outsider: TestUser;
-let tables: { table_name: string; rls_enabled: boolean; policy_count: number }[];
+let tables: {
+  table_name: string;
+  rls_enabled: boolean;
+  policy_count: number;
+}[];
 
 beforeAll(async () => {
   [a, b, outsider] = await Promise.all([
@@ -59,7 +63,9 @@ describe("every tenant table", () => {
   it("has RLS switched on and at least one policy", () => {
     for (const t of tables) {
       expect.soft(t.rls_enabled, `${t.table_name}: RLS`).toBe(true);
-      expect.soft(t.policy_count, `${t.table_name}: policies`).toBeGreaterThan(0);
+      expect
+        .soft(t.policy_count, `${t.table_name}: policies`)
+        .toBeGreaterThan(0);
     }
   });
 

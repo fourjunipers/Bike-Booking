@@ -21,17 +21,15 @@ afterAll(async () => {
 beforeEach(async () => {
   const service = serviceClient();
   for (const [role, member] of Object.entries(t.members)) {
-    await service
-      .from("memberships")
-      .upsert(
-        {
-          id: member.membershipId,
-          tenant_id: t.id,
-          user_id: member.id,
-          role: role as keyof TestTenant["members"],
-        },
-        { onConflict: "id" },
-      );
+    await service.from("memberships").upsert(
+      {
+        id: member.membershipId,
+        tenant_id: t.id,
+        user_id: member.id,
+        role: role as keyof TestTenant["members"],
+      },
+      { onConflict: "id" },
+    );
   }
 });
 
@@ -61,9 +59,23 @@ describe("owners", () => {
   it("can promote staff to manager and owner", async () => {
     const db = t.members.owner.db;
     const target = t.members.staff.membershipId;
-    expect((await db.rpc("set_member_role", { p_membership_id: target, p_role: "manager" })).error).toBeNull();
+    expect(
+      (
+        await db.rpc("set_member_role", {
+          p_membership_id: target,
+          p_role: "manager",
+        })
+      ).error,
+    ).toBeNull();
     expect(await roleOf(target)).toBe("manager");
-    expect((await db.rpc("set_member_role", { p_membership_id: target, p_role: "owner" })).error).toBeNull();
+    expect(
+      (
+        await db.rpc("set_member_role", {
+          p_membership_id: target,
+          p_role: "owner",
+        })
+      ).error,
+    ).toBeNull();
     expect(await roleOf(target)).toBe("owner");
   });
 
@@ -79,7 +91,10 @@ describe("owners", () => {
   it("can't leave the shop without an owner", async () => {
     const db = t.members.owner.db;
     const self = t.members.owner.membershipId;
-    const demote = await db.rpc("set_member_role", { p_membership_id: self, p_role: "manager" });
+    const demote = await db.rpc("set_member_role", {
+      p_membership_id: self,
+      p_role: "manager",
+    });
     expect(demote.error?.message).toBe("A shop needs at least one owner");
     const remove = await db.rpc("remove_member", { p_membership_id: self });
     expect(remove.error?.message).toBe("A shop needs at least one owner");
@@ -88,7 +103,10 @@ describe("owners", () => {
 
   it("can step down once there's another owner", async () => {
     const db = t.members.owner.db;
-    await db.rpc("set_member_role", { p_membership_id: t.members.manager.membershipId, p_role: "owner" });
+    await db.rpc("set_member_role", {
+      p_membership_id: t.members.manager.membershipId,
+      p_role: "owner",
+    });
     const { error } = await db.rpc("set_member_role", {
       p_membership_id: t.members.owner.membershipId,
       p_role: "manager",
@@ -115,10 +133,15 @@ describe("managers", () => {
       [t.members.staff.membershipId, "owner"],
       [t.members.owner.membershipId, "staff"],
     ] as const) {
-      const { error } = await db.rpc("set_member_role", { p_membership_id: target, p_role: role });
+      const { error } = await db.rpc("set_member_role", {
+        p_membership_id: target,
+        p_role: role,
+      });
       expect(error?.code).toBe("42501");
     }
-    const remove = await db.rpc("remove_member", { p_membership_id: t.members.owner.membershipId });
+    const remove = await db.rpc("remove_member", {
+      p_membership_id: t.members.owner.membershipId,
+    });
     expect(remove.error?.code).toBe("42501");
   });
 
@@ -129,7 +152,9 @@ describe("managers", () => {
       .eq("id", t.id)
       .select("name, timezone");
     expect(error).toBeNull();
-    expect(data).toEqual([{ name: "Renamed by manager", timezone: "Europe/Berlin" }]);
+    expect(data).toEqual([
+      { name: "Renamed by manager", timezone: "Europe/Berlin" },
+    ]);
   });
 });
 
@@ -167,9 +192,15 @@ describe("tenant rows", () => {
 
   it("reject unknown time zones and malformed codes", async () => {
     const service = serviceClient();
-    const zone = await service.from("tenants").update({ timezone: "Mars/Olympus" }).eq("id", t.id);
+    const zone = await service
+      .from("tenants")
+      .update({ timezone: "Mars/Olympus" })
+      .eq("id", t.id);
     expect(zone.error?.message).toBe("Unknown time zone: Mars/Olympus");
-    const currency = await service.from("tenants").update({ currency: "baht" }).eq("id", t.id);
+    const currency = await service
+      .from("tenants")
+      .update({ currency: "baht" })
+      .eq("id", t.id);
     expect(currency.error?.code).toBe("23514");
   });
 });
