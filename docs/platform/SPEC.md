@@ -158,7 +158,7 @@ mango-works/              Bike-Booking repo, restructured in place, renamed afte
 | Environment | Supabase project | Gets migrations |
 | --- | --- | --- |
 | Local | Supabase CLI (Docker) | Every branch |
-| Staging | New free project | Branches under test, pushed by hand |
+| Staging | mango-works-staging (Singapore, free; created 9 Nov 2026) | Branches under test, pushed by hand |
 | Live | Today's Bike-Booking project | Only from main |
 
 - One Supabase Auth user pool. Staff are users with a membership; customers are users with a marketplace profile; one person can be both.
@@ -291,11 +291,15 @@ A simple installable app for front-desk staff and mechanics, separate from the f
 
 The full admin (settings, pricing, reports, fleet setup) stays in the desktop web app. Both use the same data, so anything done in one shows in the other at once.
 
+**Desktop works for everything.** Every staff-app task also works fully in the desktop web app: check-out and check-in, damage marking, photos (webcam or file upload), signatures by mouse or trackpad, odometer and maintenance. A phone is optional, never required.
+
 ### Fleet
 
 - Models with photos, buffers, deposit, minimum age, licence class, online-bookable toggle. Each model links to a platform-wide vehicle catalog entry (make, model, years, cc, type, transmission, ABS, under-seat storage, USB, key type, stock photo) that the platform admin approves; shops pick an entry and add their own photos. Booking modes per model: its quantity is split into Instant units, Request units and walk-in-only units, plus a "ready for walk-ins" count staff update from the app.
 - Units with plate, frame (chassis/VIN) number, engine number, colour, first registration date, odometer, location and status (active, maintenance, retired, sold, borrowed). A QR sticker is generated per unit and printed from the unit page.
 - Borrowed units (sub-rentals) with an active window. Retired and sold units keep their full history.
+
+**Distance unit.** Each shop picks km or miles in settings. Odometer readings, service intervals and km allowances are stored in km and shown in the shop's unit. Every maintenance job records both the date and the odometer reading.
 
 **Vehicle record (one page per unit)**
 
@@ -455,8 +459,8 @@ Read the phases left to right, band by band. Nothing reaches other shops until B
    - Accept: full new → returned lifecycle in Playwright; drag-extend re-prices; an overlap is refused with a clear message.
 4. **Customers + KYC.** Customer profiles, documents with expiry, blacklist, privacy notice, document storage on the platform or the shop's Google Drive, access logging, retention purge job.
    - Accept: pickup blocked when licence expired; document image views appear in the audit log.
-5. **Check-out / check-in.** The phone flow: QR scan, odometer, fuel, guided photos, damage diagram, extras, rental agreement template + signature pad (finger, stylus, mouse/trackpad) with signed PDF record, comparison at return, damage charges.
-   - Accept: whole check-out in under 3 minutes on a mid-range Android; works on poor signal (photos queue and upload).
+5. **Check-out / check-in.** The phone and desktop flow (phone optional): QR scan, odometer, fuel, guided photos, damage diagram, extras, rental agreement template + signature pad (finger, stylus, mouse/trackpad) with signed PDF record, comparison at return, damage charges.
+   - Accept: whole check-out in under 3 minutes on a mid-range Android; works on poor signal (photos queue and upload); the same check-out and check-in complete in a desktop browser.
 6. **Documents + messages.** PDF templates (contract, invoice, tax invoice/receipt, credit note), numbering, email (Resend) and LINE, event-based automations, template editor.
    - Accept: signed contract PDF arrives by email and LINE within 1 minute of signing.
 7. **Payments.** Stripe Connect onboarding, card + PromptPay, saved cards charged automatically N days before pickup, payment links, down payments, deposits (hold or charge), refunds, offline payments, payment status on orders, webhooks.
@@ -467,7 +471,7 @@ Read the phases left to right, band by band. Nothing reaches other shops until B
    - Accept: a 3-month rental auto-charges each month in test clock; a failed charge alerts staff.
 10. **Sales history, reports + import.** Dashboard KPIs, sales history page (periods, compare, filters, saved views, drill-down), revenue basis switch, cash paid out + daily cash close + evening LINE summary, other reports, CSV/Excel export, Booqable importer (products, stock items, customers, future orders).
     - Accept: import of BSR's Booqable export reconciles counts exactly. **Gate A:** BSR runs in parallel for 2 weeks.
-11. **SaaS layer.** Self-serve signup + onboarding wizard, 5 shop website templates, plans and trials (Stripe Billing), plan limits, multi-location, platform admin, enforced 2FA, public API + webhooks.
+11. **SaaS layer.** Marketing site with pricing page; self-serve signup, payment and automatic shop setup (country sets currency, timezone, language and tax; no manual step by Mango Works) + onboarding wizard, 5 shop website templates, plans and trials (Stripe Billing), plan limits, multi-location, platform admin, enforced 2FA, public API + webhooks.
     - Accept: a new shop goes from signup to first online booking in under 30 minutes without help.
 12. **BSR cutover + hardening.** Fix pilot issues, Stripe Tap to Pay in the staff app, backups and restore drill, load test, security review, terms/privacy pages, help docs.
     - Accept: restore from backup works; no open P1 bugs for 2 weeks. **Gate B:** cancel Booqable, open signups.
@@ -533,6 +537,10 @@ This log tracks your additions and removals. Each one is already worked into the
 
 | # | Request | Type | Where in the spec | Phase |
 | --- | --- | --- | --- | --- |
+| 39 | Subscription tiers (draft): staff app in all tiers; Tier 1 management, Tier 2 adds online booking, Tier 3 adds multi-store; possibly priced by fleet size (under 100 / 100+ vehicles) | Decision | Open decisions | 11 |
+| 38 | Shops find the product on our website, sign up, pay and start using it with no manual setup | Add | Build plan (Phase 11) | 11 |
+| 37 | Maintenance records date and odometer; each shop chooses km or miles | Add | Fleet | 1 |
+| 36 | Check-out and check-in fully usable on desktop; a phone is optional | Change | Staff app; Build plan (Phase 5) | 0, 5 |
 | 35 | Built for worldwide use: platform usable in any country from day one; Moto Mangos launches market by market (Bangkok, Chiang Mai, Thailand, Vietnam, Japan) | Decision | Built for any country | R, 2, 3, 7 |
 | 34 | Names: Mango Works is the parent company; the marketplace is Moto Mangos, marketed separately as the official partner; platform name TBD | Change | Product scope; Repository and database; CLAUDE.md; Open decisions | R |
 | 33 | Combine the platform and Bike-Booking into one monorepo with one Supabase database | Decision | Repository and database; Product scope; Tech stack; Build plan; Claude Code handoff | R |
@@ -573,11 +581,11 @@ This log tracks your additions and removals. Each one is already worked into the
 Phases 0–1 can start without these. Each one is needed by the phase noted.
 
 - [ ] Platform product name and domain, and the Moto Mangos domain (before Phase 8).
-- [ ] SaaS pricing: flat tiers like Booqable, or per vehicle (before Phase 11).
+- [ ] SaaS pricing (draft, confirm before Phase 11): staff app in every tier. Tier 1 = management system; Tier 2 adds online booking; Tier 3 adds multi-store. Possibly also priced by fleet size: under 100 vehicles one price, 100+ another. Moto Mangos stays separate and free to join (Marketplace plan), and links with Tiers 1 and 2.
 - [ ] Thai tax invoice format: confirm with Korn which fields the platform needs on invoices and receipts (before Phase 6).
 - [ ] Damage diagram artwork: generic scooter, big bike and car outlines, or per model (before Phase 5).
 - [ ] Thai lawyer review of the privacy notice and document retention period (before Phase 4 goes live).
-- [ ] Supabase region: confirm the live Bike-Booking project is in Singapore (before step R; moving it later means migrating live data).
+- [x] Supabase region: confirmed. The live project is in Singapore (ap-southeast-1), checked 9 Nov 2026.
 
 ## Sources
 

@@ -2,16 +2,31 @@
 
 What's done, open decisions and known issues, across both apps. Update this at the end of every session so the next one starts clean.
 
-## Status (8 Nov 2026)
+## Status (9 Nov 2026)
 
 | Track | Where it stands |
 | --- | --- |
-| Repo | **Step R** (monorepo restructure) on branch `restructure-monorepo`. Move-only: no behaviour or database change |
-| Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee and fee lifecycle are on the `booking-flow` branch, not merged (see below) |
-| Platform (`apps/platform`) | README only. Phase 0 (foundations) is next after Step R |
-| Database | One Supabase project, 27 migrations in `supabase/migrations`. Live = today's Bike-Booking project (migrations only from `main`); a staging project is still to be created |
+| Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
+| Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag are on `marketplace/booking-fees` (PR open, not merged). Nothing uses them yet |
+| Platform (`apps/platform`) | README only. Phase 0 (foundations) is next |
+| Database | 27 migrations in `supabase/migrations`. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), created; no migrations pushed yet |
 
-## Step R: done in this branch
+## marketplace/booking-fees (9 Nov 2026)
+
+- From `booking-flow` (commit `ec7de98`) only: `lib/fees.ts`, `lib/fee-lifecycle.ts`, `lib/flags.ts`, `lib/fees.test.ts`, `lib/fee-lifecycle.test.ts` (23 tests). The WIP `marketplace_bookings` migration and everything else stayed behind. `booking-flow` is kept on GitHub for now.
+- `fees.ts` takes the market's fee settings: `bookingFee(rental, market)` and `priceBreakdown(…, market)` with `MarketFeeSettings = { currency, feeMinimum, feeRoundingUnit? }`. Amounts are integer minor units of `currency` (THB satang, JPY yen); the exponent comes from `Intl`. No ฿50 or THB in the code. The caller (checkout, not built) supplies the settings: THB, ฿50 minimum, rounding 1 for Bangkok until markets arrive at the adapter switch. Because the adapter still returns whole baht, checkout must convert to satang before calling.
+- `fee-lifecycle.ts` takes the shop's IANA time zone on every function. `lib/zoned-time.ts` (`addCalendarDays`) does the DST-aware calendar arithmetic with `Intl` only, no new dependency.
+- Tests: 8 fee, 20 lifecycle (the original 23, reworked, plus DST cases), 6 zoned-time.
+
+### Decided (9 Nov 2026, owner)
+
+- **Fee rounding:** the booking fee rounds to whole currency units, halves up, whatever the minor units of the rental. The rounding unit is a per-market setting (`feeRoundingUnit`, in whole units, default 1; e.g. 10 → nearest ฿10).
+- **Fee deadlines:** "charged 3 days before pickup" and "unpaid 2 days before pickup → cancelled" are calendar days at the pickup's clock time in the shop's time zone, not 72/48 hours. Across a DST change the gap is 71 or 73 hours. A clock time skipped by a spring-forward change moves forward by the gap; a repeated one takes the earlier instant. `docs/marketplace/SPEC.md` (Failed card charge) updated from "48 hours" to match.
+- `BOOKING_ENABLED` is off unless set to exactly `"true"`, and nothing imports `flags.ts` yet, so the site is unchanged whatever the value. Added to `.env.example`. `PLATFORM_EVENTS_SECRET` from `booking-flow`'s `.env.example` was not brought over (nothing uses it).
+- The `marketplace` branch (fully merged into `main`) was deleted locally and on GitHub: git can't hold both `marketplace` and `marketplace/…` branches.
+- Nothing moved to `packages/core`: the fee and its states are marketplace-owned (`docs/INTEGRATION.md`), not shared rules.
+
+## Step R: done (merged in PR #5)
 
 - `apps/marketplace`: the Bike-Booking app, moved with `git mv` so history is kept.
 - `packages/core` (`@mango/core`): rental-days, pricing, availability, closures, money, time, with their tests. Logic unchanged.
@@ -22,15 +37,14 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 ## Next
 
-1. Owner: update the Netlify site settings (steps in the Step R PR), compare the deploy preview with bike-booking-th.netlify.app, and merge.
-2. Owner: rename the GitHub repo to `mango-works`, check Netlify still points at it, and archive `mango-works-platform`.
-3. Marketplace follow-up branch: copy `fees.ts`, `fee-lifecycle.ts`, `flags.ts` and their 23 tests from `booking-flow` into `apps/marketplace/lib`. Drop the WIP `marketplace_bookings` migration; marketplace bookings are designed with platform Phase 3.
-4. Platform Phase 0: `platform/phase-0-foundations`.
+1. Owner: review and merge the `marketplace/booking-fees` PR; then delete `booking-flow` (marketplace bookings are designed with platform Phase 3).
+2. Owner: archive `mango-works-platform` if not done yet.
+3. Platform Phase 0: `platform/phase-0-foundations`.
 
 ## Open
 
 - Platform product name.
-- Staging Supabase project: not created yet.
+- Shared time-zone helper: `lib/zoned-time.ts` is generic (any IANA zone, DST-aware). It may belong in `@mango/core/time` when platform Phase 2 gives that module a time-zone argument; not moved without the owner's say.
 
 ## Hard-coded Thailand assumptions (inventory, not fixed)
 
@@ -62,6 +76,7 @@ Marketplace paths are relative to `apps/marketplace/`. Line numbers are as of th
 | File:line | What | Target |
 | --- | --- | --- |
 | `lib/data/types.ts:233-234` | `NewBooking.payment.currency: "THB"` literal type | AS |
+| `lib/fees.test.ts`, `lib/fee-lifecycle.test.ts` | Test fixtures use THB / ฿50 and `Asia/Bangkok`; the code takes currency, minimum and time zone as arguments | none |
 | `lib/data/types.ts:235` | `referralCode` passes through; there are no per-market referral rules in code yet (the referral program isn't built) | AS |
 | `i18n/request.ts:14` | next-intl `timeZone: "Asia/Bangkok"` | AS |
 | `app/(customer)/[locale]/layout.tsx:39` | `timeZone="Asia/Bangkok"` on the customer intl provider | AS |
