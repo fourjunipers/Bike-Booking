@@ -1,0 +1,8 @@
+{
+  "extends": "@mango/config/tsconfig.package.json",
+  "compilerOptions": {
+    // Pure TypeScript: no DOM types.
+    "lib": ["esnext"]
+  },
+  "include": ["src/**/*.ts"]
+}

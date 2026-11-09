@@ -1,81 +1,77 @@
-# CLAUDE.md
+# CLAUDE.md (repo root)
 
-Standing instructions for every session in this repo. Read this file, then `SPEC.md` (the product spec) and `BUILD_PLAN.md` (the phased build plan) before any feature work.
+Rules for every session in this repo. Each app has its own CLAUDE.md as well; read the root file and the app's file before any work:
 
-## What we are building
+- Marketplace: `apps/marketplace/CLAUDE.md`. Spec: `docs/marketplace/SPEC.md`.
+- Platform: `apps/platform/CLAUDE.md`. Spec: `docs/platform/SPEC.md`.
+- Contract between them: `docs/INTEGRATION.md`. Status and known issues: `docs/PROGRESS.md`.
 
-A web-based motorbike rental marketplace for Thailand (Bangkok first). Foreign customers search and book bikes from local rental shops. The platform collects only a booking fee (10% of the rental after promotions, minimum ฿50). The customer pays the rest to the shop at pickup. Vendor revenue never passes through the platform.
+If code and the spec disagree, the spec wins. If the spec is unclear or seems wrong, stop and ask. Don't guess.
 
-Three roles: **customer**, **vendor** (shop owner + staff), **admin** (platform owner). Vendors work in Mango Works, not here (see below).
+## Names
 
-## Architecture: a marketplace front end on Mango Works (decision 2026-11-07)
-
-Bike-Booking is the **customer-facing marketplace**. It does **not** own shop data and has **no vendor backend**. Shops, bike models, units, prices, availability, bookings and payments to shops live in **Mango Works**, a separate rental-management platform (its own repo). A booking made here becomes a Mango Works order with `channel = "marketplace"`.
-
-- **All shop data goes through `lib/data/`** (`import … from "@/lib/data"`). Pages, components and API routes never query a database client for shops, bikes, prices, availability or bookings; ESLint enforces this. `lib/data/current-db.ts` is a **temporary** implementation on this project's own database; it will be swapped for the Mango Works API without UI changes. `docs/INTEGRATION.md` lists every adapter function, the data it needs and the rules it must follow: keep it in step with `lib/data/types.ts`.
-- **Mango Works owns** pricing and availability rules: the day table (over 30 days, the 30-day price ÷ 30 per day), "every started 24 hours is a day", buffers, the Instant / Request / walk-ins-only split, minimum notice and days, opening hours and closures. The marketplace displays what the adapter returns and never recalculates them.
-- **The marketplace owns** customer accounts and login (LINE, Google, email), search and model-first browsing, shop ranking (boost levels and weights here; shop signals come from the adapter), the station list, the booking fee (10% of the rental after promotions, min ฿50, paid online 3 days before pickup, via Stripe Connect as an application fee on marketplace bookings only), request-to-book vs instant at checkout, the referral program, SEO and analytics. The customer pays the rest to the shop under the shop's own settings in Mango Works; `createBooking` already allows full online payment later.
-- **Customer details** sent with each booking: name, email, phone, nationality, LINE ID (Mango Works keeps a customer record per shop). The privacy notice (`/privacy`) says booking details are shared with the shop.
-- **Vendor screens are hidden, not deleted.** `/vendor`, admin approvals, shops and bike catalog, and shop staff invites redirect (`lib/hidden-areas.ts`). Don't build on them; their code and tables stay until Mango Works replaces them.
-
-`SPEC.md` is the source of truth for behaviour. If code and spec disagree, the spec wins. If the spec is unclear or seems wrong, stop and ask. Do not guess.
-
-## Working rules
-
-- **Work only on the phase you are asked to build.** Do not start later phases, even partially. Leave clear `TODO(phase-N)` comments where a later phase will plug in.
-- **Plan first.** For every phase or feature, write a plan (files, tables, routes, tests) and wait for approval before writing code.
-- **Ask before adding a dependency** that is not listed in the stack below.
-- **Never commit secrets.** All keys live in `.env.local` (git-ignored). Keep `.env.example` up to date with every variable name and a one-line comment.
-- **Stripe is always in test mode** until the owner says otherwise. Never use live keys.
-- **Small commits** with clear messages, one logical change each.
-- At the end of each phase, give a short summary covering what was built, how to test it by hand, and anything left open.
-
-## Stack
-
-| Concern | Choice |
+| Name | What |
 | --- | --- |
-| Framework | Next.js (latest stable, App Router), TypeScript `strict` |
-| Styling / UI | Tailwind CSS + shadcn/ui |
-| Database / auth / storage | Supabase (Postgres, Auth, Storage), with PostGIS for distance search |
-| Migrations | Supabase CLI migrations in `supabase/migrations/`, never edit the DB by hand |
-| i18n | `next-intl`. Customer site: English, Thai, Chinese, Russian, German, French, Spanish, Italian, Japanese, Korean (English at `/`, others prefixed, e.g. `/ja/…`). Vendor dashboard is Thai + English. Admin is English |
-| Payments | Stripe (cards, saved cards via SetupIntent, Apple Pay / Google Pay, PromptPay) |
-| Vendor messaging | LINE Messaging API (Flex messages, postback buttons) |
-| Customer messaging | Resend (email). WhatsApp Business API is added in Phase 7 |
-| Maps | Google Maps JavaScript API + Places API |
-| Scheduled jobs | Netlify Scheduled Functions (`netlify/functions/`) calling protected API routes (`Authorization: Bearer $CRON_SECRET`). Cron expressions run in UTC and functions time out after 30 s, so keep the real work in the API route |
-| Tests | Vitest (unit), Playwright (end-to-end for core flows) |
-| Hosting | Netlify (Next.js via its OpenNext adapter). Free plan: every production deploy costs credits, so work on branches and merge to `main` in batches |
+| **Mango Works Co., Ltd.** | Parent company. Repo (`mango-works`) and package scope (`@mango`) |
+| **Moto Mangos** | Marketplace brand: the customer site in `apps/marketplace` (today's Bike-Booking site) |
+| Platform | Rental management platform in `apps/platform`. Product name not chosen yet |
 
-Before relying on any third-party API behaviour (Supabase Auth providers, Stripe PromptPay, LINE Login), check the current official docs. Don't rely on memory.
+Folder and package names stay brand-neutral (`apps/marketplace`, `apps/platform`, `@mango/*`). Don't rebrand UI text unless asked.
 
-## Conventions
+## Layout
 
-- **Money:** store all amounts as **integers in the shop's currency** in the database (`int`). Every shop is Thai baht for now (`shops.currency` = THB; bookings copy it). Convert to satang (×100) only at the Stripe boundary, in one helper (`lib/money.ts`). Don't assume THB in new code where the currency is at hand: other countries may follow (see `docs/decisions.md`).
-- **Time:** store `timestamptz` in UTC. All business logic (shop hours, cut-offs, "today", the 3-days-before payment date) runs in **Asia/Bangkok**. Use one date helper module (`lib/time.ts`) and never call `new Date()` for business rules outside it.
-- **Pure logic in `lib/`, fully unit-tested:** fee calculation (`lib/fees.ts`), ranking (`lib/ranking.ts`, `lib/search.ts`), cancellation rules for the marketplace fee (`lib/cancellation.ts`). Pricing and availability (`lib/pricing.ts`, `lib/availability.ts`, `lib/rental-days.ts`) now belong to Mango Works: they remain only as the reference for `docs/INTEGRATION.md` and the temporary adapter.
-- **Booking status lives in Mango Works.** The marketplace reads it through `lib/data` (`getBooking`) and never writes booking rows directly.
-- **Security:** Row Level Security on every table. Customers see only their own bookings. Vendor staff see only their shop's data. Admin uses the service role on server routes only. Never expose the service role key to the client.
-- **Server-side checks:** prices, fees, availability and permissions are always recalculated on the server. Never trust amounts sent from the browser.
-- **Double-booking protection** is Mango Works' job inside `createBooking`; the marketplace must handle "no longer available" answers gracefully.
-- **Idempotency:** Stripe calls use idempotency keys. Webhook handlers (Stripe, LINE) must be safe to receive the same event twice.
-- **Webhooks:** verify signatures (Stripe signing secret, LINE channel secret) before doing anything.
-- **Folder layout:**
-  - `app/(customer)/...`: public site
-  - `app/vendor/...`: vendor dashboard (hidden; superseded by Mango Works)
-  - `app/admin/...`: admin panel (marketplace screens: ranking, stations)
-  - `lib/data/`: the data adapter, the only way to shop data
-  - `app/api/...`: webhooks and cron routes
-  - `lib/`: business logic
-  - `components/`: shared UI
-- **Mobile first, desktop too:** every screen must work well at 375 px wide and also have a proper desktop layout at 1280 px (e.g. search list and map side by side, wider galleries, multi-column forms), not a stretched phone layout.
-- **Accessibility:** labelled form fields, buttons with text, colour never the only signal.
+```text
+apps/marketplace/   Moto Mangos (Next.js)
+apps/platform/      rental management platform (scaffolded in platform Phase 0)
+packages/core/      @mango/core: pure rules (rental days, pricing, availability, closures, money, time)
+packages/db/        @mango/db: Supabase client factories + generated database types
+packages/config/    @mango/config: shared tsconfig, ESLint, Prettier
+supabase/           the one migrations folder for the one database
+docs/               platform/, marketplace/, INTEGRATION.md, PROGRESS.md
+```
 
-## Definition of done (every phase)
+npm workspaces, one `package-lock.json` at the root. Run `npm install` at the root only. Ask before adding a dependency or a build tool (no Turborepo, Nx or pnpm without asking).
 
-1. All acceptance criteria for the phase in `BUILD_PLAN.md` pass.
-2. Unit tests for any new `lib/` logic pass (`npm test`).
-3. `npm run build` and `npm run lint` pass with no errors.
-4. Migrations apply cleanly to a fresh database (`supabase db reset`).
-5. Seed data is updated so the feature can be tried immediately.
-6. Short summary written for the owner: what to click to test it.
+## Boundaries (ESLint enforces these)
+
+- An app never imports from another app. Shared code goes in `packages/`.
+- `packages/core` is pure TypeScript: no React, Next.js or Supabase. Packages never import from an app or use an app's `@/` alias.
+- The marketplace reads shop data only through its `lib/data` adapter (see `apps/marketplace/CLAUDE.md`).
+- Table ownership follows `docs/INTEGRATION.md` §1.
+
+## Branches, commits and migrations
+
+- Branches carry the app: `platform/phase-N-name`, `marketplace/phase-N-name` (repo-wide work: a plain descriptive name, e.g. `restructure-monorepo`).
+- Small commits, one logical change each. Work on branches; merge to `main` in batches (each Netlify production deploy costs credits).
+- Migrations live only in `supabase/migrations`. Never edit an applied migration and never change the database by hand.
+- Migration names carry the owner: `<timestamp>_platform_<what>.sql` or `<timestamp>_marketplace_<what>.sql`. The 27 migrations from before Step R keep their names.
+
+## Environments
+
+| Environment | Supabase | Gets migrations |
+| --- | --- | --- |
+| Local | Supabase CLI (Docker), run from the repo root | Every branch |
+| Staging | Separate free project | Branches under test, pushed by hand |
+| Live | Today's Bike-Booking project (also runs the marketplace) | Only from `main` |
+
+Never push migrations to live from a branch. Stripe stays in test mode until the owner says otherwise. Never commit secrets: keys live in each app's `.env.local` (git-ignored), and each app's `.env.example` lists every variable.
+
+## Built for any country
+
+The platform works for a shop in any country; Moto Mangos goes live market by market (docs/platform/SPEC.md › Built for any country).
+
+- **No new code may assume Thailand, THB, Bangkok time or Thai-only formats.** Currency, time zone and locale come from the **tenant** (platform) or the **market** (marketplace), never a constant.
+- **Money** is stored as integer minor units by the currency's ISO 4217 exponent (THB ×100, JPY and VND ×1), always with a currency code. No floats. Format with the viewer's locale (`Intl.NumberFormat`), not a hard-coded symbol.
+- **Time** is stored in UTC (`timestamptz`). Business rules run in the tenant's or market's time zone, and must not assume a fixed offset or no daylight saving.
+- **Phones, addresses, plates:** international phone format; free-form addresses and plates.
+- **Existing hard-codes** (whole baht, Asia/Bangkok, `฿`) are listed in `docs/PROGRESS.md` with the phase that removes them. Don't spread them into new code; don't fix them outside that phase.
+
+## Checks
+
+Every PR runs typecheck, lint and unit tests per workspace in CI (`.github/workflows/ci.yml`). From the root:
+
+```bash
+npm run typecheck && npm run lint && npm test
+```
+
+At the end of a session, update `docs/PROGRESS.md` (what's done, decisions, known issues).

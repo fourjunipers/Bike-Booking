@@ -1,0 +1,32 @@
+{
+  "name": "@mango/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Supabase client factories and the generated database types for the one shared database.",
+  "sideEffects": false,
+  "exports": {
+    "./admin": "./src/admin.ts",
+    "./client": "./src/client.ts",
+    "./database.types": "./src/database.types.ts",
+    "./env": "./src/env.ts",
+    "./public": "./src/public.ts",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "db:types": "supabase gen types typescript --local --workdir ../.. > src/database.types.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
+    "server-only": "^0.0.1"
+  },
+  "peerDependencies": {
+    "next": "16.4.2"
+  },
+  "devDependencies": {
+    "@mango/config": "*",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@mango/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared tsconfig, ESLint and Prettier settings for every workspace.",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.package.json": "./tsconfig.package.json",
+    "./eslint/next": "./eslint/next.mjs",
+    "./eslint/package": "./eslint/package.mjs",
+    "./eslint/boundaries": "./eslint/boundaries.mjs",
+    "./prettier": "./prettier.mjs"
+  }
+}

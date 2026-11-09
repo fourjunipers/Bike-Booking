@@ -1,52 +1,37 @@
-# Motorbike rental marketplace
+# mango-works
 
-Bangkok motorbike rental marketplace. Product behaviour: [SPEC.md](SPEC.md). Build phases: [BUILD_PLAN.md](BUILD_PLAN.md). Rules for working on the code: [CLAUDE.md](CLAUDE.md). Decisions: [docs/decisions.md](docs/decisions.md).
+Monorepo for Mango Works Co., Ltd.: the **Moto Mangos** motorbike rental marketplace and the rental management platform, on one shared Supabase database.
 
-## Requirements
-
-- Node.js 24
-- Docker Desktop (only for the local Supabase database)
+| Folder | What |
+| --- | --- |
+| [apps/marketplace](apps/marketplace) | Moto Mangos customer site (Next.js), deployed to Netlify as bike-booking-th |
+| [apps/platform](apps/platform) | Rental management platform (scaffolded in platform Phase 0) |
+| [packages/core](packages/core) | `@mango/core`: pure rental rules |
+| [packages/db](packages/db) | `@mango/db`: Supabase clients and database types |
+| [packages/config](packages/config) | `@mango/config`: shared tsconfig, ESLint, Prettier |
+| [supabase](supabase) | Migrations, seed and local config for the one database |
+| [docs](docs) | Specs, the integration contract and progress |
 
 ## Setup
 
+Requires Node.js 24, plus Docker Desktop for the local database.
+
 ```bash
-npm install
-cp .env.example .env.local   # then fill in the values
-npx playwright install chromium
+npm install                      # once, at the root (npm workspaces)
+cp apps/marketplace/.env.example apps/marketplace/.env.local
+npx supabase start               # local Supabase, from the root
+npx supabase db reset            # apply migrations + seed
+npm run dev                      # marketplace at http://localhost:3000
 ```
 
-## Commands
+## Commands (root)
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Dev server at http://localhost:3000 |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier (write); `format:check` to check only |
-| `npm test` | Unit tests (Vitest) |
-| `npm run test:db` | Security (RLS) tests against local Supabase |
-| `npm run test:e2e` | End-to-end tests (Playwright, builds and serves on port 3100; sign-in tests need local Supabase) |
-| `npx supabase start` | Start local Supabase (needs Docker) |
-| `npx supabase db reset` | Recreate the local database from `supabase/migrations` and load `supabase/seed.sql` |
-| `npm run db:types` | Regenerate `lib/supabase/database.types.ts` after a migration |
+| `npm run typecheck` / `npm run lint` / `npm test` | Run in every workspace |
+| `npm run build` | Build the marketplace |
+| `npm run test:db` | Marketplace database (RLS) tests, needs local Supabase |
+| `npm run test:e2e` | Marketplace Playwright tests |
+| `npm run db:types` | Regenerate `packages/db/src/database.types.ts` |
 
-## Signing in locally
-
-Go to http://localhost:3000/login and request a magic link for one of the seeded accounts. Open the email in Mailpit at http://127.0.0.1:54324.
-
-| Email | Role |
-| --- | --- |
-| `admin@bike-booking.test` | Admin (must be in `ADMIN_EMAILS`) |
-| `customer@bike-booking.test` | Customer with one confirmed booking at BSR |
-| `owner@bsr.test` | BSR Bike Shop owner |
-| `staff@bsr.test` | BSR Bike Shop staff |
-| `owner@draft-shop.test` | Owner of a draft shop the public can't see |
-
-Supabase Studio (database browser): http://127.0.0.1:54323
-
-## Areas
-
-- `/` customer site (English)
-- `/login`, `/account` sign-in and customer profile
-- `/vendor` vendor dashboard (Thai or English, from the `locale` cookie); shop members only
-- `/admin` admin panel (English); admins only, everyone else gets not-found
+Rules for working in this repo: [CLAUDE.md](CLAUDE.md).
