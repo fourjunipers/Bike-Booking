@@ -1,0 +1,188 @@
+{
+  "App": {
+    "name": "Mango Works",
+    "description": "Rental management for vehicle rental shops"
+  },
+  "Login": {
+    "title": "Sign in",
+    "intro": "Sign in to your shop's workspace.",
+    "line": "Continue with LINE",
+    "google": "Continue with Google",
+    "or": "or with your email",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "wrongPassword": "That email and password don't match.",
+    "useLink": "Email me a sign-in link instead",
+    "usePassword": "Sign in with a password instead",
+    "send": "Email me a link",
+    "sending": "Sending…",
+    "sent": "Check your email for a sign-in link. It works for one hour.",
+    "sendFailed": "We couldn't send the link. Try again in a minute.",
+    "errorSignin": "Sign-in didn't finish. Please try again.",
+    "errorLink": "That link has expired or was already used. Ask for a new one."
+  },
+  "Picker": {
+    "title": "Choose a shop",
+    "intro": "You work in more than one shop. Which one now?",
+    "noShopTitle": "You're not in a shop yet",
+    "noShopBody": "You're signed in as {email}, but no shop has added you to its team. Ask the shop owner to add you, then sign in again.",
+    "signOut": "Sign out"
+  },
+  "Nav": {
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "new-order": "New order",
+    "maintenance": "Maintenance",
+    "team": "Team",
+    "settings": "Shop settings",
+    "me": "You and this device",
+    "switchShop": "Switch shop",
+    "signOut": "Sign out",
+    "mainMenu": "Main",
+    "tabs": "Staff app",
+    "admin": "Shop admin"
+  },
+  "Roles": {
+    "owner": "Owner",
+    "manager": "Manager",
+    "staff": "Staff",
+    "mechanic": "Mechanic",
+    "driver": "Driver"
+  },
+  "Common": {
+    "comingIn": "Arrives in Phase {phase}",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "search": "Search",
+    "nothingYet": "Nothing here yet.",
+    "loading": "Loading…"
+  },
+  "Dashboard": {
+    "title": "What's coming up",
+    "tabsLabel": "When",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "upcoming": "Upcoming",
+    "late": "Late",
+    "count": "{count, plural, one {# item} other {# items}}",
+    "range": "Next 7 days: {from} to {to}",
+    "lateIntro": "Overdue or failed: needs action now.",
+    "sections": {
+      "pickups": "Pickups",
+      "returns": "Returns",
+      "deliveries": "Deliveries and collections",
+      "servicesDue": "Services due",
+      "renewalsDue": "Tax and insurance renewals due",
+      "overdueBikes": "Overdue bikes",
+      "missed": "Missed pickups, deliveries and collections",
+      "overdueMaintenance": "Overdue services and renewals",
+      "failedCharges": "Failed card charges",
+      "unpaid": "Unpaid past deadline"
+    },
+    "shopTime": "Shop time: {time} ({zone})"
+  },
+  "Orders": {
+    "title": "Orders",
+    "searchLabel": "Find an order",
+    "searchPlaceholder": "Order number, name, phone, passport or plate",
+    "filters": "Quick filters",
+    "all": "All",
+    "today": "Today",
+    "upcoming": "Upcoming",
+    "outNow": "Out now",
+    "overdue": "Overdue",
+    "unpaid": "Unpaid",
+    "noResults": "Orders arrive in Phase 3. Your search and filter are kept in the address, so you can bookmark them.",
+    "searchingFor": "Searching for “{query}”"
+  },
+  "NewOrder": {
+    "title": "New order",
+    "intro": "Book a bike and take payment. These steps fill in as the phases land.",
+    "dates": "Pick dates",
+    "bike": "See the bikes available",
+    "customer": "Choose or add the customer",
+    "extras": "Extras and delivery",
+    "price": "Price and discount",
+    "sign": "Sign the agreement",
+    "pay": "Take payment"
+  },
+  "Maintenance": {
+    "title": "Maintenance",
+    "searchLabel": "Find a bike",
+    "searchPlaceholder": "Plate number",
+    "scan": "Scan QR",
+    "due": "Due and overdue across the fleet",
+    "noBikes": "Bikes arrive in Phase 1. Your search is kept in the address."
+  },
+  "Team": {
+    "title": "Team",
+    "intro": "Everyone who works in {shop}, and what they can do.",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "actions": "Actions",
+    "you": "you",
+    "changeRole": "Role for {name}",
+    "remove": "Remove",
+    "removeConfirm": "Remove {name} from the team?",
+    "inviteLater": "Inviting new people arrives in Phase 11. Until then, ask Mango Works to add them.",
+    "errorLastOwner": "A shop needs at least one owner. Make someone else an owner first.",
+    "errorNotAllowed": "You can't make that change.",
+    "errorGeneric": "That didn't work. Please try again."
+  },
+  "Settings": {
+    "title": "Shop settings",
+    "intro": "Every price, report and reminder uses these. Nothing assumes a country.",
+    "name": "Shop name",
+    "country": "Country",
+    "currency": "Currency",
+    "timezone": "Time zone",
+    "locale": "Number and date format",
+    "localeHelp": "A language tag such as en-GB, th-TH or ja-JP.",
+    "readOnly": "Only owners and managers can change these.",
+    "errors": {
+      "required": "Required.",
+      "tooLong": "Too long.",
+      "invalidCountry": "Choose a country from the list.",
+      "invalidCurrency": "Choose a currency from the list.",
+      "invalidTimezone": "Choose a time zone from the list.",
+      "invalidLocale": "Use a language tag such as en-GB.",
+      "saveFailed": "Couldn't save. Please try again."
+    }
+  },
+  "Me": {
+    "title": "You and this device",
+    "account": "Your account",
+    "signedInAs": "Signed in as {email}",
+    "roleHere": "Your role here: {role}",
+    "device": "This device",
+    "deviceIntro": "These choices are saved on this device only.",
+    "language": "Language",
+    "theme": "Appearance",
+    "themeSystem": "Match device",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "tabBar": "Tab bar on phones",
+    "tabBarBottom": "Bottom",
+    "tabBarTop": "Top",
+    "tabBarHelp": "Where the four tabs sit on a phone or tablet. On a wide screen they're in the sidebar.",
+    "install": "Install the app",
+    "installHelp": "On a phone, open the browser menu and choose “Add to Home screen”. On a computer, use the install icon in the address bar. It's optional: everything also works in the browser.",
+    "adminLinks": "Shop admin"
+  },
+  "Offline": {
+    "title": "You're offline",
+    "body": "Check your connection and try again."
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "body": "It may have moved, or you don't have access to it.",
+    "home": "Go to start"
+  }
+}

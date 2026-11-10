@@ -220,6 +220,8 @@ A market is a place Moto Mangos operates: a city or region, or a whole country. 
 - Settings pass down: a city uses its country's setting unless it sets its own. Referrals are on or off per market from the start: off means no partner QR codes and no new earnings there, while earnings already made are still paid. A country's referrals go on only after a check of local rules on paying partners (tax withholding, payout method). Ranking and promotions use one global setup in v1, with per-market overrides later.
 - Rollout order: Bangkok, Chiang Mai, all of Thailand, Vietnam, Japan. Each new country needs its currency, languages, a payment-provider check, a privacy review and a local landmark list.
 
+**Moto Mangos search by transmission and engine size.** Renters filter by transmission (automatic, semi-automatic, manual) and engine size in cc bands (under 125, 125–160, 160–300, over 300), alongside vehicle type, price, area and dates. Both values come from the vehicle catalog entry each model links to. A model can't be saved without a catalog entry, so cc and transmission are always filled in; a missing catalog entry goes to the platform admin for approval.
+
 **When it's built.** Markets arrive with the marketplace adapter switch after Phase 3, as a marketplace-owned table; until then the site is Bangkok-only. Bike-Booking stores whole baht today and moves to minor units at the same switch. packages/core's Bangkok-only time helpers take a time-zone argument in Phase 2.
 
 ## Data model
@@ -284,7 +286,7 @@ A simple installable app for front-desk staff and mechanics, separate from the f
 
 &#91;embedded content: staff app · 4 tabs, wireframe\]
 
-1. **Dashboard: what's coming up.** Today and tomorrow: pickups, returns, deliveries/collections, overdue bikes, services due, tax/insurance renewals due, scheduled card charges that failed. Each item opens the order or bike. Pull down to refresh.
+1. **Dashboard: what's coming up.** Four tabs, each showing its items once: Today, Tomorrow, Upcoming (the next 7 days after tomorrow) and Late. Today, Tomorrow and Upcoming list pickups, returns, deliveries/collections, services due and tax/insurance renewals due. Late lists overdue bikes, missed pickups, deliveries and collections, overdue services and renewals, failed scheduled card charges and unpaid orders past their deadline. Each tab shows its item count, and Late is highlighted when it isn't empty. Each item opens the order or bike. A Refresh button reloads the list.
 2. **Orders: find any order.** One search box for order number, customer name, phone, passport number or plate. Quick filters: today, upcoming, out now, overdue, unpaid. Opening an order shows its details and the actions for its status: check out, check in, extend, take payment, resend agreement, call or LINE the customer.
 3. **New order: book and take payment.** Pick dates → see the bikes available → choose the customer (search, or add a new one and photograph passport and licence) → extras and delivery → price with any discount → sign the agreement on screen → take payment: PromptPay QR on screen, payment link by LINE/email, card saved for a later charge, or cash. Card tap-on-phone (Stripe Tap to Pay) is added in Phase 12, close to completion.
 4. **Maintenance: bike lookup.** Search by plate or scan the bike's QR. The bike card shows key numbers, GPS tracker, tax and insurance status and the service tasks due. Actions: update odometer, log a service job, record a renewal, mark the bike in or out of maintenance. Below the search: a list of every task due or overdue across the fleet.
@@ -292,6 +294,8 @@ A simple installable app for front-desk staff and mechanics, separate from the f
 The full admin (settings, pricing, reports, fleet setup) stays in the desktop web app. Both use the same data, so anything done in one shows in the other at once.
 
 **Desktop works for everything.** Every staff-app task also works fully in the desktop web app: check-out and check-in, damage marking, photos (webcam or file upload), signatures by mouse or trackpad, odometer and maintenance. A phone is optional, never required.
+
+**Look.** Light grey page background; white sidebar, cards and panels; orange for the accent (selected tab and nav item, focus rings, primary buttons, selected text, highlighted boxes). Dark mode keeps the same structure with dark greys and the same orange. Pages show an instant loading state on every tap, so a slow server never looks like a dead button.
 
 ### Fleet
 
@@ -319,6 +323,7 @@ The full admin (settings, pricing, reports, fleet setup) stays in the desktop we
 ### Pricing
 
 - Price structure per model: a total price for every length from 1 to 30 days. The shop enters anchors (1 and 30 days required; 7, 14 and 21 optional), the days between fill at equal steps rounded to ฿10, and any single day can be edited. Hourly rates are optional. Beyond 30 days there is no separate rate: every day costs the 30-day total ÷ 30, so total = round(30-day total × days ÷ 30) to the nearest baht. Example with ฿5,500 for 30 days: 45 days = ฿8,250, 2 months = ฿11,000, 3 months = ฿16,500. A rental day is every started 24 hours from pickup time. This platform owns all pricing and availability rules; the marketplace only shows what the API returns.
+- **Two pricing modes; each model uses one (price\_structures.mode).** *Total-price table*: as above, anchors at 1, 7, 14, 21 and 30 days with the days between filled in and editable. *Price per day*: the shop enters three daily rates: 1–6 days, 7+ days and 28+ days. The whole rental is charged at the rate for its length (10 days = 10 × the 7+ rate; 40 days = 40 × the 28+ rate). Hourly rates, season and weekday rules, extras and coupons work the same in both modes.
 - Rules by date range or weekday (high season, Songkran, weekends) with priority; non-billable days.
 - Extras priced per rental, or by time with per-day, per-7-days and per-30-days rates.
 - Coupons (fixed/percent, limits, date range); automatic discount for returning customers.
@@ -405,6 +410,7 @@ This is general information, not legal advice. Have a Thai lawyer review the pri
 - Browse by vehicle type; filter by cc, transmission and price; live availability; "from" prices.
 - Shop booking rules: opening hours, closures (including ones that repeat yearly), minimum notice, booking cut-off before closing, minimum days (advance and walk-in), Request reply window (at most 4 hours, counted in opening hours), away mode. "What's included" defaults per shop with per-model overrides (helmets, gloves, rain gear, km limit, riding area, passport policy, licence, minimum age, deposit methods).
 - Checkout: extras, delivery address + fee, coupon, documents upload, terms, pay now / pay later (charged before pickup) / pay at pickup. Confirmation email with QR.
+- **Delivery fee by distance (optional per shop, table delivery\_bands).** The shop sets distance bands, each an upper limit in km with a price, and switches each band on or off. Distance is straight-line (no paid map service) from the pickup location to the delivery address, rounded up to 0.1 km. The fee is the price of the first enabled band that covers the distance; the last band can be open-ended ("over 5 km"). Past the last enabled band, delivery isn't offered for that address. Examples: up to 1 km ฿100, up to 3 km ฿200, up to 5 km ฿300, over 5 km ฿400; or a single band, up to 2 km ฿200. Used by the booking page, Moto Mangos and New order in the staff app.
 - Instant confirmation or request-to-book per model.
 - SEO basics, GA4 and Google Ads conversion events.
 
@@ -537,6 +543,11 @@ This log tracks your additions and removals. Each one is already worked into the
 
 | # | Request | Type | Where in the spec | Phase |
 | --- | --- | --- | --- | --- |
+| 44 | Look: light grey background, white sidebar and cards, orange accent; instant loading state on every tap | Change | Staff app | 0 |
+| 43 | Dashboard tabs: Today, Tomorrow, Upcoming, Late; each item shown once | Change | Staff app | 0, then each phase |
+| 42 | Moto Mangos search by transmission and cc; both required on every model through its catalog entry | Add | Built for any country › Moto Mangos; Fleet | 1, marketplace |
+| 41 | Second pricing mode, price per day: 1–6 days, 7+ days, 28+ days | Add | Pricing | 2 |
+| 40 | Delivery fee by distance bands the shop sets, each switched on or off | Add | Online booking | 8, marketplace |
 | 39 | Subscription tiers (draft): staff app in all tiers; Tier 1 management, Tier 2 adds online booking, Tier 3 adds multi-store; possibly priced by fleet size (under 100 / 100+ vehicles) | Decision | Open decisions | 11 |
 | 38 | Shops find the product on our website, sign up, pay and start using it with no manual setup | Add | Build plan (Phase 11) | 11 |
 | 37 | Maintenance records date and odometer; each shop chooses km or miles | Add | Fleet | 1 |

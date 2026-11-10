@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #fbf9f6;
+        color: #1f2933;
+        text-align: center;
+        padding: 24px;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0a0a0a;
+          color: #fafafa;
+        }
+      }
+      button {
+        font: inherit;
+        padding: 10px 18px;
+        border-radius: 8px;
+        border: 0;
+        background: #e98c20;
+        color: #fff;
+        margin-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" width="64" height="64" />
+      <h1 lang="en">You're offline</h1>
+      <p lang="th">คุณออฟไลน์อยู่</p>
+      <p>
+        Check your connection and try again. ·
+        ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง
+      </p>
+      <button type="button" onclick="location.reload()">
+        Try again · ลองอีกครั้ง
+      </button>
+    </main>
+  </body>
+</html>

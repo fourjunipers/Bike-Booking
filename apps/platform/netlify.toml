@@ -1,0 +1,23 @@
+# Netlify site for the rental management platform (apps/platform).
+# Site settings: Base directory unset (repo root), Package directory =
+# apps/platform. Netlify reads this file from the package directory, but every
+# path here is relative to the base directory (the repo root), and install and
+# build run at the root, where the one package-lock.json lives.
+# Netlify detects Next.js and applies its OpenNext adapter automatically.
+# Until Gate A every deploy context points at the staging Supabase project.
+[build]
+  command = "npm run build -w @mango/platform"
+  publish = "apps/platform/.next"
+  # Skip the build when nothing the platform depends on changed, so
+  # marketplace and docs-only work doesn't spend deploy credits. Exit 0 = skip.
+  ignore = "bash apps/platform/scripts/netlify-ignore.sh"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Netlify didn't auto-detect Next.js on this site (the first deploy published
+# .next as static files and every path was a 404), so name the runtime the
+# marketplace site gets automatically. Netlify installs it; it isn't an npm
+# dependency of the repo.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

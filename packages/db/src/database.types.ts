@@ -193,6 +193,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"memberships": {
+                  Row: {
+                    "created_at": string,"id": string,"role": Database["public"]['Enums']["platform_role"],"tenant_id": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"role": Database["public"]['Enums']["platform_role"],"tenant_id": string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"role"?: Database["public"]['Enums']["platform_role"],"tenant_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "memberships_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"price_days": {
                   Row: {
                     "bike_model_id": string,"day": number,"is_anchor": boolean,"is_manual": boolean,"total": number
@@ -531,6 +551,20 @@ isOneToOne: true
                   Relationships: [
                     
                   ]
+                },"tenants": {
+                  Row: {
+                    "country": string,"created_at": string,"currency": string,"id": string,"locale": string,"name": string,"slug": string,"timezone": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "country": string,"created_at"?: string,"currency": string,"id"?: string,"locale": string,"name": string,"slug": string,"timezone": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "country"?: string,"created_at"?: string,"currency"?: string,"id"?: string,"locale"?: string,"name"?: string,"slug"?: string,"timezone"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {
@@ -581,8 +615,16 @@ isOneToOne: true
               "free": number,"mode": string
             }[]
                            },
+"platform_rls_report":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "policy_count": number,"rls_enabled": boolean,"table_name": string
+            }[]
+                           },
 "promotion_shop_id":
 { Args: { "p_promotion_id": string }; Returns: string
+                           },
+"remove_member":
+{ Args: { "p_membership_id": string }; Returns: undefined
                            },
 "rental_days":
 { Args: { "p_end": string,"p_start": string }; Returns: number
@@ -599,6 +641,9 @@ isOneToOne: true
 { Args: { "p_catalog_id"?: string,"p_cc_max"?: number,"p_cc_min"?: number,"p_end"?: string,"p_lat"?: number,"p_lng"?: number,"p_min_rating"?: number,"p_now"?: boolean,"p_passport_not_held"?: boolean,"p_price_max_day"?: number,"p_radius_km"?: number,"p_shop_id"?: string,"p_start"?: string,"p_transmission"?: Database["public"]['Enums']["transmission"],"p_type"?: Database["public"]['Enums']["bike_type"] }; Returns: {
               "bike_model_id": string,"boost": Database["public"]['Enums']["boost_level"],"catalog_id": string,"catalog_slug": string,"cc": number,"days": number,"deposit": number,"distance_km": number,"free_units": number,"make": string,"mode": string,"model": string,"per_day": number,"photo": string,"rating": number,"ready_today": boolean,"ready_updated_at": string,"review_count": number,"score": number,"shop_id": string,"shop_lat": number,"shop_lng": number,"shop_name": string,"shop_slug": string,"stock_photo": string,"total": number,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"walkin_max_days": number,"year_from": number,"year_to": number
             }[]
+                           },
+"set_member_role":
+{ Args: { "p_membership_id": string,"p_role": Database["public"]['Enums']["platform_role"] }; Returns: undefined
                            },
 "shop_coordinates":
 { Args: { "p_shop_id": string }; Returns: {
@@ -630,6 +675,11 @@ isOneToOne: true
 "submit_shop":
 { Args: { "p_accept_terms": boolean,"p_shop_id": string }; Returns: (string)[]
                            },
+"tenant_members":
+{ Args: { "p_tenant_id": string }; Returns: {
+              "created_at": string,"email": string,"membership_id": string,"name": string,"role": Database["public"]['Enums']["platform_role"],"user_id": string
+            }[]
+                           },
 "try_uuid":
 { Args: { "value": string }; Returns: string
                            },
@@ -638,7 +688,7 @@ isOneToOne: true
                            }
           }
           Enums: {
-            "app_language": "en"|"th","bike_type": "city_scooter"|"touring"|"adventure"|"sport"|"classic"|"off_road","booking_actor": "customer"|"vendor"|"admin"|"system","booking_kind": "instant"|"request"|"now","booking_status": "pending_vendor"|"declined"|"expired"|"confirmed_unpaid"|"paid"|"picked_up"|"returned"|"cancelled_customer"|"cancelled_vendor"|"cancelled_unpaid"|"no_show","boost_level": "featured"|"preferred"|"normal","catalog_status": "requested"|"approved"|"rejected","deposit_method": "cash"|"card_authorisation"|"bank_transfer","extra_price_kind": "rental"|"time","gear_option": "included"|"paid_extra"|"not_offered","helmet_type": "full_face"|"three_quarter"|"half","key_type": "keyless"|"keyed","licence_type": "none"|"car"|"motorbike"|"international_permit","notify_channel": "email"|"whatsapp","passport_policy": "held"|"copy_only","payment_method": "card"|"promptpay","promotion_kind": "pct"|"fixed"|"long_rental"|"new_customer","shop_member_role": "owner"|"staff","shop_status": "draft"|"pending"|"live"|"suspended","transmission": "automatic"|"semi_auto"|"manual","usage_area": "bangkok"|"province"|"thailand"|"cross_border","user_role": "customer"|"vendor_staff"|"admin"
+            "app_language": "en"|"th","bike_type": "city_scooter"|"touring"|"adventure"|"sport"|"classic"|"off_road","booking_actor": "customer"|"vendor"|"admin"|"system","booking_kind": "instant"|"request"|"now","booking_status": "pending_vendor"|"declined"|"expired"|"confirmed_unpaid"|"paid"|"picked_up"|"returned"|"cancelled_customer"|"cancelled_vendor"|"cancelled_unpaid"|"no_show","boost_level": "featured"|"preferred"|"normal","catalog_status": "requested"|"approved"|"rejected","deposit_method": "cash"|"card_authorisation"|"bank_transfer","extra_price_kind": "rental"|"time","gear_option": "included"|"paid_extra"|"not_offered","helmet_type": "full_face"|"three_quarter"|"half","key_type": "keyless"|"keyed","licence_type": "none"|"car"|"motorbike"|"international_permit","notify_channel": "email"|"whatsapp","passport_policy": "held"|"copy_only","payment_method": "card"|"promptpay","platform_role": "owner"|"manager"|"staff"|"mechanic"|"driver","promotion_kind": "pct"|"fixed"|"long_rental"|"new_customer","shop_member_role": "owner"|"staff","shop_status": "draft"|"pending"|"live"|"suspended","transmission": "automatic"|"semi_auto"|"manual","usage_area": "bangkok"|"province"|"thailand"|"cross_border","user_role": "customer"|"vendor_staff"|"admin"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -758,7 +808,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "app_language": ["en", "th"],"bike_type": ["city_scooter", "touring", "adventure", "sport", "classic", "off_road"],"booking_actor": ["customer", "vendor", "admin", "system"],"booking_kind": ["instant", "request", "now"],"booking_status": ["pending_vendor", "declined", "expired", "confirmed_unpaid", "paid", "picked_up", "returned", "cancelled_customer", "cancelled_vendor", "cancelled_unpaid", "no_show"],"boost_level": ["featured", "preferred", "normal"],"catalog_status": ["requested", "approved", "rejected"],"deposit_method": ["cash", "card_authorisation", "bank_transfer"],"extra_price_kind": ["rental", "time"],"gear_option": ["included", "paid_extra", "not_offered"],"helmet_type": ["full_face", "three_quarter", "half"],"key_type": ["keyless", "keyed"],"licence_type": ["none", "car", "motorbike", "international_permit"],"notify_channel": ["email", "whatsapp"],"passport_policy": ["held", "copy_only"],"payment_method": ["card", "promptpay"],"promotion_kind": ["pct", "fixed", "long_rental", "new_customer"],"shop_member_role": ["owner", "staff"],"shop_status": ["draft", "pending", "live", "suspended"],"transmission": ["automatic", "semi_auto", "manual"],"usage_area": ["bangkok", "province", "thailand", "cross_border"],"user_role": ["customer", "vendor_staff", "admin"]
+            "app_language": ["en", "th"],"bike_type": ["city_scooter", "touring", "adventure", "sport", "classic", "off_road"],"booking_actor": ["customer", "vendor", "admin", "system"],"booking_kind": ["instant", "request", "now"],"booking_status": ["pending_vendor", "declined", "expired", "confirmed_unpaid", "paid", "picked_up", "returned", "cancelled_customer", "cancelled_vendor", "cancelled_unpaid", "no_show"],"boost_level": ["featured", "preferred", "normal"],"catalog_status": ["requested", "approved", "rejected"],"deposit_method": ["cash", "card_authorisation", "bank_transfer"],"extra_price_kind": ["rental", "time"],"gear_option": ["included", "paid_extra", "not_offered"],"helmet_type": ["full_face", "three_quarter", "half"],"key_type": ["keyless", "keyed"],"licence_type": ["none", "car", "motorbike", "international_permit"],"notify_channel": ["email", "whatsapp"],"passport_policy": ["held", "copy_only"],"payment_method": ["card", "promptpay"],"platform_role": ["owner", "manager", "staff", "mechanic", "driver"],"promotion_kind": ["pct", "fixed", "long_rental", "new_customer"],"shop_member_role": ["owner", "staff"],"shop_status": ["draft", "pending", "live", "suspended"],"transmission": ["automatic", "semi_auto", "manual"],"usage_area": ["bangkok", "province", "thailand", "cross_border"],"user_role": ["customer", "vendor_staff", "admin"]
           }
         }
 } as const
