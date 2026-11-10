@@ -72,8 +72,14 @@ test("a mechanic opens on Maintenance and sees only its tabs", async ({
   // A tab the role doesn't have sends it home; admin pages don't exist for it.
   await page.goto("/bsr/new-order");
   await expect(page).toHaveURL(/\/bsr\/maintenance$/);
-  const team = await page.goto("/bsr/team");
-  expect(team?.status()).toBe(404);
+  // The page streams behind its loading state, so the status is already 200
+  // when the role check runs; the not-found page replaces it and no team
+  // data is sent.
+  await page.goto("/bsr/team");
+  await expect(
+    page.getByRole("heading", { name: "Page not found" }),
+  ).toBeVisible();
+  await expect(page.getByText(demo.bsrOwner)).toHaveCount(0);
 });
 
 test("a driver gets Dashboard and Orders", async ({ page }, info) => {
@@ -82,6 +88,75 @@ test("a driver gets Dashboard and Orders", async ({ page }, info) => {
   await expect(
     mainNav(page, isPhone(info.project.name)).getByRole("link"),
   ).toHaveText(["Dashboard", "Orders"]);
+});
+
+test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
+  page,
+}) => {
+  await signIn(page, demo.bsrStaff);
+  await expect(page).toHaveURL(/\/bsr\/dashboard$/);
+  const tabs = page.getByRole("tablist", { name: "When" }).getByRole("tab");
+  await expect(tabs).toHaveText([
+    /^Today\s*0/,
+    /^Tomorrow\s*0/,
+    /^Upcoming\s*0/,
+    /^Late\s*0/,
+  ]);
+  const today = page.getByRole("tab", { name: /^Today/ });
+  await expect(today).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel")).toContainText("Pickups");
+
+  // Late: its own sections, and the choice survives a reload.
+  await page.getByRole("tab", { name: /^Late/ }).click();
+  await expect(page).toHaveURL(/\?view=late$/);
+  await expect(page.getByRole("tabpanel")).toContainText("Overdue bikes");
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "Unpaid past deadline",
+  );
+  await page.reload();
+  await expect(page.getByRole("tab", { name: /^Late/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+
+  // Keyboard: arrow keys move between tabs.
+  await page.getByRole("tab", { name: /^Late/ }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("tab", { name: /^Upcoming/ })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("tabpanel")).toContainText("Next 7 days");
+});
+
+test("the look: grey page, white panels, orange accent", async ({
+  page,
+}, info) => {
+  await signIn(page, demo.bsrStaff);
+  const color = (selector: string, prop: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop);
+  expect(await color("body", "background-color")).toBe("rgb(244, 244, 245)");
+  const orange = "rgb(194, 65, 12)";
+  // The selected dashboard tab is filled orange with white text.
+  expect(
+    await color('[role="tab"][aria-selected="true"]', "background-color"),
+  ).toBe(orange);
+  if (isPhone(info.project.name)) {
+    const tabBar = 'nav[aria-label="Staff app"]';
+    // White at 95% (the bar blurs what scrolls under it).
+    expect(await color(tabBar, "background-color")).toMatch(
+      /255, 255, 255|oklab\(0\.99/,
+    );
+    expect(await color(`${tabBar} [aria-current="page"]`, "color")).toBe(
+      orange,
+    );
+  } else {
+    expect(await color("aside", "background-color")).toBe("rgb(255, 255, 255)");
+    expect(await color('aside [aria-current="page"] svg', "color")).toBe(
+      orange,
+    );
+  }
 });
 
 test("a member of one shop can't open another shop", async ({ page }) => {
