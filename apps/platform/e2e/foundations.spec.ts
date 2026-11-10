@@ -111,6 +111,9 @@ test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
   await expect(page).toHaveURL(/\?view=late$/);
   await expect(page.getByRole("tabpanel")).toContainText("Overdue bikes");
   await expect(page.getByRole("tabpanel")).toContainText(
+    "Missed pickups, deliveries and collections",
+  );
+  await expect(page.getByRole("tabpanel")).toContainText(
     "Unpaid past deadline",
   );
   await page.reload();

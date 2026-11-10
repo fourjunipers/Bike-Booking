@@ -51,6 +51,21 @@ describe("placeItem", () => {
     }
   });
 
+  it("moves missed pickups, deliveries and collections to Late", () => {
+    for (const kind of ["pickup", "delivery", "collection"] as const) {
+      expect(placeItem({ kind, date: on(29) }, today)).toEqual({
+        tab: "late",
+        section: "missed",
+      });
+      expect(placeItem({ kind, date: on(1, 6, 2025) }, today)).toEqual({
+        tab: "late",
+        section: "missed",
+      });
+      // Due today is not missed yet.
+      expect(placeItem({ kind, date: today }, today)?.tab).toBe("today");
+    }
+  });
+
   it("moves past returns, services and renewals to Late", () => {
     expect(placeItem({ kind: "return", date: on(29) }, today)).toEqual({
       tab: "late",
@@ -66,9 +81,7 @@ describe("placeItem", () => {
     });
   });
 
-  it("leaves out past pickups, deliveries and collections, and undated scheduled items", () => {
-    expect(placeItem({ kind: "pickup", date: on(29) }, today)).toBeNull();
-    expect(placeItem({ kind: "delivery", date: on(29) }, today)).toBeNull();
+  it("leaves out undated scheduled items", () => {
     expect(placeItem({ kind: "pickup" }, today)).toBeNull();
   });
 });
@@ -91,13 +104,16 @@ describe("buildBoard", () => {
         item("d", "overdueBike"),
         item("e", "service", on(20)),
         item("f", "pickup", on(20, 1, 2027)), // too far out
+        item("g", "pickup", on(28)), // missed
+        item("h", "collection", on(29)), // missed
       ],
       today,
     );
     expect(board.today.count).toBe(2);
     expect(board.tomorrow.count).toBe(0);
     expect(board.upcoming.count).toBe(1);
-    expect(board.late.count).toBe(2);
+    expect(board.late.count).toBe(4);
+    expect(board.late.sections.missed?.map((i) => i.id)).toEqual(["g", "h"]);
     expect(board.late.sections.overdueBikes?.map((i) => i.id)).toEqual(["d"]);
     expect(board.late.sections.overdueMaintenance?.map((i) => i.id)).toEqual([
       "e",
@@ -105,7 +121,7 @@ describe("buildBoard", () => {
     const all = Object.values(board).flatMap((tab) =>
       Object.values(tab.sections).flat(),
     );
-    expect(all.map((i) => i.id).sort()).toEqual(["a", "b", "c", "d", "e"]);
+    expect(all.map((i) => i.id).sort()).toEqual(["a", "b", "c", "d", "e", "g", "h"]);
   });
 
   it("sorts each section by date, then title", () => {
@@ -162,6 +178,7 @@ describe("helpers", () => {
     ]);
     expect(sectionsByTab.late.map((s) => s.section)).toEqual([
       "overdueBikes",
+      "missed",
       "overdueMaintenance",
       "failedCharges",
       "unpaid",

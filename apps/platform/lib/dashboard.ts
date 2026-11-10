@@ -40,6 +40,7 @@ export type DashboardSection =
   | "servicesDue"
   | "renewalsDue"
   | "overdueBikes"
+  | "missed"
   | "overdueMaintenance"
   | "failedCharges"
   | "unpaid";
@@ -54,6 +55,7 @@ export const sectionsByTab: Record<
   upcoming: scheduledSections(),
   late: [
     { section: "overdueBikes", phase: 3 },
+    { section: "missed", phase: 3 },
     { section: "overdueMaintenance", phase: 1 },
     { section: "failedCharges", phase: 7 },
     { section: "unpaid", phase: 3 },
@@ -86,10 +88,10 @@ export function upcomingRange(today: CalendarDate) {
 }
 
 /**
- * Where an item goes, or null when it isn't on the dashboard: scheduled items
- * further out than Upcoming, and pickups, deliveries and collections whose
- * date has passed (the spec's Late list doesn't include them; Orders shows
- * them).
+ * Where an item goes, or null when it isn't on the dashboard (scheduled items
+ * further out than Upcoming). Callers pass only items still to do, so a
+ * scheduled item whose date has passed is late: a return is an overdue bike,
+ * a pickup, delivery or collection is missed, a service or renewal is overdue.
  */
 export function placeItem(
   item: Pick<DashboardItem, "kind" | "date">,
@@ -110,11 +112,13 @@ export function placeItem(
     switch (item.kind) {
       case "return":
         return { tab: "late", section: "overdueBikes" };
+      case "pickup":
+      case "delivery":
+      case "collection":
+        return { tab: "late", section: "missed" };
       case "service":
       case "renewal":
         return { tab: "late", section: "overdueMaintenance" };
-      default:
-        return null;
     }
   }
 
