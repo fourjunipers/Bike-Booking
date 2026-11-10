@@ -1,8 +1,8 @@
 # Legacy mapping: marketplace tables → platform tables
 
-Status: **draft for owner approval** (10 Nov 2026). Required by docs/platform/SPEC.md › Review decisions › Legacy mapping, before any Phase 1a migration.
+Status: **approved by the owner, 10 Nov 2026**, with the decisions in §8. Required by docs/platform/SPEC.md › Review decisions › Legacy mapping, before any Phase 1a migration.
 
-This maps every column of the marketplace's temporary shop tables (docs/INTEGRATION.md §7) to its home on the platform. Phase 1a builds the target tables for tenants, locations, models, units and unit blocks. **No legacy row is moved or dropped in Phase 1a**: the data moves at Phase 3M (marketplace switch), and the legacy tables are dropped after it. Until then the marketplace keeps reading its own tables and nothing here changes what customers see.
+This maps every column of the marketplace's temporary shop tables (docs/INTEGRATION.md §7) to its home on the platform. Platform tables live in their own `platform` schema (owner, 10 Nov 2026); names below are in that schema unless they say `public`. Phase 1a builds the target tables for tenants, locations, models, units and unit blocks. **No legacy row is moved or dropped in Phase 1a**: the data moves at Phase 3M (marketplace switch), and the legacy tables are dropped after it. Until then the marketplace keeps reading its own tables and nothing here changes what customers see.
 
 Legacy columns are as they stand after all 30 migrations (`packages/db/src/database.types.ts`).
 
@@ -38,7 +38,7 @@ One tenant per shop, plus one location flagged `is_default`.
 | `google_place_id` | `locations.google_place_id` | 1a | A Google place is a physical shop, so it sits on the location |
 | `about` | `tenants.about` | 3M | Marketplace profile text |
 | `photos` | `locations.photos` | 3M | Shop-front photos |
-| `status` (draft, pending, live, suspended) | `tenants.marketplace_listed`, `tenants.marketplace_approved` | 3M | live → both true; pending → listed, not approved; draft → neither; suspended → listed, not approved, with the reason kept |
+| `status` (draft, pending, live, suspended) | `tenants.marketplace_listed`, `tenants.marketplace_approved`, `tenants.status` | 3M | live → both true; pending → listed, not approved; draft → neither. suspended → `tenants.status = 'suspended'`: the shop is hidden everywhere and its data is kept |
 | `submitted_at`, `approved_at`, `terms_accepted_at`, `review_notes`, `flagged_for_review` | Marketplace-owned approval record keyed by tenant ID | 3M | Approval is the marketplace owner's decision (INTEGRATION §1) |
 | `boost_level` | Marketplace-owned table keyed by tenant ID | 3M | Ranking is marketplace data |
 | `cutoff_minutes` | `locations.booking_cutoff_minutes` | 2 | Booking rule; per location from Phase 2 |
@@ -76,7 +76,7 @@ No second catalog. The table stays where it is, with its UUIDs and slugs, and pl
 | --- | --- | --- |
 | `id`, `slug`, `make`, `model`, `year_from`, `year_to`, `cc`, `type`, `transmission`, `abs`, `underseat_storage`, `usb_charger`, `key_type`, `description`, `stock_photo`, `status`, `review_notes`, `reviewed_at`, `created_at`, `updated_at` | Unchanged | — |
 | `requested_by_shop_id`, `request_note` | Unchanged. Because tenant ID = shop ID after 3M, the same column then names the requesting tenant | — |
-| (new) `requested_by_tenant_id` | Added, nullable, references `tenants`. Lets a platform shop request a missing entry before 3M; merged with `requested_by_shop_id` at 3M | 1a |
+| (new) `requested_by_tenant_id` | Added, nullable, references `platform.tenants`. A platform shop requests a missing entry and can use its own pending request; a platform admin (`platform.platform_admins`, the one place that role is defined) approves or rejects it. Merged with `requested_by_shop_id` at 3M | 1a |
 | (new) `vehicle_type` | Added, `not null default 'motorbike'`, references the new platform-wide `vehicle_types` (motorbike, car; each with a spec schema) | 1a |
 | (new) `specs` | Added, JSON, `not null default '{}'`. Holds specs that aren't bike columns (car: seats, fuel type, doors) | 1a |
 
@@ -90,10 +90,11 @@ A legacy row is a shop's listing of one catalog entry with a quantity. On the pl
 | --- | --- | --- | --- |
 | `id` | `models.id` | 1a | Same UUID (the marketplace's `listingId`) |
 | `shop_id` | `models.tenant_id` | 1a | |
-| `catalog_id` | `models.catalog_id` | 1a | Required. One model per catalog entry per shop, as today |
+| `catalog_id` | `models.catalog_id` | 1a | Required. A shop may have several models on one catalog entry, each with its own display name |
+| (none) | `models.name` | 1a | Display name, unique within the shop. At 3M: the catalog entry's make, model and years |
 | `photos` | `models.photos` | 1a | Same storage paths |
 | `visible` | `models.bookable_online` | 1a | |
-| `qty` | Count of the model's `units` rows | 1a | No quantity column. At 3M, `qty` units are created per model at the default location, status active, with no plate; the shop fills in plates afterwards |
+| `qty` | Count of the model's `units` rows | 1a | No quantity column. At 3M, `qty` units are created per model at the default location, status active, with no plate and `plate_pending` set; the shop fills in plates afterwards |
 | `instant_qty`, `request_qty` | `models.instant_units`, `request_units` | 1a | Walk-in-only = active units − instant − request. Checked on save (can't exceed active units) |
 | `ready_today_count` | `models.ready_now` | 1a | |
 | `ready_today_on` | Dropped | — | `ready_now > 0` means the same |
@@ -114,7 +115,7 @@ A legacy row is a shop's listing of one catalog entry with a quantity. On the pl
 | `licence_required` | `models.licence_class` | 1a |
 | `deposit_methods` and every other column | `models.inclusions_override` (JSON; only the overridden fields) | 2 |
 
-`units` has no legacy source beyond the count above. New in 1a: `tenant_id`, `model_id`, `location_id`, `plate`, `frame_number`, `engine_number`, `colour`, `first_registered`, `current_odometer_km`, `status` (active, maintenance, retired, sold, borrowed), `active_from`, `active_to`, `qr_token`, `notes`. Purchase and sale details live in `unit_financials` (owner and manager only). Keys, GPS, renewals and service data arrive in Phase 1b.
+`units` has no legacy source beyond the count above. New in 1a: `tenant_id`, `model_id`, `location_id`, `plate`, `plate_pending`, `frame_number`, `engine_number`, `colour`, `first_registered`, `current_odometer_km`, `status` (active, maintenance, retired, sold, borrowed), `active_from`, `active_to`, `qr_token`, `notes`. Purchase and sale details live in `unit_financials` (owner and manager only). Keys, GPS, renewals and service data arrive in Phase 1b.
 
 ## 5. `bike_model_downtime` → `unit_blocks`
 
@@ -144,8 +145,11 @@ Legacy says "N units of this model are out until a date". The platform blocks sp
 
 Retired at 3M, replaced by `marketplace_api` functions and `@mango/core`: `search_offers`, `model_offer`, `longest_walkin`, `rental_days`, `rental_price`, `shop_stats`, `shop_coordinates`, `units_in_repair`, `repair_conflicts`, `is_shop_closed_on`, `shop_open_at`, `shop_readiness`, `submit_shop`, `create_shop`, `create_shop_invite`, `accept_shop_invite`, `is_shop_member`, `is_shop_owner`, `is_shop_live`, `is_bike_model_public`, `bike_model_shop_id`, `can_use_catalog`, `is_catalog_approved`, `shop_extra_shop_id`, `promotion_shop_id`. `station_list`, `is_admin`, `slugify` and `try_uuid` stay.
 
-## 8. Open points in this mapping
+## 8. Decisions (owner, 10 Nov 2026)
 
-1. **Suspended shops.** Mapped to listed-but-not-approved. Confirm, or name a separate flag.
-2. **Units created at 3M have no plate.** So `units.plate` is optional (also true for a new bike waiting for its plate), and unique within a shop when filled in.
-3. **One model per catalog entry per shop** is kept from the marketplace. A shop that wants two offers of the same bike (say, with and without a top box) can't have them; say if that should change.
+1. **Suspended shops** become a tenant status: hidden everywhere, data kept. The column arrives at 3M.
+2. **Units without a plate** are allowed with a "plate pending" flag. Check-out warns about it (Phase 5). A plate is unique within a shop when filled in.
+3. **Several models per catalog entry** are allowed, each with its own display name. The legacy one-listing-per-entry rule is not carried over.
+4. **Time zone** lives on the location only; changing it is owner-only.
+5. **Market** stays empty on locations until 3M.
+6. **Platform admin** is defined in one place, `platform.platform_admins`, not by `profiles.role` on the marketplace side. At 3M the marketplace's admin checks for shared data (catalog approval, shop approval) move to it.
