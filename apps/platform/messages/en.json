@@ -60,20 +60,30 @@
     "saved": "Saved",
     "cancel": "Cancel",
     "search": "Search",
-    "nothingYet": "Nothing here yet."
+    "nothingYet": "Nothing here yet.",
+    "loading": "Loading…"
   },
   "Dashboard": {
     "title": "What's coming up",
+    "tabsLabel": "When",
     "today": "Today",
     "tomorrow": "Tomorrow",
-    "pickups": "Pickups",
-    "returns": "Returns",
-    "deliveries": "Deliveries and collections",
-    "overdue": "Overdue bikes",
-    "servicesDue": "Services due",
-    "renewalsDue": "Tax and insurance renewals",
-    "failedCharges": "Failed card charges",
-    "alerts": "Bikes and payments",
+    "upcoming": "Upcoming",
+    "late": "Late",
+    "count": "{count, plural, one {# item} other {# items}}",
+    "range": "Next 7 days: {from} to {to}",
+    "lateIntro": "Overdue or failed: needs action now.",
+    "sections": {
+      "pickups": "Pickups",
+      "returns": "Returns",
+      "deliveries": "Deliveries and collections",
+      "servicesDue": "Services due",
+      "renewalsDue": "Tax and insurance renewals due",
+      "overdueBikes": "Overdue bikes",
+      "overdueMaintenance": "Overdue services and renewals",
+      "failedCharges": "Failed card charges",
+      "unpaid": "Unpaid past deadline"
+    },
     "shopTime": "Shop time: {time} ({zone})"
   },
   "Orders": {

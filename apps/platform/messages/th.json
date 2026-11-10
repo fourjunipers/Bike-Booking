@@ -60,20 +60,30 @@
     "saved": "บันทึกแล้ว",
     "cancel": "ยกเลิก",
     "search": "ค้นหา",
-    "nothingYet": "ยังไม่มีข้อมูล"
+    "nothingYet": "ยังไม่มีข้อมูล",
+    "loading": "กำลังโหลด…"
   },
   "Dashboard": {
     "title": "สิ่งที่กำลังจะมาถึง",
+    "tabsLabel": "ช่วงเวลา",
     "today": "วันนี้",
     "tomorrow": "พรุ่งนี้",
-    "pickups": "รับรถ",
-    "returns": "คืนรถ",
-    "deliveries": "ส่งและรับรถนอกร้าน",
-    "overdue": "รถเกินกำหนดคืน",
-    "servicesDue": "ถึงกำหนดเข้าศูนย์",
-    "renewalsDue": "ต่อภาษีและประกัน",
-    "failedCharges": "ตัดบัตรไม่สำเร็จ",
-    "alerts": "รถและการชำระเงิน",
+    "upcoming": "ถัดไป",
+    "late": "ล่าช้า",
+    "count": "{count, plural, other {# รายการ}}",
+    "range": "7 วันถัดไป: {from} ถึง {to}",
+    "lateIntro": "เกินกำหนดหรือไม่สำเร็จ: ต้องจัดการทันที",
+    "sections": {
+      "pickups": "รับรถ",
+      "returns": "คืนรถ",
+      "deliveries": "ส่งและรับรถนอกร้าน",
+      "servicesDue": "ถึงกำหนดเข้าศูนย์",
+      "renewalsDue": "ถึงกำหนดต่อภาษีและประกัน",
+      "overdueBikes": "รถเกินกำหนดคืน",
+      "overdueMaintenance": "เกินกำหนดเข้าศูนย์และต่อภาษี",
+      "failedCharges": "ตัดบัตรไม่สำเร็จ",
+      "unpaid": "ค้างชำระเกินกำหนด"
+    },
     "shopTime": "เวลาร้าน: {time} ({zone})"
   },
   "Orders": {
