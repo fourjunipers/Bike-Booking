@@ -59,7 +59,7 @@ function Choice({
               value={option.value}
               aria-pressed={selected}
               className={cn(
-                "h-11 min-w-24 rounded-md border px-4 text-sm font-medium hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                "h-11 min-w-24 rounded-md border px-4 text-sm font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                 selected &&
                   "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
               )}

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /** Text inputs and selects: 44 px tall for fingers, full width on phones. */
 export const inputClass =
-  "block h-11 w-full rounded-md border border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60 aria-invalid:border-destructive md:text-sm";
+  "block h-11 w-full rounded-md border border-input bg-card px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 aria-invalid:border-destructive md:text-sm";
 
 /** A labelled form field with optional help and error text. */
 export function Field({

@@ -45,7 +45,7 @@ export default async function TenantLayout({
     <nav
       aria-label={t("tabs")}
       className={cn(
-        "z-20 flex border-border bg-background/95 backdrop-blur lg:hidden",
+        "z-20 flex border-border bg-card/95 backdrop-blur lg:hidden",
         tabBar === "top"
           ? "sticky top-14 border-b"
           : "fixed inset-x-0 bottom-0 border-t pb-safe",
@@ -106,7 +106,7 @@ export default async function TenantLayout({
         </aside>
 
         <div className="flex min-h-svh flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur lg:hidden">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur lg:hidden">
             <div className="min-w-0">
               <p className="truncate font-semibold">{tenant.name}</p>
             </div>

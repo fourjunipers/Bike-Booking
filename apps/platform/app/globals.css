@@ -41,6 +41,10 @@
   --color-card: var(--card);
   --color-section: var(--section);
   --color-section-foreground: var(--section-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight-border: var(--highlight-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -51,81 +55,112 @@
 }
 
 :root {
-  --background: oklch(0.985 0.004 80);
-  --foreground: oklch(0.2 0.02 220);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 220);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 220);
-  --primary: oklch(0.55 0.15 55);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.02 190);
-  --secondary-foreground: oklch(0.3 0.05 200);
-  --muted: oklch(0.955 0.01 190);
-  --muted-foreground: oklch(0.48 0.02 210);
-  --accent: oklch(0.94 0.03 190);
-  --accent-foreground: oklch(0.3 0.06 195);
+  /*
+   * Look (SPEC › Staff app › Look): light grey page, white sidebar, cards and
+   * panels, orange accent. WCAG AA, checked with the WCAG 2 contrast formula:
+   * - white on --primary #c2410c: 5.18:1 (buttons, selected chips)
+   * - --primary-text on white 5.18:1, on the grey page 4.71:1
+   * - --ring on white 5.18:1, on the grey page 4.71:1 (3:1 needed)
+   * - --muted-foreground on white 7.73:1, on the grey page 7.03:1
+   * - --highlight-foreground on --highlight 6.88:1
+   */
+  --background: #f4f4f5;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: #c2410c;
+  --primary-foreground: #ffffff;
+  --primary-text: #c2410c;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #fff7ed;
+  --accent-foreground: #9a3412;
+  --highlight: #fff7ed;
+  --highlight-foreground: #9a3412;
+  --highlight-border: #fdba74;
+  --selection: #fed7aa;
+  --selection-foreground: #18181b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.89 0.015 195);
-  --input: oklch(0.84 0.02 195);
-  --ring: oklch(0.7 0.14 65);
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #c2410c;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  --section: oklch(0.95 0.03 190);
-  --section-foreground: oklch(0.32 0.06 196);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18181b;
+  --sidebar-primary: #c2410c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff7ed;
+  --sidebar-accent-foreground: #9a3412;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #c2410c;
+  --section: #fff7ed;
+  --section-foreground: #9a3412;
 }
 
+/*
+ * Dark: the same structure in dark greys (page darker than the panels) and the
+ * same orange fill (white on #c2410c 5.18:1). That orange is too dark to read
+ * as text or a focus ring on dark grey (3.55:1 on the page), so text and rings
+ * use a lighter orange: #fb923c on the panels 7.35:1, on the page 8.13:1.
+ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.78 0.15 65);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #141416;
+  --foreground: #f4f4f5;
+  --card: #1e1e21;
+  --card-foreground: #f4f4f5;
+  --popover: #1e1e21;
+  --popover-foreground: #f4f4f5;
+  --primary: #c2410c;
+  --primary-foreground: #ffffff;
+  --primary-text: #fb923c;
+  --secondary: #2a2a2e;
+  --secondary-foreground: #f4f4f5;
+  --muted: #2a2a2e;
+  --muted-foreground: #a1a1aa;
+  --accent: #3b2516;
+  --accent-foreground: #fdba74;
+  --highlight: #3b2516;
+  --highlight-foreground: #fdba74;
+  --highlight-border: #9a3412;
+  --selection: #9a3412;
+  --selection-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.14 65);
+  --border: #303035;
+  --input: #3f3f46;
+  --ring: #fb923c;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --section: oklch(0.27 0.03 195);
-  --section-foreground: oklch(0.92 0.03 190);
+  --sidebar: #1e1e21;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #c2410c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3b2516;
+  --sidebar-accent-foreground: #fdba74;
+  --sidebar-border: #303035;
+  --sidebar-ring: #fb923c;
+  --section: #3b2516;
+  --section-foreground: #fdba74;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
+  }
+  ::selection {
+    background-color: var(--selection);
+    color: var(--selection-foreground);
   }
   body {
     @apply bg-background text-foreground;
