@@ -29,7 +29,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 **Dashboard, look and speed (10 Nov 2026, change requests #43-44)**
 - Dashboard: four tabs (Today, Tomorrow, Upcoming = the 7 days after tomorrow, Late) with a count each; Late is highlighted when it has items. `lib/dashboard.ts` puts each item in exactly one tab. No items yet: each phase feeds its own in. The open tab is kept in `?view=`.
-- Decided here, not in the spec: a pickup, delivery or collection whose date has passed is not on the dashboard (the spec's Late list has overdue bikes, services, renewals, failed charges and unpaid orders only). Say if missed pickups should show under Late.
+- Decided (owner, 10 Nov 2026): a pickup, delivery or collection whose date has passed and isn't done shows under Late, in its own "Missed" section. The spec's Late sentence says so.
 - Look: page `#f4f4f5`, panels white, orange `#c2410c`. Contrast (WCAG 2): white on orange 5.18:1; orange on white 5.18:1, on the grey page 4.71:1; grey text 7.03:1 or better. Dark mode keeps the same orange for fills (white on it 5.18:1) and uses a lighter orange `#fb923c` for text and focus rings, because `#c2410c` on dark grey is only 3.55:1. Ratios are recorded in `app/globals.css`.
 - Speed: every route has a `loading.tsx` skeleton; nav links prefetch (Next.js default in production builds). `getUser` checks the access token locally (`getClaims`) instead of calling Supabase Auth, which removes one round trip per page.
 - Preview timings, median of 5, signed in as the BSR owner, 1280 px, measured from Thailand against US East functions:
