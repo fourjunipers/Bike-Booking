@@ -20,11 +20,22 @@ export type Membership = {
   tenant: TenantSummary;
 };
 
-/** The signed-in user, verified with Supabase Auth (not just the cookie). */
-export const getUser = cache(async () => {
+export type SessionUser = { id: string; email: string | undefined };
+
+/**
+ * The signed-in user, from the session's access token. getClaims() checks the
+ * token's signature against the project's published signing keys (cached), so
+ * with asymmetric keys (staging and live) this needs no call to Supabase Auth,
+ * one round trip less on every page. With a shared-secret key (some local
+ * setups) it falls back to asking Auth. RLS checks the same token on every
+ * query either way.
+ */
+export const getUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  return data.user;
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  return { id: claims.sub, email: claims.email };
 });
 
 /** The user's memberships with their tenants, by shop name. RLS limits rows to the user's tenants. */
