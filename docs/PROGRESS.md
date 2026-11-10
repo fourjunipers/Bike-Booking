@@ -27,6 +27,19 @@ What's done, open decisions and known issues, across both apps. Update this at t
 - Netlify site `mango-works-platform` (package dir `apps/platform`, every context on staging). It didn't auto-detect Next.js, so `apps/platform/netlify.toml` names `@netlify/plugin-nextjs`. The Netlify Drawer is off for deploy previews (it covered the phone tab bar).
 - Functions run in US East (the plan can't change the region), so each page waits on round trips to Singapore. Playwright against a preview (`PLAYWRIGHT_BASE_URL`) gets 15 s waits, 60 s per test and 2 workers; local and CI keep the defaults. All 18 pass against the PR #7 preview.
 
+**Dashboard, look and speed (10 Nov 2026, change requests #43-44)**
+- Dashboard: four tabs (Today, Tomorrow, Upcoming = the 7 days after tomorrow, Late) with a count each; Late is highlighted when it has items. `lib/dashboard.ts` puts each item in exactly one tab. No items yet: each phase feeds its own in. The open tab is kept in `?view=`.
+- Decided here, not in the spec: a pickup, delivery or collection whose date has passed is not on the dashboard (the spec's Late list has overdue bikes, services, renewals, failed charges and unpaid orders only). Say if missed pickups should show under Late.
+- Look: page `#f4f4f5`, panels white, orange `#c2410c`. Contrast (WCAG 2): white on orange 5.18:1; orange on white 5.18:1, on the grey page 4.71:1; grey text 7.03:1 or better. Dark mode keeps the same orange for fills (white on it 5.18:1) and uses a lighter orange `#fb923c` for text and focus rings, because `#c2410c` on dark grey is only 3.55:1. Ratios are recorded in `app/globals.css`.
+- Speed: every route has a `loading.tsx` skeleton; nav links prefetch (Next.js default in production builds). `getUser` checks the access token locally (`getClaims`) instead of calling Supabase Auth, which removes one round trip per page.
+- Preview timings, median of 5, signed in as the BSR owner, 1280 px, measured from Thailand against US East functions:
+  - Tap to first response: 1.5-2.7 s before, 60-75 ms after (the skeleton).
+  - Tap to page content: 1.5-2.7 s before, about 1.4 s after.
+  - Full page load: 1.5-2.3 s before, 1.1-1.7 s after.
+- Known: because pages now stream behind their loading state, a role opening an admin page it can't see (Team, Shop settings) gets the not-found page with HTTP status 200, not 404. No data is sent. A shop you're not in is still a real 404: the shop picker sits in the `(start)` route group so no loading state wraps the shop layout's membership check.
+- Remaining per-page round trips: one memberships query (plus the Team list on Team). The rest of the wait is US East to Singapore.
+- Tests: 46 unit, 26 DB, 22 Playwright (11 at 375 px, 11 at 1280 px), all passing locally, in CI and against the PR #7 preview.
+
 **Decided (9 Nov 2026, owner)**
 - Sentry added; DSN from env, no-op when unset.
 - Staff language and tab bar position are per-device cookies; no `/th` URL prefix.
