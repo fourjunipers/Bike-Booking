@@ -2,16 +2,18 @@
 
 What's done, open decisions and known issues, across both apps. Update this at the end of every session so the next one starts clean.
 
-## Status (9 Nov 2026)
+## Status (10 Nov 2026)
 
 | Track | Where it stands |
 | --- | --- |
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
-| Platform (`apps/platform`) | **Phase 0** (foundations) on `platform/phase-0-foundations`, PR open: auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. Phase 1 (fleet) is next |
-| Database | 30 migrations in `supabase/migrations` (27 + 3 platform on the Phase 0 branch). Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore); see Phase 0 for what's pushed |
+| Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is in progress on `platform/phase-1a-fleet-core` |
+| Database | 30 migrations in `supabase/migrations` (27 + 3 platform), all on `main`. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 30 and the demo seed |
 
-## Platform Phase 0: foundations (branch `platform/phase-0-foundations`, 9 Nov 2026)
+Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
+
+## Platform Phase 0: foundations (merged in PR #7, 10 Nov 2026)
 
 **Built**
 - Migrations (`20261109000100`–`300`, all `_platform_`): `tenants` (name, slug, country, currency, timezone, locale; no defaults, time zone checked by a trigger), `memberships` (owner, manager, staff, mechanic, driver; one user can be in several tenants), RLS helpers in a `platform_private` schema the API doesn't expose, `tenant_members()` for the team list, `set_member_role()` / `remove_member()` (owners change anyone; managers only staff, mechanics and drivers; a tenant always keeps an owner), and `platform_rls_report()` (service role only) listing every table with a `tenant_id`.
@@ -83,9 +85,10 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 ## Next
 
-1. Owner: create the platform Netlify site (settings in the Phase 0 PR), register Google and LINE sign-in for staging, review and merge the Phase 0 PR.
-2. Owner: archive `mango-works-platform` if not done yet.
-3. Platform Phase 1: fleet (`platform/phase-1-fleet`).
+1. Platform Phase 1a: fleet core (`platform/phase-1a-fleet-core`). `docs/platform/MAPPING.md` and the owner's OK come before its migrations.
+2. Owner: register Google and LINE sign-in for staging (not tested end to end yet).
+3. Owner: archive `mango-works-platform` (the old repo) if not done yet.
+4. Then Phase 2 (pricing + availability), 3 (orders + calendar), 3M (marketplace switch), 1b (fleet care).
 
 ## Open
 
