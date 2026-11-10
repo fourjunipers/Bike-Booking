@@ -286,7 +286,7 @@ A simple installable app for front-desk staff and mechanics, separate from the f
 
 &#91;embedded content: staff app · 4 tabs, wireframe\]
 
-1. **Dashboard: what's coming up.** Today and tomorrow: pickups, returns, deliveries/collections, overdue bikes, services due, tax/insurance renewals due, scheduled card charges that failed. Each item opens the order or bike. Pull down to refresh.
+1. **Dashboard: what's coming up.** Four tabs, each showing its items once: Today, Tomorrow, Upcoming (the next 7 days after tomorrow) and Late. Today, Tomorrow and Upcoming list pickups, returns, deliveries/collections, services due and tax/insurance renewals due. Late lists overdue bikes, overdue services and renewals, failed scheduled card charges and unpaid orders past their deadline. Each tab shows its item count, and Late is highlighted when it isn't empty. Each item opens the order or bike. A Refresh button reloads the list.
 2. **Orders: find any order.** One search box for order number, customer name, phone, passport number or plate. Quick filters: today, upcoming, out now, overdue, unpaid. Opening an order shows its details and the actions for its status: check out, check in, extend, take payment, resend agreement, call or LINE the customer.
 3. **New order: book and take payment.** Pick dates → see the bikes available → choose the customer (search, or add a new one and photograph passport and licence) → extras and delivery → price with any discount → sign the agreement on screen → take payment: PromptPay QR on screen, payment link by LINE/email, card saved for a later charge, or cash. Card tap-on-phone (Stripe Tap to Pay) is added in Phase 12, close to completion.
 4. **Maintenance: bike lookup.** Search by plate or scan the bike's QR. The bike card shows key numbers, GPS tracker, tax and insurance status and the service tasks due. Actions: update odometer, log a service job, record a renewal, mark the bike in or out of maintenance. Below the search: a list of every task due or overdue across the fleet.
@@ -294,6 +294,8 @@ A simple installable app for front-desk staff and mechanics, separate from the f
 The full admin (settings, pricing, reports, fleet setup) stays in the desktop web app. Both use the same data, so anything done in one shows in the other at once.
 
 **Desktop works for everything.** Every staff-app task also works fully in the desktop web app: check-out and check-in, damage marking, photos (webcam or file upload), signatures by mouse or trackpad, odometer and maintenance. A phone is optional, never required.
+
+**Look.** Light grey page background; white sidebar, cards and panels; orange for the accent (selected tab and nav item, focus rings, primary buttons, selected text, highlighted boxes). Dark mode keeps the same structure with dark greys and the same orange. Pages show an instant loading state on every tap, so a slow server never looks like a dead button.
 
 ### Fleet
 
@@ -541,6 +543,8 @@ This log tracks your additions and removals. Each one is already worked into the
 
 | # | Request | Type | Where in the spec | Phase |
 | --- | --- | --- | --- | --- |
+| 44 | Look: light grey background, white sidebar and cards, orange accent; instant loading state on every tap | Change | Staff app | 0 |
+| 43 | Dashboard tabs: Today, Tomorrow, Upcoming, Late; each item shown once | Change | Staff app | 0, then each phase |
 | 42 | Moto Mangos search by transmission and cc; both required on every model through its catalog entry | Add | Built for any country › Moto Mangos; Fleet | 1, marketplace |
 | 41 | Second pricing mode, price per day: 1–6 days, 7+ days, 28+ days | Add | Pricing | 2 |
 | 40 | Delivery fee by distance bands the shop sets, each switched on or off | Add | Online booking | 8, marketplace |
