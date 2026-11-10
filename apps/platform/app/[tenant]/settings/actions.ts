@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache";
 import { canSeeArea } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
 import { tenantSettingsSchema } from "@/lib/tenant-settings";
-import { createClient } from "@mango/db/server";
+import { createClient } from "@mango/db/platform-server";
 
 export type SettingsErrorKey =
   | "required"
   | "tooLong"
   | "invalidCountry"
   | "invalidCurrency"
-  | "invalidTimezone"
+  | "invalidDistanceUnit"
+  | "currencyLocked"
   | "invalidLocale"
   | "saveFailed";
 
@@ -46,6 +47,8 @@ export async function saveSettings(
     .update(parsed.data)
     .eq("id", membership.tenant.id)
     .select("id");
+  if (error?.message === "currency_locked")
+    return { errors: { currency: "currencyLocked" } };
   if (error || data.length !== 1) return { errors: { form: "saveFailed" } };
 
   revalidatePath(`/${slug}`, "layout");

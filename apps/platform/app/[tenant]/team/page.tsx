@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
 import { assignableRoles, canChangeMember, roles } from "@/lib/roles";
-import { createClient } from "@mango/db/server";
+import { createClient } from "@mango/db/platform-server";
 import { MemberRow, type MemberView } from "./member-row";
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -1,7 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNextPath } from "@/lib/auth/redirect";
-import { createClient } from "@mango/db/server";
+import { createClient } from "@mango/db/platform-server";
 
 /**
  * Email sign-in links land here in one of two shapes:

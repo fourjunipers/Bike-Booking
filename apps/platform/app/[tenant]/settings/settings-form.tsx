@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { Field, inputClass } from "@/components/form";
@@ -10,7 +11,6 @@ import { saveSettings, type SettingsState } from "./actions";
 type Options = {
   countries: { code: string; name: string }[];
   currencies: { code: string; name: string }[];
-  timeZones: string[];
 };
 
 /** Common locale tags offered as suggestions; any valid BCP 47 tag is accepted. */
@@ -31,10 +31,15 @@ export function SettingsForm({
   slug,
   initial,
   options,
+  currencyLocked,
+  locationsHref,
 }: {
   slug: string;
   initial: TenantSettings;
   options: Options;
+  /** Money has been saved in this currency, so it can no longer change. */
+  currencyLocked: boolean;
+  locationsHref: string;
 }) {
   const t = useTranslations("Settings");
   const tCommon = useTranslations("Common");
@@ -81,10 +86,21 @@ export function SettingsForm({
             ))}
           </select>
         </Field>
-        <Field id="currency" label={t("currency")} error={error("currency")}>
+        <Field
+          id="currency"
+          label={t("currency")}
+          help={currencyLocked ? t("currencyLockedHelp") : undefined}
+          error={error("currency")}
+        >
+          {/* A disabled select isn't submitted, so the value rides along. */}
+          {currencyLocked && (
+            <input type="hidden" name="currency" value={initial.currency} />
+          )}
           <select
             id="currency"
-            name="currency"
+            name={currencyLocked ? undefined : "currency"}
+            disabled={currencyLocked}
+            aria-describedby={currencyLocked ? "currency-help" : undefined}
             defaultValue={initial.currency}
             aria-invalid={invalid("currency")}
             className={inputClass}
@@ -96,19 +112,22 @@ export function SettingsForm({
             ))}
           </select>
         </Field>
-        <Field id="timezone" label={t("timezone")} error={error("timezone")}>
+        <Field
+          id="distance_unit"
+          label={t("distanceUnit")}
+          help={t("distanceUnitHelp")}
+          error={error("distance_unit")}
+        >
           <select
-            id="timezone"
-            name="timezone"
-            defaultValue={initial.timezone}
-            aria-invalid={invalid("timezone")}
+            id="distance_unit"
+            name="distance_unit"
+            defaultValue={initial.distance_unit}
+            aria-invalid={invalid("distance_unit")}
+            aria-describedby="distance_unit-help"
             className={inputClass}
           >
-            {options.timeZones.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone.replaceAll("_", " ")}
-              </option>
-            ))}
+            <option value="km">{t("km")}</option>
+            <option value="mi">{t("mi")}</option>
           </select>
         </Field>
         <Field
@@ -135,6 +154,15 @@ export function SettingsForm({
           </datalist>
         </Field>
       </div>
+      <p className="text-sm text-muted-foreground">
+        {t.rich("timezoneMoved", {
+          link: (chunks) => (
+            <Link href={locationsHref} className="font-medium underline">
+              {chunks}
+            </Link>
+          ),
+        })}
+      </p>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" className="h-11 px-6" disabled={pending}>
           {tCommon(pending ? "saving" : "save")}

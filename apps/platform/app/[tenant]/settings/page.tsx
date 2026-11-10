@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
 import { settingsOptions } from "@/lib/tenant-settings";
+import { createClient } from "@mango/db/platform-server";
 import { SettingsForm } from "./settings-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -16,11 +17,13 @@ export default async function SettingsPage({
 }: PageProps<"/[tenant]/settings">) {
   const { tenant: slug } = await params;
   const { membership } = await requireArea(slug, "settings");
-  const [t, locale] = await Promise.all([
+  const { tenant } = membership;
+  const supabase = await createClient();
+  const [t, locale, { data: currencyLocked }] = await Promise.all([
     getTranslations("Settings"),
     getLocale(),
+    supabase.rpc("currency_locked", { p_tenant_id: tenant.id }),
   ]);
-  const { tenant } = membership;
 
   return (
     <>
@@ -31,10 +34,12 @@ export default async function SettingsPage({
           name: tenant.name,
           country: tenant.country,
           currency: tenant.currency,
-          timezone: tenant.timezone,
+          distance_unit: tenant.distanceUnit,
           locale: tenant.locale,
         }}
         options={settingsOptions(locale)}
+        currencyLocked={currencyLocked === true}
+        locationsHref={`/${slug}/locations`}
       />
     </>
   );

@@ -21,18 +21,313 @@ export type Database = {
           CompositeTypes: {
             [_ in never]: never
           }
+        },"platform": {
+          Tables: {
+            "audit_events": {
+                  Row: {
+                    "action": string,"actor": string | null,"after": Json | null,"at": string,"before": Json | null,"entity": string,"entity_id": string,"id": number,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"actor"?: string | null,"after"?: Json | null,"at"?: string,"before"?: Json | null,"entity": string,"entity_id": string,"id"?: never,"tenant_id": string
+                  }
+                  Update: {
+                    "action"?: string,"actor"?: string | null,"after"?: Json | null,"at"?: string,"before"?: Json | null,"entity"?: string,"entity_id"?: string,"id"?: never,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "audit_events_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"location_closures": {
+                  Row: {
+                    "created_at": string,"end_date": string,"id": string,"location_id": string,"note": string | null,"repeats_yearly": boolean,"start_date": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"end_date": string,"id"?: string,"location_id": string,"note"?: string | null,"repeats_yearly"?: boolean,"start_date": string,"tenant_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"end_date"?: string,"id"?: string,"location_id"?: string,"note"?: string | null,"repeats_yearly"?: boolean,"start_date"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "location_closures_tenant_id_location_id_fkey"
+      columns: ["tenant_id","location_id"]
+isOneToOne: false
+      referencedRelation: "locations"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"location_hours": {
+                  Row: {
+                    "close": string,"location_id": string,"open": string,"tenant_id": string,"weekday": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "close": string,"location_id": string,"open": string,"tenant_id": string,"weekday": number
+                  }
+                  Update: {
+                    "close"?: string,"location_id"?: string,"open"?: string,"tenant_id"?: string,"weekday"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "location_hours_tenant_id_location_id_fkey"
+      columns: ["tenant_id","location_id"]
+isOneToOne: false
+      referencedRelation: "locations"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"locations": {
+                  Row: {
+                    "address": string | null,"created_at": string,"email": string | null,"geo": unknown,"google_place_id": string | null,"id": string,"is_default": boolean,"line_id": string | null,"maps_url": string | null,"market_id": string | null,"name": string,"phone": string | null,"tenant_id": string,"timezone": string,"updated_at": string,"whatsapp": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "address"?: string | null,"created_at"?: string,"email"?: string | null,"geo"?: unknown,"google_place_id"?: string | null,"id"?: string,"is_default"?: boolean,"line_id"?: string | null,"maps_url"?: string | null,"market_id"?: string | null,"name": string,"phone"?: string | null,"tenant_id": string,"timezone": string,"updated_at"?: string,"whatsapp"?: string | null
+                  }
+                  Update: {
+                    "address"?: string | null,"created_at"?: string,"email"?: string | null,"geo"?: unknown,"google_place_id"?: string | null,"id"?: string,"is_default"?: boolean,"line_id"?: string | null,"maps_url"?: string | null,"market_id"?: string | null,"name"?: string,"phone"?: string | null,"tenant_id"?: string,"timezone"?: string,"updated_at"?: string,"whatsapp"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "locations_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"memberships": {
+                  Row: {
+                    "created_at": string,"id": string,"role": Database["platform"]['Enums']["platform_role"],"tenant_id": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"role": Database["platform"]['Enums']["platform_role"],"tenant_id": string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"role"?: Database["platform"]['Enums']["platform_role"],"tenant_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "memberships_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"models": {
+                  Row: {
+                    "bookable_online": boolean,"buffer_after_minutes": number | null,"buffer_before_minutes": number | null,"catalog_id": string,"created_at": string,"deposit": number | null,"deposit_currency": string | null,"description": string | null,"id": string,"instant_units": number,"licence_class": string | null,"min_age": number | null,"name": string,"photos": (string)[],"ready_now": number,"ready_updated_at": string | null,"request_units": number,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bookable_online"?: boolean,"buffer_after_minutes"?: number | null,"buffer_before_minutes"?: number | null,"catalog_id": string,"created_at"?: string,"deposit"?: number | null,"deposit_currency"?: string | null,"description"?: string | null,"id"?: string,"instant_units"?: number,"licence_class"?: string | null,"min_age"?: number | null,"name": string,"photos"?: (string)[],"ready_now"?: number,"ready_updated_at"?: string | null,"request_units"?: number,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "bookable_online"?: boolean,"buffer_after_minutes"?: number | null,"buffer_before_minutes"?: number | null,"catalog_id"?: string,"created_at"?: string,"deposit"?: number | null,"deposit_currency"?: string | null,"description"?: string | null,"id"?: string,"instant_units"?: number,"licence_class"?: string | null,"min_age"?: number | null,"name"?: string,"photos"?: (string)[],"ready_now"?: number,"ready_updated_at"?: string | null,"request_units"?: number,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "models_tenant_id_deposit_currency_fkey"
+      columns: ["tenant_id","deposit_currency"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id","currency"]
+    },{
+      foreignKeyName: "models_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"platform_admins": {
+                  Row: {
+                    "created_at": string,"note": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"note"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"note"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"tenants": {
+                  Row: {
+                    "country": string,"created_at": string,"currency": string,"distance_unit": string,"id": string,"locale": string,"name": string,"slug": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "country": string,"created_at"?: string,"currency": string,"distance_unit"?: string,"id"?: string,"locale": string,"name": string,"slug": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "country"?: string,"created_at"?: string,"currency"?: string,"distance_unit"?: string,"id"?: string,"locale"?: string,"name"?: string,"slug"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"unit_blocks": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"id": string,"kind": string,"note": string | null,"period": unknown,"tenant_id": string,"unit_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"period": unknown,"tenant_id": string,"unit_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"period"?: unknown,"tenant_id"?: string,"unit_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "unit_blocks_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "unit_blocks_tenant_id_unit_id_fkey"
+      columns: ["tenant_id","unit_id"]
+isOneToOne: false
+      referencedRelation: "units"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"unit_financials": {
+                  Row: {
+                    "created_at": string,"currency": string,"purchase_date": string | null,"purchase_price": number | null,"purchased_from": string | null,"sale_price": number | null,"sold_at": string | null,"sold_to": string | null,"tenant_id": string,"unit_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"currency": string,"purchase_date"?: string | null,"purchase_price"?: number | null,"purchased_from"?: string | null,"sale_price"?: number | null,"sold_at"?: string | null,"sold_to"?: string | null,"tenant_id": string,"unit_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"currency"?: string,"purchase_date"?: string | null,"purchase_price"?: number | null,"purchased_from"?: string | null,"sale_price"?: number | null,"sold_at"?: string | null,"sold_to"?: string | null,"tenant_id"?: string,"unit_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "unit_financials_tenant_id_currency_fkey"
+      columns: ["tenant_id","currency"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id","currency"]
+    },{
+      foreignKeyName: "unit_financials_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "unit_financials_tenant_id_unit_id_fkey"
+      columns: ["tenant_id","unit_id"]
+isOneToOne: false
+      referencedRelation: "units"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"units": {
+                  Row: {
+                    "active_from": string | null,"active_to": string | null,"colour": string | null,"created_at": string,"current_odometer_km": number,"engine_number": string | null,"first_registered": string | null,"frame_number": string | null,"id": string,"location_id": string,"model_id": string,"notes": string | null,"plate": string | null,"plate_pending": boolean,"qr_token": string,"status": string,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active_from"?: string | null,"active_to"?: string | null,"colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"first_registered"?: string | null,"frame_number"?: string | null,"id"?: string,"location_id": string,"model_id": string,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"qr_token"?: string,"status"?: string,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "active_from"?: string | null,"active_to"?: string | null,"colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"first_registered"?: string | null,"frame_number"?: string | null,"id"?: string,"location_id"?: string,"model_id"?: string,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"qr_token"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "units_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "units_tenant_id_location_id_fkey"
+      columns: ["tenant_id","location_id"]
+isOneToOne: false
+      referencedRelation: "locations"
+      referencedColumns: ["tenant_id","id"]
+    },{
+      foreignKeyName: "units_tenant_id_model_id_fkey"
+      columns: ["tenant_id","model_id"]
+isOneToOne: false
+      referencedRelation: "models"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                }
+          }
+          Views: {
+            [_ in never]: never
+          }
+          Functions: {
+            "create_tenant":
+{ Args: { "p_country": string,"p_currency": string,"p_id"?: string,"p_locale": string,"p_name": string,"p_slug": string,"p_timezone": string }; Returns: string
+                           },
+"currency_locked":
+{ Args: { "p_tenant_id": string }; Returns: boolean
+                           },
+"import_fleet":
+{ Args: { "p_models": Json,"p_tenant_id": string,"p_units": Json }; Returns: Json
+                           },
+"platform_open_policies":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "policy_name": string,"table_name": string
+            }[]
+                           },
+"platform_rls_report":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "policy_count": number,"rls_enabled": boolean,"table_name": string
+            }[]
+                           },
+"remove_member":
+{ Args: { "p_membership_id": string }; Returns: undefined
+                           },
+"request_catalog_entry":
+{ Args: { "p_cc": number,"p_make": string,"p_model": string,"p_note"?: string,"p_tenant_id": string,"p_transmission": Database["public"]['Enums']["transmission"],"p_type": Database["public"]['Enums']["bike_type"],"p_year_from": number,"p_year_to": number }; Returns: string
+                           },
+"review_catalog_request":
+{ Args: { "p_approve": boolean,"p_catalog_id": string,"p_notes"?: string }; Returns: undefined
+                           },
+"set_member_role":
+{ Args: { "p_membership_id": string,"p_role": Database["platform"]['Enums']["platform_role"] }; Returns: undefined
+                           },
+"tenant_members":
+{ Args: { "p_tenant_id": string }; Returns: {
+              "created_at": string,"email": string,"membership_id": string,"name": string,"role": Database["platform"]['Enums']["platform_role"],"user_id": string
+            }[]
+                           }
+          }
+          Enums: {
+            "platform_role": "owner"|"manager"|"staff"|"mechanic"|"driver"
+          }
+          CompositeTypes: {
+            [_ in never]: never
+          }
         },"public": {
           Tables: {
             "bike_catalog": {
                   Row: {
-                    "abs": boolean | null,"cc": number,"created_at": string,"description": string | null,"id": string,"key_type": Database["public"]['Enums']["key_type"] | null,"make": string,"model": string,"request_note": string | null,"requested_by_shop_id": string | null,"review_notes": string | null,"reviewed_at": string | null,"slug": string,"status": Database["public"]['Enums']["catalog_status"],"stock_photo": string | null,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"underseat_storage": boolean | null,"updated_at": string,"usb_charger": boolean | null,"year_from": number | null,"year_to": number | null
+                    "abs": boolean | null,"cc": number,"created_at": string,"description": string | null,"id": string,"key_type": Database["public"]['Enums']["key_type"] | null,"make": string,"model": string,"request_note": string | null,"requested_by_shop_id": string | null,"requested_by_tenant_id": string | null,"review_notes": string | null,"reviewed_at": string | null,"slug": string,"specs": NonNullable<Json>,"status": Database["public"]['Enums']["catalog_status"],"stock_photo": string | null,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"underseat_storage": boolean | null,"updated_at": string,"usb_charger": boolean | null,"vehicle_type": string,"year_from": number | null,"year_to": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "abs"?: boolean | null,"cc": number,"created_at"?: string,"description"?: string | null,"id"?: string,"key_type"?: Database["public"]['Enums']["key_type"] | null,"make": string,"model": string,"request_note"?: string | null,"requested_by_shop_id"?: string | null,"review_notes"?: string | null,"reviewed_at"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["catalog_status"],"stock_photo"?: string | null,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"underseat_storage"?: boolean | null,"updated_at"?: string,"usb_charger"?: boolean | null,"year_from"?: number | null,"year_to"?: number | null
+                    "abs"?: boolean | null,"cc": number,"created_at"?: string,"description"?: string | null,"id"?: string,"key_type"?: Database["public"]['Enums']["key_type"] | null,"make": string,"model": string,"request_note"?: string | null,"requested_by_shop_id"?: string | null,"requested_by_tenant_id"?: string | null,"review_notes"?: string | null,"reviewed_at"?: string | null,"slug"?: string,"specs"?: NonNullable<Json>,"status"?: Database["public"]['Enums']["catalog_status"],"stock_photo"?: string | null,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"underseat_storage"?: boolean | null,"updated_at"?: string,"usb_charger"?: boolean | null,"vehicle_type"?: string,"year_from"?: number | null,"year_to"?: number | null
                   }
                   Update: {
-                    "abs"?: boolean | null,"cc"?: number,"created_at"?: string,"description"?: string | null,"id"?: string,"key_type"?: Database["public"]['Enums']["key_type"] | null,"make"?: string,"model"?: string,"request_note"?: string | null,"requested_by_shop_id"?: string | null,"review_notes"?: string | null,"reviewed_at"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["catalog_status"],"stock_photo"?: string | null,"transmission"?: Database["public"]['Enums']["transmission"],"type"?: Database["public"]['Enums']["bike_type"],"underseat_storage"?: boolean | null,"updated_at"?: string,"usb_charger"?: boolean | null,"year_from"?: number | null,"year_to"?: number | null
+                    "abs"?: boolean | null,"cc"?: number,"created_at"?: string,"description"?: string | null,"id"?: string,"key_type"?: Database["public"]['Enums']["key_type"] | null,"make"?: string,"model"?: string,"request_note"?: string | null,"requested_by_shop_id"?: string | null,"requested_by_tenant_id"?: string | null,"review_notes"?: string | null,"reviewed_at"?: string | null,"slug"?: string,"specs"?: NonNullable<Json>,"status"?: Database["public"]['Enums']["catalog_status"],"stock_photo"?: string | null,"transmission"?: Database["public"]['Enums']["transmission"],"type"?: Database["public"]['Enums']["bike_type"],"underseat_storage"?: boolean | null,"updated_at"?: string,"usb_charger"?: boolean | null,"vehicle_type"?: string,"year_from"?: number | null,"year_to"?: number | null
                   }
                   Relationships: [
                     {
@@ -41,6 +336,12 @@ export type Database = {
 isOneToOne: false
       referencedRelation: "shops"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bike_catalog_vehicle_type_fkey"
+      columns: ["vehicle_type"]
+isOneToOne: false
+      referencedRelation: "vehicle_types"
+      referencedColumns: ["key"]
     }
                   ]
                 },"bike_model_downtime": {
@@ -190,26 +491,6 @@ isOneToOne: false
       columns: ["shop_id"]
 isOneToOne: false
       referencedRelation: "shops"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"memberships": {
-                  Row: {
-                    "created_at": string,"id": string,"role": Database["public"]['Enums']["platform_role"],"tenant_id": string,"updated_at": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"id"?: string,"role": Database["public"]['Enums']["platform_role"],"tenant_id": string,"updated_at"?: string,"user_id": string
-                  }
-                  Update: {
-                    "created_at"?: string,"id"?: string,"role"?: Database["public"]['Enums']["platform_role"],"tenant_id"?: string,"updated_at"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "memberships_tenant_id_fkey"
-      columns: ["tenant_id"]
-isOneToOne: false
-      referencedRelation: "tenants"
       referencedColumns: ["id"]
     }
                   ]
@@ -551,16 +832,16 @@ isOneToOne: true
                   Relationships: [
                     
                   ]
-                },"tenants": {
+                },"vehicle_types": {
                   Row: {
-                    "country": string,"created_at": string,"currency": string,"id": string,"locale": string,"name": string,"slug": string,"timezone": string,"updated_at": string
+                    "created_at": string,"key": string,"name": string,"spec_schema": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "country": string,"created_at"?: string,"currency": string,"id"?: string,"locale": string,"name": string,"slug": string,"timezone": string,"updated_at"?: string
+                    "created_at"?: string,"key": string,"name": string,"spec_schema"?: NonNullable<Json>
                   }
                   Update: {
-                    "country"?: string,"created_at"?: string,"currency"?: string,"id"?: string,"locale"?: string,"name"?: string,"slug"?: string,"timezone"?: string,"updated_at"?: string
+                    "created_at"?: string,"key"?: string,"name"?: string,"spec_schema"?: NonNullable<Json>
                   }
                   Relationships: [
                     
@@ -615,16 +896,8 @@ isOneToOne: true
               "free": number,"mode": string
             }[]
                            },
-"platform_rls_report":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "policy_count": number,"rls_enabled": boolean,"table_name": string
-            }[]
-                           },
 "promotion_shop_id":
 { Args: { "p_promotion_id": string }; Returns: string
-                           },
-"remove_member":
-{ Args: { "p_membership_id": string }; Returns: undefined
                            },
 "rental_days":
 { Args: { "p_end": string,"p_start": string }; Returns: number
@@ -641,9 +914,6 @@ isOneToOne: true
 { Args: { "p_catalog_id"?: string,"p_cc_max"?: number,"p_cc_min"?: number,"p_end"?: string,"p_lat"?: number,"p_lng"?: number,"p_min_rating"?: number,"p_now"?: boolean,"p_passport_not_held"?: boolean,"p_price_max_day"?: number,"p_radius_km"?: number,"p_shop_id"?: string,"p_start"?: string,"p_transmission"?: Database["public"]['Enums']["transmission"],"p_type"?: Database["public"]['Enums']["bike_type"] }; Returns: {
               "bike_model_id": string,"boost": Database["public"]['Enums']["boost_level"],"catalog_id": string,"catalog_slug": string,"cc": number,"days": number,"deposit": number,"distance_km": number,"free_units": number,"make": string,"mode": string,"model": string,"per_day": number,"photo": string,"rating": number,"ready_today": boolean,"ready_updated_at": string,"review_count": number,"score": number,"shop_id": string,"shop_lat": number,"shop_lng": number,"shop_name": string,"shop_slug": string,"stock_photo": string,"total": number,"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"walkin_max_days": number,"year_from": number,"year_to": number
             }[]
-                           },
-"set_member_role":
-{ Args: { "p_membership_id": string,"p_role": Database["public"]['Enums']["platform_role"] }; Returns: undefined
                            },
 "shop_coordinates":
 { Args: { "p_shop_id": string }; Returns: {
@@ -675,11 +945,6 @@ isOneToOne: true
 "submit_shop":
 { Args: { "p_accept_terms": boolean,"p_shop_id": string }; Returns: (string)[]
                            },
-"tenant_members":
-{ Args: { "p_tenant_id": string }; Returns: {
-              "created_at": string,"email": string,"membership_id": string,"name": string,"role": Database["public"]['Enums']["platform_role"],"user_id": string
-            }[]
-                           },
 "try_uuid":
 { Args: { "value": string }; Returns: string
                            },
@@ -688,7 +953,7 @@ isOneToOne: true
                            }
           }
           Enums: {
-            "app_language": "en"|"th","bike_type": "city_scooter"|"touring"|"adventure"|"sport"|"classic"|"off_road","booking_actor": "customer"|"vendor"|"admin"|"system","booking_kind": "instant"|"request"|"now","booking_status": "pending_vendor"|"declined"|"expired"|"confirmed_unpaid"|"paid"|"picked_up"|"returned"|"cancelled_customer"|"cancelled_vendor"|"cancelled_unpaid"|"no_show","boost_level": "featured"|"preferred"|"normal","catalog_status": "requested"|"approved"|"rejected","deposit_method": "cash"|"card_authorisation"|"bank_transfer","extra_price_kind": "rental"|"time","gear_option": "included"|"paid_extra"|"not_offered","helmet_type": "full_face"|"three_quarter"|"half","key_type": "keyless"|"keyed","licence_type": "none"|"car"|"motorbike"|"international_permit","notify_channel": "email"|"whatsapp","passport_policy": "held"|"copy_only","payment_method": "card"|"promptpay","platform_role": "owner"|"manager"|"staff"|"mechanic"|"driver","promotion_kind": "pct"|"fixed"|"long_rental"|"new_customer","shop_member_role": "owner"|"staff","shop_status": "draft"|"pending"|"live"|"suspended","transmission": "automatic"|"semi_auto"|"manual","usage_area": "bangkok"|"province"|"thailand"|"cross_border","user_role": "customer"|"vendor_staff"|"admin"
+            "app_language": "en"|"th","bike_type": "city_scooter"|"touring"|"adventure"|"sport"|"classic"|"off_road","booking_actor": "customer"|"vendor"|"admin"|"system","booking_kind": "instant"|"request"|"now","booking_status": "pending_vendor"|"declined"|"expired"|"confirmed_unpaid"|"paid"|"picked_up"|"returned"|"cancelled_customer"|"cancelled_vendor"|"cancelled_unpaid"|"no_show","boost_level": "featured"|"preferred"|"normal","catalog_status": "requested"|"approved"|"rejected","deposit_method": "cash"|"card_authorisation"|"bank_transfer","extra_price_kind": "rental"|"time","gear_option": "included"|"paid_extra"|"not_offered","helmet_type": "full_face"|"three_quarter"|"half","key_type": "keyless"|"keyed","licence_type": "none"|"car"|"motorbike"|"international_permit","notify_channel": "email"|"whatsapp","passport_policy": "held"|"copy_only","payment_method": "card"|"promptpay","promotion_kind": "pct"|"fixed"|"long_rental"|"new_customer","shop_member_role": "owner"|"staff","shop_status": "draft"|"pending"|"live"|"suspended","transmission": "automatic"|"semi_auto"|"manual","usage_area": "bangkok"|"province"|"thailand"|"cross_border","user_role": "customer"|"vendor_staff"|"admin"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -806,9 +1071,13 @@ export const Constants = {
           Enums: {
             
           }
+        },"platform": {
+          Enums: {
+            "platform_role": ["owner", "manager", "staff", "mechanic", "driver"]
+          }
         },"public": {
           Enums: {
-            "app_language": ["en", "th"],"bike_type": ["city_scooter", "touring", "adventure", "sport", "classic", "off_road"],"booking_actor": ["customer", "vendor", "admin", "system"],"booking_kind": ["instant", "request", "now"],"booking_status": ["pending_vendor", "declined", "expired", "confirmed_unpaid", "paid", "picked_up", "returned", "cancelled_customer", "cancelled_vendor", "cancelled_unpaid", "no_show"],"boost_level": ["featured", "preferred", "normal"],"catalog_status": ["requested", "approved", "rejected"],"deposit_method": ["cash", "card_authorisation", "bank_transfer"],"extra_price_kind": ["rental", "time"],"gear_option": ["included", "paid_extra", "not_offered"],"helmet_type": ["full_face", "three_quarter", "half"],"key_type": ["keyless", "keyed"],"licence_type": ["none", "car", "motorbike", "international_permit"],"notify_channel": ["email", "whatsapp"],"passport_policy": ["held", "copy_only"],"payment_method": ["card", "promptpay"],"platform_role": ["owner", "manager", "staff", "mechanic", "driver"],"promotion_kind": ["pct", "fixed", "long_rental", "new_customer"],"shop_member_role": ["owner", "staff"],"shop_status": ["draft", "pending", "live", "suspended"],"transmission": ["automatic", "semi_auto", "manual"],"usage_area": ["bangkok", "province", "thailand", "cross_border"],"user_role": ["customer", "vendor_staff", "admin"]
+            "app_language": ["en", "th"],"bike_type": ["city_scooter", "touring", "adventure", "sport", "classic", "off_road"],"booking_actor": ["customer", "vendor", "admin", "system"],"booking_kind": ["instant", "request", "now"],"booking_status": ["pending_vendor", "declined", "expired", "confirmed_unpaid", "paid", "picked_up", "returned", "cancelled_customer", "cancelled_vendor", "cancelled_unpaid", "no_show"],"boost_level": ["featured", "preferred", "normal"],"catalog_status": ["requested", "approved", "rejected"],"deposit_method": ["cash", "card_authorisation", "bank_transfer"],"extra_price_kind": ["rental", "time"],"gear_option": ["included", "paid_extra", "not_offered"],"helmet_type": ["full_face", "three_quarter", "half"],"key_type": ["keyless", "keyed"],"licence_type": ["none", "car", "motorbike", "international_permit"],"notify_channel": ["email", "whatsapp"],"passport_policy": ["held", "copy_only"],"payment_method": ["card", "promptpay"],"promotion_kind": ["pct", "fixed", "long_rental", "new_customer"],"shop_member_role": ["owner", "staff"],"shop_status": ["draft", "pending", "live", "suspended"],"transmission": ["automatic", "semi_auto", "manual"],"usage_area": ["bangkok", "province", "thailand", "cross_border"],"user_role": ["customer", "vendor_staff", "admin"]
           }
         }
 } as const

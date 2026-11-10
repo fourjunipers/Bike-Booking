@@ -9,13 +9,14 @@
     "./client": "./src/client.ts",
     "./database.types": "./src/database.types.ts",
     "./env": "./src/env.ts",
+    "./platform-server": "./src/platform-server.ts",
     "./public": "./src/public.ts",
     "./server": "./src/server.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
-    "db:types": "supabase gen types typescript --local --workdir ../.. > src/database.types.ts"
+    "db:types": "supabase gen types typescript --local --schema public,graphql_public,platform --workdir ../.. > src/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

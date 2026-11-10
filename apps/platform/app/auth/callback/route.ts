@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNextPath } from "@/lib/auth/redirect";
-import { createClient } from "@mango/db/server";
+import { createClient } from "@mango/db/platform-server";
 
 /** Google and LINE return here with a PKCE code. */
 export async function GET(request: NextRequest) {

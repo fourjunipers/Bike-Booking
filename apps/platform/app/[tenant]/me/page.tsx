@@ -15,7 +15,7 @@ import {
   themeCookie,
   themes,
 } from "@/lib/preferences";
-import { canSeeArea, type AdminArea } from "@/lib/roles";
+import { adminAreas, canSeeArea } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +91,7 @@ export default async function MePage({ params }: PageProps<"/[tenant]/me">) {
     ]);
   const theme = parseTheme(cookieStore.get(themeCookie)?.value);
   const tabBar = parseTabBar(cookieStore.get(tabBarCookie)?.value);
-  const areas = (["team", "settings"] as AdminArea[]).filter((a) =>
+  const areas = adminAreas.filter((a) =>
     canSeeArea(membership.role, a),
   );
 
