@@ -8,15 +8,27 @@ if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 const port = 3300;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${port}`;
 
+// A deployed preview (PLAYWRIGHT_BASE_URL) is reached over the internet and
+// its server functions start cold, so it gets longer waits and fewer workers.
+// Local runs and CI keep Playwright's defaults.
+const remote = !!process.env.PLAYWRIGHT_BASE_URL;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
+  ...(remote && {
+    workers: 2,
+    timeout: 60_000,
+    // Also covers waits like "left the login page" after signing in.
+    expect: { timeout: 15_000 },
+  }),
   use: {
     baseURL,
     trace: "on-first-retry",
+    ...(remote && { navigationTimeout: 15_000 }),
   },
   // Every staff screen works on a phone and fully on desktop (SPEC › Staff app).
   projects: [
