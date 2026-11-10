@@ -14,3 +14,10 @@
 
 [build.environment]
   NODE_VERSION = "24"
+
+# Netlify didn't auto-detect Next.js on this site (the first deploy published
+# .next as static files and every path was a 404), so name the runtime the
+# marketplace site gets automatically. Netlify installs it; it isn't an npm
+# dependency of the repo.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
