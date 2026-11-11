@@ -13,12 +13,21 @@ export type CsvTable = {
 };
 
 export class CsvError extends Error {
+  readonly code: "empty" | "unclosedQuote" | "duplicateHeader";
+  readonly line: number;
+  readonly detail?: string;
+
+  // Plain fields, not constructor shorthand: the seed script loads this file
+  // with Node's type stripping, which doesn't support the shorthand.
   constructor(
-    readonly code: "empty" | "unclosedQuote" | "duplicateHeader",
-    readonly line: number,
-    readonly detail?: string,
+    code: "empty" | "unclosedQuote" | "duplicateHeader",
+    line: number,
+    detail?: string,
   ) {
     super(code);
+    this.code = code;
+    this.line = line;
+    this.detail = detail;
   }
 }
 

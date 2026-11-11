@@ -1,15 +1,23 @@
 /**
- * Demo data for the platform (Phase 0): two shops in different countries,
- * one user per role, and one user who works in both shops.
+ * Demo data for the platform: two shops in different countries, one user per
+ * role, one user who works in both shops, a platform admin, and (Phase 1a)
+ * BSR's location details plus 20 demo bikes read from scripts/demo/bsr-fleet.csv
+ * through the same CSV reader and checks the import screen uses.
  *
  *   npm run seed -w @mango/platform            local Supabase
  *   npm run seed:staging -w @mango/platform    mango-works-staging
  *
- * Safe to run again: it updates what's there. Every demo user gets the
- * password in DEMO_PASSWORD (apps/platform/.env.local, never committed: the
- * repo is public). Never runs against any other project.
+ * Safe to run again: it updates what's there and skips bikes already imported.
+ * The plates and frame numbers are clearly fake (DEMO-…); the real fleet
+ * arrives later through CSV import. Every demo user gets the password in
+ * DEMO_PASSWORD (apps/platform/.env.local, never committed). Never runs
+ * against any other project.
  */
+import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { parseCsv } from "../lib/csv.ts";
+import { planImport } from "../lib/fleet-import.ts";
 
 const staging = process.argv.includes("--staging");
 
@@ -43,9 +51,11 @@ if (staging === local)
       : `NEXT_PUBLIC_SUPABASE_URL isn't local Supabase (${url}); use seed:staging`,
   );
 
-const db = createClient(url, key, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const auth = { persistSession: false, autoRefreshToken: false };
+/** Platform tables. */
+const db = createClient(url, key, { auth, db: { schema: "platform" } });
+/** The shared catalog and marketplace profiles. */
+const pub = createClient(url, key, { auth });
 
 type Role = "owner" | "manager" | "staff" | "mechanic" | "driver";
 
@@ -109,7 +119,43 @@ const users: { email: string; name: string; roles: Record<string, Role> }[] = [
     name: "Alex (works in both)",
     roles: { bsr: "manager", "saigon-scooters": "staff" },
   },
+  // Mango Works staff: approves catalog requests at /admin/catalog.
+  { email: "admin@mangoworks.demo.test", name: "Mango (admin)", roles: {} },
 ];
+const platformAdmin = "admin@mangoworks.demo.test";
+
+/** Catalog entries the demo fleet uses, added only where the project lacks them. */
+const catalog: {
+  slug: string;
+  make: string;
+  model: string;
+  year_from: number | null;
+  year_to: number | null;
+  cc: number;
+  type: "city_scooter" | "touring" | "adventure";
+  transmission: "automatic" | "manual";
+}[] = [
+  ["honda-pcx-160-2026", "Honda", "PCX 160", 2026, 2026, 160, "city_scooter", "automatic"],
+  ["honda-adv-160-2026", "Honda", "ADV 160", 2026, 2026, 160, "city_scooter", "automatic"],
+  ["honda-click-160-2023-2025", "Honda", "Click 160", 2023, 2025, 160, "city_scooter", "automatic"],
+  ["yamaha-nmax-2026", "Yamaha", "NMAX", 2026, 2026, 155, "city_scooter", "automatic"],
+  ["yamaha-aerox-155-2024-2026", "Yamaha", "Aerox 155", 2024, 2026, 155, "city_scooter", "automatic"],
+  ["honda-scoopy-2025-2026", "Honda", "Scoopy", 2025, 2026, 110, "city_scooter", "automatic"],
+  ["yamaha-fazzio-2025-2026", "Yamaha", "Fazzio", 2025, 2026, 125, "city_scooter", "automatic"],
+  ["honda-giorno-2025-2026", "Honda", "Giorno", 2025, 2026, 125, "city_scooter", "automatic"],
+  ["honda-nx500-2025", "Honda", "NX500", 2025, 2025, 471, "adventure", "manual"],
+  ["honda-cb500x-2022-2023", "Honda", "CB500X", 2022, 2023, 471, "adventure", "manual"],
+  ["honda-forza-350", "Honda", "Forza 350", null, null, 330, "touring", "automatic"],
+].map(([slug, make, model, year_from, year_to, cc, type, transmission]) => ({
+  slug,
+  make,
+  model,
+  year_from,
+  year_to,
+  cc,
+  type,
+  transmission,
+})) as never;
 
 async function existingUsers(): Promise<Map<string, string>> {
   const byEmail = new Map<string, string>();
@@ -124,18 +170,193 @@ async function existingUsers(): Promise<Map<string, string>> {
   }
 }
 
+/** Creates the shop with its default location, or updates its settings. */
+async function upsertTenant(tenant: (typeof tenants)[number]): Promise<string> {
+  const { data: found, error } = await db
+    .from("tenants")
+    .select("id")
+    .eq("slug", tenant.slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (found) {
+    const { error: updateError } = await db
+      .from("tenants")
+      .update({
+        name: tenant.name,
+        country: tenant.country,
+        locale: tenant.locale,
+      })
+      .eq("id", found.id);
+    if (updateError) throw updateError;
+    return found.id;
+  }
+  const { data: id, error: createError } = await db.rpc("create_tenant", {
+    p_name: tenant.name,
+    p_slug: tenant.slug,
+    p_country: tenant.country,
+    p_currency: tenant.currency,
+    p_locale: tenant.locale,
+    p_timezone: tenant.timezone,
+  });
+  if (createError) throw createError;
+  return id;
+}
+
+/** BSR's shop details (docs/marketplace/BSR_SEED.md), hours and one yearly closure. */
+async function seedBsrLocation(tenantId: string): Promise<string> {
+  const { data: location, error } = await db
+    .from("locations")
+    .update({
+      name: "BSR Bike Shop",
+      address:
+        "79/37 Soi Phumichit, Rama 4, Phra Khanong, Khlong Toei, Bangkok 10110",
+      phone: "+66850550247",
+      whatsapp: "+66850550247",
+      line_id: "bsrbikeshop",
+      email: "info@bsrbikeshop.com",
+    })
+    .eq("tenant_id", tenantId)
+    .eq("is_default", true)
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  // Mon–Fri 10:00–18:00, Sat–Sun 11:00–16:00. 0 = Sunday.
+  const hours = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+    tenant_id: tenantId,
+    location_id: location.id,
+    weekday,
+    open: weekday === 0 || weekday === 6 ? "11:00" : "10:00",
+    close: weekday === 0 || weekday === 6 ? "16:00" : "18:00",
+  }));
+  const { error: hoursError } = await db
+    .from("location_hours")
+    .upsert(hours, { onConflict: "location_id,weekday" });
+  if (hoursError) throw hoursError;
+
+  const { count } = await db
+    .from("location_closures")
+    .select("*", { count: "exact", head: true })
+    .eq("location_id", location.id);
+  if (!count) {
+    const { error: closureError } = await db.from("location_closures").insert({
+      tenant_id: tenantId,
+      location_id: location.id,
+      start_date: "2027-04-13",
+      end_date: "2027-04-15",
+      note: "Songkran",
+      repeats_yearly: true,
+    });
+    if (closureError) throw closureError;
+  }
+  return location.id;
+}
+
+/** Makes sure the catalog entries exist, and returns every approved entry. */
+async function seedCatalog() {
+  const { data: existing, error } = await pub
+    .from("bike_catalog")
+    .select("slug")
+    .in(
+      "slug",
+      catalog.map((c) => c.slug),
+    );
+  if (error) throw error;
+  const have = new Set(existing.map((c) => c.slug));
+  const missing = catalog.filter((c) => !have.has(c.slug));
+  if (missing.length > 0) {
+    const { error: insertError } = await pub.from("bike_catalog").insert(
+      missing.map((c) => ({
+        ...c,
+        status: "approved",
+        reviewed_at: new Date().toISOString(),
+      })),
+    );
+    if (insertError) throw insertError;
+  }
+  console.log(
+    `  catalog  ${catalog.length} entries (${missing.length} added, ${have.size} already there)`,
+  );
+  const { data: approved, error: listError } = await pub
+    .from("bike_catalog")
+    .select("id, slug")
+    .eq("status", "approved");
+  if (listError) throw listError;
+  return approved;
+}
+
+/** The 20 demo bikes, through the real CSV reader and import checks. */
+async function seedBsrFleet(
+  tenantId: string,
+  locationId: string,
+  approved: { id: string; slug: string }[],
+) {
+  const [{ data: models }, { data: units }] = await Promise.all([
+    db.from("models").select("id, name").eq("tenant_id", tenantId),
+    db.from("units").select("plate, frame_number").eq("tenant_id", tenantId),
+  ]);
+  const table = parseCsv(
+    readFileSync(new URL("./demo/bsr-fleet.csv", import.meta.url), "utf8"),
+  );
+  // Running again: leave out the bikes already there (matched by frame number).
+  const frames = new Set((units ?? []).map((u) => u.frame_number));
+  table.rows = table.rows.filter((r) => !frames.has(r.values.frame_number));
+  if (table.rows.length === 0) {
+    console.log(`  fleet  ${frames.size} demo bikes already imported`);
+    return;
+  }
+
+  const plan = planImport(table, {
+    currency: "THB",
+    distanceUnit: "km",
+    locations: [{ id: locationId, name: "BSR Bike Shop", isDefault: true }],
+    models: models ?? [],
+    catalog: approved,
+    plates: (units ?? []).flatMap((u) => (u.plate ? [u.plate] : [])),
+    newId: randomUUID,
+  });
+  if (plan.errors.length > 0) {
+    console.error(plan.errors);
+    fail("scripts/demo/bsr-fleet.csv has errors");
+  }
+
+  // import_fleet runs as a signed-in owner or manager; the seed has no session,
+  // so it saves the same plan with the service role.
+  if (plan.models.length > 0) {
+    const { error } = await db
+      .from("models")
+      .insert(plan.models.map((m) => ({ ...m, tenant_id: tenantId })));
+    if (error) throw error;
+  }
+  for (const unit of plan.units) {
+    const { purchase_date, purchase_price, purchased_from, ...row } = unit;
+    const { data, error } = await db
+      .from("units")
+      .insert({ ...row, tenant_id: tenantId })
+      .select("id")
+      .single();
+    if (error) throw error;
+    const { error: moneyError } = await db.from("unit_financials").insert({
+      tenant_id: tenantId,
+      unit_id: data.id,
+      currency: "THB",
+      purchase_date,
+      purchase_price,
+      purchased_from,
+    });
+    if (moneyError) throw moneyError;
+  }
+  console.log(
+    `  fleet  ${plan.units.length} demo bikes in ${plan.models.length} new models (fake DEMO- plates)`,
+  );
+}
+
 async function main() {
   console.log(`Seeding ${staging ? "STAGING" : "local"}: ${url}`);
 
   const tenantIds = new Map<string, string>();
   for (const tenant of tenants) {
-    const { data, error } = await db
-      .from("tenants")
-      .upsert(tenant, { onConflict: "slug" })
-      .select("id")
-      .single();
-    if (error) throw error;
-    tenantIds.set(tenant.slug, data.id);
+    tenantIds.set(tenant.slug, await upsertTenant(tenant));
     console.log(`  shop  ${tenant.name} (/${tenant.slug})`);
   }
 
@@ -159,7 +380,7 @@ async function main() {
       id = data.user.id;
     }
     // The marketplace's sign-up trigger made a profile; give it the name.
-    await db.from("profiles").update({ name: user.name }).eq("id", id);
+    await pub.from("profiles").update({ name: user.name }).eq("id", id);
 
     for (const [slug, role] of Object.entries(user.roles)) {
       const { error } = await db
@@ -170,11 +391,23 @@ async function main() {
         );
       if (error) throw error;
     }
-    const where = Object.entries(user.roles)
-      .map(([slug, role]) => `${role} at /${slug}`)
-      .join(", ");
-    console.log(`  user  ${user.email.padEnd(26)} ${where}`);
+    if (user.email === platformAdmin) {
+      const { error } = await db
+        .from("platform_admins")
+        .upsert({ user_id: id, note: "Demo platform admin" });
+      if (error) throw error;
+    }
+    const where =
+      Object.entries(user.roles)
+        .map(([slug, role]) => `${role} at /${slug}`)
+        .join(", ") || "platform admin (/admin/catalog)";
+    console.log(`  user  ${user.email.padEnd(28)} ${where}`);
   }
+
+  const bsr = tenantIds.get("bsr")!;
+  const locationId = await seedBsrLocation(bsr);
+  const approved = await seedCatalog();
+  await seedBsrFleet(bsr, locationId, approved);
 
   console.log("Done. Every demo user's password is DEMO_PASSWORD.");
 }
