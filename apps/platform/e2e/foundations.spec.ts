@@ -107,10 +107,11 @@ test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
   await expect(page).toHaveURL(/\/bsr\/dashboard$/);
   const tabs = page.getByRole("tablist", { name: "When" }).getByRole("tab");
   await expect(tabs).toHaveText([
-    /^Today\s*0/,
-    /^Tomorrow\s*0/,
-    /^Upcoming\s*0/,
-    /^Late\s*0/,
+    // Counts depend on the demo renewals and the day the seed ran.
+    /^Today\s*\d+/,
+    /^Tomorrow\s*\d+/,
+    /^Upcoming\s*\d+/,
+    /^Late\s*\d+/,
   ]);
   // The panel being shown. While tabs switch, the outgoing panel stays in the
   // page for a moment, marked inert, so "the tabpanel" alone can match two.

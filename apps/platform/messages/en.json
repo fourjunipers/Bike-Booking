@@ -454,7 +454,7 @@
     "view": {
       "groupBy": "Group by",
       "sortBy": "Sort by",
-      "filters": "{count, plural, =0 {Filters} other {Filters (#)}}",
+      "filters": "Filters ({count})",
       "any": "Any",
       "ccMin": "Engine size from (cc)",
       "ccMax": "Engine size to (cc)",

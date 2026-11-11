@@ -9,7 +9,13 @@
  * with no bands shows one group for all years.
  */
 
-export const groupModes = ["model", "make", "location", "status", "none"] as const;
+export const groupModes = [
+  "model",
+  "make",
+  "location",
+  "status",
+  "none",
+] as const;
 export type GroupMode = (typeof groupModes)[number];
 
 export const sortModes = [
@@ -62,7 +68,10 @@ export type FleetFilters = {
   year: number | null;
 };
 
-export type FleetViewOptions = FleetFilters & { group: GroupMode; sort: SortMode };
+export type FleetViewOptions = FleetFilters & {
+  group: GroupMode;
+  sort: SortMode;
+};
 
 export const defaultView: FleetViewOptions = {
   group: "model",
@@ -183,7 +192,8 @@ export function matchesText(unit: ViewUnit, query: string): boolean {
 
 function countStatuses(units: ViewUnit[]): StatusCounts {
   const counts: StatusCounts = {};
-  for (const unit of units) counts[unit.status] = (counts[unit.status] ?? 0) + 1;
+  for (const unit of units)
+    counts[unit.status] = (counts[unit.status] ?? 0) + 1;
   return counts;
 }
 
@@ -334,6 +344,26 @@ export function buildFleetView(
       }
       return { key: modelId, model, count: members.length, groups };
     });
+    // With no filters on, a model that has no bikes yet is still listed, so
+    // it can be opened and given some.
+    if (activeFilterCount(view) === 0) {
+      for (const model of data.models) {
+        if (byModel.has(model.id)) continue;
+        sections.push({
+          key: model.id,
+          model,
+          count: 0,
+          groups: [
+            group(`${model.id}-all`, "band", model.name, [], {
+              make: model.make,
+              model: model.model,
+              cc: model.cc,
+              band: "all",
+            }),
+          ],
+        });
+      }
+    }
     sections.sort(
       (a, b) =>
         (view.sort === "count"
@@ -349,9 +379,9 @@ export function buildFleetView(
   } else {
     let groups: FleetGroup[];
     if (view.group === "make") {
-      groups = [...bucket((u) => models.get(u.model_id)?.make ?? "").entries()].map(
-        ([make, members]) => group(`make-${make}`, "make", make, members),
-      );
+      groups = [
+        ...bucket((u) => models.get(u.model_id)?.make ?? "").entries(),
+      ].map(([make, members]) => group(`make-${make}`, "make", make, members));
     } else if (view.group === "location") {
       groups = [...bucket((u) => u.location_id).entries()].map(
         ([id, members]) =>
@@ -364,7 +394,9 @@ export function buildFleetView(
     } else {
       groups = units.length > 0 ? [group("all", "all", "", units)] : [];
     }
-    sections = [{ key: "all", count: units.length, groups: sortGroups(groups) }];
+    sections = [
+      { key: "all", count: units.length, groups: sortGroups(groups) },
+    ];
   }
 
   return {

@@ -42,7 +42,9 @@ export default async function CatalogRequestPage({
             ? `/${slug}/fleet/units/new`
             : `/${slug}/fleet/models/new`
         }
-        label={then === "bike" ? tFleet("unit.newTitle") : tFleet("model.newTitle")}
+        label={
+          then === "bike" ? tFleet("unit.newTitle") : tFleet("model.newTitle")
+        }
       />
       <PageHeader title={t("title")} intro={t("intro")} />
       <Panel className="max-w-3xl">

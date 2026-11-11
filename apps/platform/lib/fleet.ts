@@ -22,7 +22,12 @@ export function isIsoDate(text: string): boolean {
  * - maintenance: in the fleet, not rentable until set back to active.
  * - retired, sold: out of the fleet for good; history is kept.
  */
-export const unitStatuses = ["active", "maintenance", "retired", "sold"] as const;
+export const unitStatuses = [
+  "active",
+  "maintenance",
+  "retired",
+  "sold",
+] as const;
 export type UnitStatus = (typeof unitStatuses)[number];
 
 /** Statuses staff and mechanics may switch between (units_guard in the database). */
@@ -193,7 +198,11 @@ const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "invalidTime");
 
 /** One weekday's hours; closed days are simply left out. */
 export const hoursSchema = z
-  .object({ weekday: z.number().int().min(0).max(6), open: clock, close: clock })
+  .object({
+    weekday: z.number().int().min(0).max(6),
+    open: clock,
+    close: clock,
+  })
   .refine((h) => h.close > h.open, {
     path: ["close"],
     message: "endBeforeStart",

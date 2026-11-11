@@ -160,7 +160,6 @@ describe("times typed in a location's time zone", () => {
 
 describe("form rules", () => {
   const catalogId = "0b0e3b52-6f0e-4f3a-9a52-2a1c4f3f9d11";
-  const otherId = "7c1f9a5e-1d2b-4c3d-8e4f-5a6b7c8d9e0f";
 
   it("a model needs a name and a catalog entry", () => {
     const ok = modelSchema.safeParse({

@@ -76,7 +76,12 @@ describe("bike form rules", () => {
   });
 
   it("no longer has first-registered, borrowed dates or a status field", () => {
-    for (const gone of ["first_registered", "active_from", "active_to", "status"])
+    for (const gone of [
+      "first_registered",
+      "active_from",
+      "active_to",
+      "status",
+    ])
       expect(
         unitSchema.safeParse({ ...unit, plate: "A1", [gone]: "2026-01-01" })
           .success,
@@ -95,7 +100,9 @@ describe("bike form rules", () => {
   });
 
   it("year bands and renewals must end after they start", () => {
-    expect(yearBandSchema.parse({ year_from: "2020", year_to: "2023" })).toEqual({
+    expect(
+      yearBandSchema.parse({ year_from: "2020", year_to: "2023" }),
+    ).toEqual({
       year_from: 2020,
       year_to: 2023,
     });
@@ -134,11 +141,41 @@ describe("fleet import: make, then model, from the catalog", () => {
     ],
     models: [{ id: "model-pcx", name: "Our PCX", catalog_id: "cat-pcx" }],
     catalog: [
-      { id: "cat-pcx", make: "Honda", model: "PCX 160", year_from: 2026, year_to: 2026 },
-      { id: "cat-click", make: "Honda", model: "Click 160", year_from: 2023, year_to: 2025 },
-      { id: "cat-cb-old", make: "Honda", model: "CB500X", year_from: 2019, year_to: 2021 },
-      { id: "cat-cb-new", make: "Honda", model: "CB500X", year_from: 2022, year_to: 2023 },
-      { id: "cat-forza", make: "Honda", model: "Forza 350", year_from: null, year_to: null },
+      {
+        id: "cat-pcx",
+        make: "Honda",
+        model: "PCX 160",
+        year_from: 2026,
+        year_to: 2026,
+      },
+      {
+        id: "cat-click",
+        make: "Honda",
+        model: "Click 160",
+        year_from: 2023,
+        year_to: 2025,
+      },
+      {
+        id: "cat-cb-old",
+        make: "Honda",
+        model: "CB500X",
+        year_from: 2019,
+        year_to: 2021,
+      },
+      {
+        id: "cat-cb-new",
+        make: "Honda",
+        model: "CB500X",
+        year_from: 2022,
+        year_to: 2023,
+      },
+      {
+        id: "cat-forza",
+        make: "Honda",
+        model: "Forza 350",
+        year_from: null,
+        year_to: null,
+      },
     ],
     plates: ["OLD-1"],
     newId: () => `new-${++next}`,
@@ -163,7 +200,11 @@ describe("fleet import: make, then model, from the catalog", () => {
     );
     expect(result.errors).toEqual([]);
     expect(result.models).toEqual([
-      { id: "new-1", catalog_id: "cat-click", name: "Honda Click 160 (2023–2025)" },
+      {
+        id: "new-1",
+        catalog_id: "cat-click",
+        name: "Honda Click 160 (2023–2025)",
+      },
       { id: "new-2", catalog_id: "cat-forza", name: "Honda Forza 350" },
     ]);
     expect(result.units).toHaveLength(4);
@@ -205,9 +246,9 @@ describe("fleet import: make, then model, from the catalog", () => {
     expect(codes("make,model,model_year,plate\nHonda,CB500X,,C-3")).toEqual([
       "2:model_year:modelNeedsYear",
     ]);
-    expect(codes("make,model,model_year,plate\nHonda,CB500X,2010,C-3")).toEqual([
-      "2:model_year:modelNeedsYear",
-    ]);
+    expect(codes("make,model,model_year,plate\nHonda,CB500X,2010,C-3")).toEqual(
+      ["2:model_year:modelNeedsYear"],
+    );
   });
 
   it("lets a shop name its own models, several to a catalog entry", () => {
@@ -239,9 +280,9 @@ describe("fleet import: make, then model, from the catalog", () => {
       "2:name:modelNeedsName",
     ]);
     // A name that belongs to a different bike.
-    expect(codes("make,model,name,plate\nHonda,Click 160,Our PCX,N-5")).toEqual([
-      "2:name:nameOtherModel",
-    ]);
+    expect(codes("make,model,name,plate\nHonda,Click 160,Our PCX,N-5")).toEqual(
+      ["2:name:nameOtherModel"],
+    );
   });
 
   it("reads the odometer in the shop's unit and money in its currency", () => {
@@ -269,26 +310,26 @@ describe("fleet import: make, then model, from the catalog", () => {
     );
     expect(result.models).toEqual([]);
     expect(result.units).toEqual([]);
-    expect(
-      result.errors.map((e) => `${e.line}:${e.column}:${e.code}`),
-    ).toEqual([
-      "2:make:required",
-      "3:make:makeUnknown",
-      "4:model:modelUnknown",
-      "5:plate:plateExists",
-      "6:plate:plateDuplicateInFile",
-      "7:model_year:invalidYear",
-      "7:odometer:invalidNumber",
-      "7:location:locationUnknown",
-      "7:purchase_price:invalidMoney",
-      "7:purchase_date:invalidDate",
-    ]);
+    expect(result.errors.map((e) => `${e.line}:${e.column}:${e.code}`)).toEqual(
+      [
+        "2:make:required",
+        "3:make:makeUnknown",
+        "4:model:modelUnknown",
+        "5:plate:plateExists",
+        "6:plate:plateDuplicateInFile",
+        "7:model_year:invalidYear",
+        "7:odometer:invalidNumber",
+        "7:location:locationUnknown",
+        "7:purchase_price:invalidMoney",
+        "7:purchase_date:invalidDate",
+      ],
+    );
   });
 
   it("refuses unknown and removed columns, missing columns and an empty file", () => {
-    expect(codes("make,model,first_registered\nHonda,PCX 160,2026-01-01")).toEqual([
-      "1:first_registered:unknownColumn",
-    ]);
+    expect(
+      codes("make,model,first_registered\nHonda,PCX 160,2026-01-01"),
+    ).toEqual(["1:first_registered:unknownColumn"]);
     expect(codes("make,model,catalog\nHonda,PCX 160,x")).toEqual([
       "1:catalog:unknownColumn",
     ]);
@@ -303,19 +344,55 @@ describe("fleet import: make, then model, from the catalog", () => {
     const result = plan(importTemplate());
     expect(result.errors).toEqual([]);
     expect(result.units).toHaveLength(1);
-    expect(result.units[0]).toMatchObject({ model_id: "model-pcx", model_year: 2026 });
-    expect(catalogName({ make: "Honda", model: "Wave", year_from: null, year_to: null })).toBe(
-      "Honda Wave",
-    );
+    expect(result.units[0]).toMatchObject({
+      model_id: "model-pcx",
+      model_year: 2026,
+    });
+    expect(
+      catalogName({
+        make: "Honda",
+        model: "Wave",
+        year_from: null,
+        year_to: null,
+      }),
+    ).toBe("Honda Wave");
   });
 });
 
 describe("fleet view", () => {
   const models: ViewModel[] = [
-    { id: "pcx", name: "Honda PCX", make: "Honda", model: "PCX 160", cc: 160, transmission: "automatic" },
-    { id: "click", name: "Honda Click", make: "Honda", model: "Click 160", cc: 160, transmission: "automatic" },
-    { id: "nmax", name: "Yamaha NMAX", make: "Yamaha", model: "NMAX", cc: 155, transmission: "automatic" },
-    { id: "cb", name: "Honda CB500X", make: "Honda", model: "CB500X", cc: 471, transmission: "manual" },
+    {
+      id: "pcx",
+      name: "Honda PCX",
+      make: "Honda",
+      model: "PCX 160",
+      cc: 160,
+      transmission: "automatic",
+    },
+    {
+      id: "click",
+      name: "Honda Click",
+      make: "Honda",
+      model: "Click 160",
+      cc: 160,
+      transmission: "automatic",
+    },
+    {
+      id: "nmax",
+      name: "Yamaha NMAX",
+      make: "Yamaha",
+      model: "NMAX",
+      cc: 155,
+      transmission: "automatic",
+    },
+    {
+      id: "cb",
+      name: "Honda CB500X",
+      make: "Honda",
+      model: "CB500X",
+      cc: 471,
+      transmission: "manual",
+    },
   ];
   const bands: ViewBand[] = [
     { model_id: "pcx", year_from: 2014, year_to: 2019 },
@@ -354,7 +431,10 @@ describe("fleet view", () => {
     unit("cb", { model_year: 2022, plate: null, plate_pending: true }),
   ];
   const view = (options: Partial<FleetViewOptions> = {}) =>
-    buildFleetView({ units, models, bands, locations }, { ...defaultView, ...options });
+    buildFleetView(
+      { units, models, bands, locations },
+      { ...defaultView, ...options },
+    );
 
   it("groups by model, then the shop's year bands, newest first", () => {
     const result = view();
@@ -401,18 +481,26 @@ describe("fleet view", () => {
   });
 
   it("groups by make, location, status or not at all", () => {
-    expect(view({ group: "make" }).sections[0].groups.map((g) => [g.title, g.count])).toEqual([
+    expect(
+      view({ group: "make" }).sections[0].groups.map((g) => [g.title, g.count]),
+    ).toEqual([
       ["Honda", 9],
       ["Yamaha", 1],
     ]);
     expect(
-      view({ group: "location" }).sections[0].groups.map((g) => [g.title, g.count]),
+      view({ group: "location" }).sections[0].groups.map((g) => [
+        g.title,
+        g.count,
+      ]),
     ).toEqual([
       ["Airport", 2],
       ["Main shop", 8],
     ]);
     expect(
-      view({ group: "status" }).sections[0].groups.map((g) => [g.status, g.count]),
+      view({ group: "status" }).sections[0].groups.map((g) => [
+        g.status,
+        g.count,
+      ]),
     ).toEqual([
       ["active", 8],
       ["maintenance", 1],
@@ -441,17 +529,25 @@ describe("fleet view", () => {
   });
 
   it("sorts groups by cc or bike count, and bikes by plate, odometer or purchase date", () => {
-    expect(view({ sort: "count" }).sections.map((s) => s.count)).toEqual([6, 2, 1, 1]);
+    expect(view({ sort: "count" }).sections.map((s) => s.count)).toEqual([
+      6, 2, 1, 1,
+    ]);
     expect(view({ sort: "cc" }).sections.map((s) => s.model?.cc)).toEqual([
       155, 160, 160, 471,
     ]);
     expect(
-      view({ group: "make", sort: "count" }).sections[0].groups.map((g) => g.title),
+      view({ group: "make", sort: "count" }).sections[0].groups.map(
+        (g) => g.title,
+      ),
     ).toEqual(["Honda", "Yamaha"]);
     const all = (options: Partial<FleetViewOptions>) =>
       view({ group: "none", ...options }).sections[0].groups[0].units;
     // By plate: natural order, bikes without a plate last.
-    expect(all({}).map((u) => u.plate).slice(-2)).toEqual(["P-009", null]);
+    expect(
+      all({})
+        .map((u) => u.plate)
+        .slice(-2),
+    ).toEqual(["P-009", null]);
     expect(all({ sort: "odometer" })[0].current_odometer_km).toBe(1000);
     const dated = buildFleetView(
       {
@@ -466,11 +562,9 @@ describe("fleet view", () => {
       },
       { ...defaultView, group: "none", sort: "purchaseDate" },
     );
-    expect(dated.sections[0].groups[0].units.map((u) => u.purchase_date)).toEqual([
-      "2026-01-10",
-      "2024-05-01",
-      null,
-    ]);
+    expect(
+      dated.sections[0].groups[0].units.map((u) => u.purchase_date),
+    ).toEqual(["2026-01-10", "2024-05-01", null]);
   });
 
   it("reads the view from the address and writes it back without defaults", () => {
@@ -595,11 +689,15 @@ describe("renewals", () => {
       const [year, month, day] = iso.split("-").map(Number);
       return { year, month, day };
     };
-    expect(placeItem({ kind: "renewal", date: date("2026-12-11") }, today)).toEqual({
+    expect(
+      placeItem({ kind: "renewal", date: date("2026-12-11") }, today),
+    ).toEqual({
       tab: "upcoming",
       section: "renewalsDue",
     });
-    expect(placeItem({ kind: "renewal", date: date("2026-11-08") }, today)).toEqual({
+    expect(
+      placeItem({ kind: "renewal", date: date("2026-11-08") }, today),
+    ).toEqual({
       tab: "late",
       section: "overdueMaintenance",
     });

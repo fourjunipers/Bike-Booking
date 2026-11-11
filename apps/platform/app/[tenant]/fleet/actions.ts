@@ -19,11 +19,7 @@ import {
   yearBandSchema,
 } from "@/lib/fleet";
 import { getCatalog, getLocations } from "@/lib/fleet-data";
-import {
-  catalogName,
-  planImport,
-  type ImportError,
-} from "@/lib/fleet-import";
+import { catalogName, planImport, type ImportError } from "@/lib/fleet-import";
 import { parseMoney } from "@/lib/money";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
@@ -270,7 +266,8 @@ export async function saveUnit(
     };
   }
   const odometer = id ? null : distance(formData, tenant.distanceUnit);
-  if (odometer === "invalid") return { errors: { odometer: "invalidDistance" } };
+  if (odometer === "invalid")
+    return { errors: { odometer: "invalidDistance" } };
 
   const modelId = await resolveModel(supabase, tenant.id, raw.model_choice);
   if (!modelId) return { errors: { model_choice: "catalog_entry_not_usable" } };

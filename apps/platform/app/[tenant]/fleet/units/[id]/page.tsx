@@ -7,6 +7,7 @@ import { ActionForm, Panel } from "@/components/action-form";
 import { BackLink } from "@/components/back-link";
 import { StatusBadge } from "@/components/fleet/unit-bits";
 import { PageHeader } from "@/components/page";
+import { ScrollTo } from "@/components/scroll-to";
 import { buttonVariants } from "@/components/ui/button";
 import { requireArea } from "@/lib/access";
 import { formatDistance, fromKm } from "@/lib/distance";
@@ -148,6 +149,7 @@ export default async function UnitPage({
 
   return (
     <>
+      {query.sold === "1" && <ScrollTo id="purchase-sale" />}
       <BackLink href={base} label={t("title")} />
       <PageHeader
         title={unit.plate ?? t("noPlate")}
@@ -366,7 +368,9 @@ export default async function UnitPage({
                       {t(`renewals.expires.${kind}`)}
                     </dt>
                     <dd className="mt-1 text-lg font-semibold">
-                      {record ? longDate(record.expires_at) : t("renewals.none")}
+                      {record
+                        ? longDate(record.expires_at)
+                        : t("renewals.none")}
                     </dd>
                     {record && state !== "ok" && (
                       <dd className="text-sm">
@@ -448,7 +452,8 @@ export default async function UnitPage({
                 query.sold === "1" ? t("money.afterSold") : t("money.intro")
               }
               className={cn(
-                query.sold === "1" && "border-highlight-border ring-2 ring-ring",
+                query.sold === "1" &&
+                  "border-highlight-border ring-2 ring-ring",
               )}
             >
               <FinancialsForm

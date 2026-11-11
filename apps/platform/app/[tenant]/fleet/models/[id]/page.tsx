@@ -41,18 +41,27 @@ export default async function ModelPage({
   const { tenant: slug, id } = await params;
   const { membership } = await requireArea(slug, "fleet");
   const { tenant, role } = membership;
-  const [t, tFleet, tCommon, locale, model, fleet, catalog, allBands, locations] =
-    await Promise.all([
-      getTranslations("Fleet.model"),
-      getTranslations("Fleet"),
-      getTranslations("Common"),
-      getLocale(),
-      getModel(tenant.id, id),
-      getFleet(tenant.id),
-      getCatalog(),
-      getYearBands(tenant.id),
-      getLocations(tenant.id),
-    ]);
+  const [
+    t,
+    tFleet,
+    tCommon,
+    locale,
+    model,
+    fleet,
+    catalog,
+    allBands,
+    locations,
+  ] = await Promise.all([
+    getTranslations("Fleet.model"),
+    getTranslations("Fleet"),
+    getTranslations("Common"),
+    getLocale(),
+    getModel(tenant.id, id),
+    getFleet(tenant.id),
+    getCatalog(),
+    getYearBands(tenant.id),
+    getLocations(tenant.id),
+  ]);
   const bands = allBands.filter((band) => band.model_id === id);
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   if (!model) notFound();

@@ -157,11 +157,12 @@ export default async function DashboardPage({
                           className="flex min-h-11 items-center justify-between gap-3 py-2 hover:underline"
                         >
                           <span className="min-w-0 truncate">{item.title}</span>
-                          {item.date && (key === "upcoming" || key === "late") && (
-                            <span className="shrink-0 text-sm">
-                              {shortDate(item.date)}
-                            </span>
-                          )}
+                          {item.date &&
+                            (key === "upcoming" || key === "late") && (
+                              <span className="shrink-0 text-sm">
+                                {shortDate(item.date)}
+                              </span>
+                            )}
                         </Link>
                       </li>
                     ))}

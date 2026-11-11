@@ -146,7 +146,10 @@ export default async function FleetPage({
         : group.kind === "all"
           ? t("allBikes")
           : group.title;
-  const options = <T extends string>(values: readonly T[], label: (v: T) => string) =>
+  const options = <T extends string>(
+    values: readonly T[],
+    label: (v: T) => string,
+  ) =>
     values.map((value) => (
       <option key={value} value={value}>
         {label(value)}
@@ -188,6 +191,9 @@ export default async function FleetPage({
       />
 
       <form
+        // A new view (a filter applied, or "Reset view") redraws the form, so
+        // its fields always show the view on screen, not the one before.
+        key={viewQuery(view)}
         role="search"
         action={base}
         className="mb-4 space-y-3 rounded-lg border bg-card p-3 sm:p-4"

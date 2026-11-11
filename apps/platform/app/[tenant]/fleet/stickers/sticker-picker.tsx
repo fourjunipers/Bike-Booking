@@ -26,7 +26,8 @@ export function StickerPicker({
 }) {
   const t = useTranslations("Fleet");
   const [selected, setSelected] = useState(() => new Set(preselected));
-  const allSelected = items.length > 0 && items.every((i) => selected.has(i.id));
+  const allSelected =
+    items.length > 0 && items.every((i) => selected.has(i.id));
   const count = items.filter((i) => selected.has(i.id)).length;
 
   const toggle = (id: string, on: boolean) =>
@@ -54,7 +55,9 @@ export function StickerPicker({
             checked={allSelected}
             onChange={(event) =>
               setSelected(
-                event.target.checked ? new Set(items.map((i) => i.id)) : new Set(),
+                event.target.checked
+                  ? new Set(items.map((i) => i.id))
+                  : new Set(),
               )
             }
           />

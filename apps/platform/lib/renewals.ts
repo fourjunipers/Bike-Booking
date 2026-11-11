@@ -80,12 +80,16 @@ export function renewalsToShow<T extends Renewal>(
   const shown: T[] = [];
   for (const byKind of currentRenewals(renewals).values()) {
     for (const renewal of Object.values(byKind)) {
-      if (renewal && renewalState(renewal.expires_at, today, reminderDays) !== "ok")
+      if (
+        renewal &&
+        renewalState(renewal.expires_at, today, reminderDays) !== "ok"
+      )
         shown.push(renewal);
     }
   }
   return shown.sort(
-    (a, b) => a.expires_at.localeCompare(b.expires_at) || a.id.localeCompare(b.id),
+    (a, b) =>
+      a.expires_at.localeCompare(b.expires_at) || a.id.localeCompare(b.id),
   );
 }
 

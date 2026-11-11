@@ -300,7 +300,11 @@ export function RenewalForm({
 }) {
   const t = useTranslations("Fleet.renewals");
   return (
-    <ActionForm action={addRenewal} hidden={{ slug, id }} submitLabel={t("add")}>
+    <ActionForm
+      action={addRenewal}
+      hidden={{ slug, id }}
+      submitLabel={t("add")}
+    >
       <div className="grid gap-5 sm:grid-cols-2">
         <SelectInput
           name="kind"
@@ -311,11 +315,7 @@ export function RenewalForm({
           }))}
         />
         <TextInput name="provider" label={t("provider")} maxLength={200} />
-        <TextInput
-          name="reference_no"
-          label={t("reference")}
-          maxLength={100}
-        />
+        <TextInput name="reference_no" label={t("reference")} maxLength={100} />
         {showCost && (
           <TextInput
             name="cost"
@@ -324,12 +324,7 @@ export function RenewalForm({
           />
         )}
         <TextInput name="starts_at" label={t("start")} type="date" />
-        <TextInput
-          name="expires_at"
-          label={t("expiry")}
-          type="date"
-          required
-        />
+        <TextInput name="expires_at" label={t("expiry")} type="date" required />
       </div>
     </ActionForm>
   );

@@ -61,12 +61,8 @@ test("server response time per page", async ({ page }) => {
     rows.push(`| ${name} | ${times[2]} ms | ${times[0]}–${times[4]} ms |`);
   }
   console.log(
-    [
-      "",
-      "| Page | Median | Range |",
-      "| --- | --- | --- |",
-      ...rows,
-      "",
-    ].join("\n"),
+    ["", "| Page | Median | Range |", "| --- | --- | --- |", ...rows, ""].join(
+      "\n",
+    ),
   );
 });

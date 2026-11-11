@@ -12,11 +12,7 @@ import {
   MakeModelPicker,
   type ModelOption,
 } from "@/components/fleet/make-model-picker";
-import {
-  addYearBand,
-  deleteYearBand,
-  saveModel,
-} from "./actions";
+import { addYearBand, deleteYearBand, saveModel } from "./actions";
 
 export type ModelFormValues = {
   id?: string;
@@ -162,7 +158,11 @@ export function ModelForm({
 export function YearBandForm({ slug, id }: { slug: string; id: string }) {
   const t = useTranslations("Fleet.bands");
   return (
-    <ActionForm action={addYearBand} hidden={{ slug, id }} submitLabel={t("add")}>
+    <ActionForm
+      action={addYearBand}
+      hidden={{ slug, id }}
+      submitLabel={t("add")}
+    >
       <div className="grid grid-cols-2 gap-3">
         <TextInput
           name="year_from"

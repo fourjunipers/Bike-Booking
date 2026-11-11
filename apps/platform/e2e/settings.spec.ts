@@ -20,20 +20,28 @@ test("the distance unit stays as saved, and bikes show it", async ({
   await signIn(page, shop.email);
   await page.goto(`/${shop.slug}/settings`);
   const distances = page.getByLabel("Distances");
-  const save = page
-    .getByRole("button", { name: "Save", exact: true })
-    .first();
+  const save = page.getByRole("button", { name: "Save", exact: true }).first();
+
+  /** Clicks Save and waits for the server to answer, so nothing reads a half-saved shop. */
+  const saveAndWait = async () => {
+    await Promise.all([
+      page.waitForResponse(
+        (response) => response.request().method() === "POST" && response.ok(),
+      ),
+      save.click(),
+    ]);
+    await expect(page.getByText("Saved").first()).toBeVisible();
+  };
 
   // Start from kilometres whatever an earlier, interrupted run left behind.
   if ((await distances.inputValue()) !== "km") {
     await distances.selectOption("km");
-    await save.click();
-    await expect(page.getByText("Saved").first()).toBeVisible();
+    await saveAndWait();
+    await page.reload();
   }
 
   await distances.selectOption("mi");
-  await save.click();
-  await expect(page.getByText("Saved").first()).toBeVisible();
+  await saveAndWait();
   // The bug: the field went back to kilometres here.
   await expect(distances).toHaveValue("mi");
   // And it is what the database holds, not only what the form shows.
@@ -46,8 +54,7 @@ test("the distance unit stays as saved, and bikes show it", async ({
   }
 
   await page.goto(`/${shop.slug}/settings`);
-  await page.getByLabel("Distances").selectOption("km");
-  await page.getByRole("button", { name: "Save", exact: true }).first().click();
-  await expect(page.getByText("Saved").first()).toBeVisible();
-  await expect(page.getByLabel("Distances")).toHaveValue("km");
+  await distances.selectOption("km");
+  await saveAndWait();
+  await expect(distances).toHaveValue("km");
 });

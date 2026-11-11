@@ -669,13 +669,11 @@ describe("catalog link", () => {
       .from("models")
       .insert({ tenant_id: shop.id, catalog_id: id!, name: "On my request" });
     expect(mine.error).toBeNull();
-    const theirs = await other.members.owner.db
-      .from("models")
-      .insert({
-        tenant_id: other.id,
-        catalog_id: id!,
-        name: "On their request",
-      });
+    const theirs = await other.members.owner.db.from("models").insert({
+      tenant_id: other.id,
+      catalog_id: id!,
+      name: "On their request",
+    });
     expect(theirs.error?.message).toBe("catalog_entry_not_usable");
 
     // The requesting shop sees it; the other shop and the public don't.
@@ -931,13 +929,19 @@ describe("follow-ups (11 Nov 2026): removed fields, year bands, renewals, remind
       .eq("id", id)
       .select("model_year");
     expect(year.data).toEqual([{ model_year: 2024 }]);
-    const bad = await service.from("units").update({ model_year: 1900 }).eq("id", id);
+    const bad = await service
+      .from("units")
+      .update({ model_year: 1900 })
+      .eq("id", id);
     expect(bad.error?.code).toBe("23514");
   });
 
   it("a lowered odometer is saved for staff and mechanics, and the audit log says who did it", async () => {
     const id = await addUnit();
-    await service.from("units").update({ current_odometer_km: 5000 }).eq("id", id);
+    await service
+      .from("units")
+      .update({ current_odometer_km: 5000 })
+      .eq("id", id);
     const lowered = await shop.members.staff.db
       .from("units")
       .update({ current_odometer_km: 4200 })
@@ -969,11 +973,19 @@ describe("follow-ups (11 Nov 2026): removed fields, year bands, renewals, remind
       year_to,
     });
     const manager = shop.members.manager.db;
-    expect((await manager.from("model_year_bands").insert(band(2020, 2023))).error).toBeNull();
-    expect((await manager.from("model_year_bands").insert(band(2024, 2026))).error).toBeNull();
-    const overlap = await manager.from("model_year_bands").insert(band(2023, 2025));
+    expect(
+      (await manager.from("model_year_bands").insert(band(2020, 2023))).error,
+    ).toBeNull();
+    expect(
+      (await manager.from("model_year_bands").insert(band(2024, 2026))).error,
+    ).toBeNull();
+    const overlap = await manager
+      .from("model_year_bands")
+      .insert(band(2023, 2025));
     expect(overlap.error?.code).toBe("23P01");
-    const reversed = await manager.from("model_year_bands").insert(band(2019, 2014));
+    const reversed = await manager
+      .from("model_year_bands")
+      .insert(band(2019, 2014));
     expect(reversed.error?.code).toBe("23514");
     for (const role of ["staff", "mechanic", "driver"] as const) {
       const { error } = await shop.members[role].db
@@ -1030,7 +1042,8 @@ describe("follow-ups (11 Nov 2026): removed fields, year bands, renewals, remind
       .insert(cost);
     expect(byMechanic.error?.code).toBe("42501");
     expect(
-      (await shop.members.manager.db.from("unit_renewal_costs").insert(cost)).error,
+      (await shop.members.manager.db.from("unit_renewal_costs").insert(cost))
+        .error,
     ).toBeNull();
     for (const role of ["staff", "mechanic", "driver"] as const) {
       const dates = await shop.members[role].db
@@ -1059,7 +1072,11 @@ describe("follow-ups (11 Nov 2026): removed fields, year bands, renewals, remind
 
   it("reminder settings: owners and managers set them; the values are checked", async () => {
     const set = (db: Db, values: object) =>
-      db.from("tenants").update(values).eq("id", shop.id).select("renewal_reminder_days, renewal_digest_day");
+      db
+        .from("tenants")
+        .update(values)
+        .eq("id", shop.id)
+        .select("renewal_reminder_days, renewal_digest_day");
     const start = await service
       .from("tenants")
       .select("renewal_reminder_days, renewal_digest_day")
@@ -1076,11 +1093,22 @@ describe("follow-ups (11 Nov 2026): removed fields, year bands, renewals, remind
     expect(saved.data).toEqual([
       { renewal_reminder_days: [60, 10], renewal_digest_day: 1 },
     ]);
-    expect((await set(shop.members.staff.db, { renewal_digest_day: 5 })).data ?? []).toEqual([]);
-    expect((await set(service, { renewal_reminder_days: [0] })).error?.code).toBe("23514");
-    expect((await set(service, { renewal_reminder_days: [400] })).error?.code).toBe("23514");
-    expect((await set(service, { renewal_digest_day: 31 })).error?.code).toBe("23514");
-    await set(service, { renewal_reminder_days: [45, 30, 14, 7], renewal_digest_day: null });
+    expect(
+      (await set(shop.members.staff.db, { renewal_digest_day: 5 })).data ?? [],
+    ).toEqual([]);
+    expect(
+      (await set(service, { renewal_reminder_days: [0] })).error?.code,
+    ).toBe("23514");
+    expect(
+      (await set(service, { renewal_reminder_days: [400] })).error?.code,
+    ).toBe("23514");
+    expect((await set(service, { renewal_digest_day: 31 })).error?.code).toBe(
+      "23514",
+    );
+    await set(service, {
+      renewal_reminder_days: [45, 30, 14, 7],
+      renewal_digest_day: null,
+    });
   });
 });
 
@@ -1140,7 +1168,11 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
 
   it("queues the nearest reminder day reached, and nothing twice", async () => {
     // 30 days away: the 45 and 30 day reminders have both been reached; only 30 is queued.
-    const insurance = await addRenewal(unitId, "compulsory_insurance", "2026-12-11");
+    const insurance = await addRenewal(
+      unitId,
+      "compulsory_insurance",
+      "2026-12-11",
+    );
     // 100 days away: nothing yet.
     await addRenewal(unitId, "road_tax", "2027-02-19");
     await run();
@@ -1178,7 +1210,9 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
     await run("2026-11-11T12:00:00Z");
     expect(await added("2026-11-26T16:00:00Z")).toBe(0); // 23:00 in Bangkok, still the 26th
     expect(await added("2026-11-26T18:00:00Z")).toBe(1); // 01:00 on the 27th
-    expect((await outbox()).map((m) => m.dedupe_key)).toContain(`renewal:${id}:14`);
+    expect((await outbox()).map((m) => m.dedupe_key)).toContain(
+      `renewal:${id}:14`,
+    );
   });
 
   it("queues 'expired' once, only for the current record, and never for a sold bike", async () => {
@@ -1199,20 +1233,30 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
 
     await run();
     await run();
-    const expired = (await outbox()).filter((m) => m.kind === "renewal_expired");
-    expect(expired.map((m) => m.dedupe_key)).toEqual([`renewal:${lapsedId}:expired`]);
+    const expired = (await outbox()).filter(
+      (m) => m.kind === "renewal_expired",
+    );
+    expect(expired.map((m) => m.dedupe_key)).toEqual([
+      `renewal:${lapsedId}:expired`,
+    ]);
   });
 
   it("queues the monthly digest from the chosen day, once, listing that month", async () => {
-    expect((await outbox()).filter((m) => m.kind === "renewal_digest")).toEqual([]);
-    await service.from("tenants").update({ renewal_digest_day: 15 }).eq("id", queue.id);
+    expect((await outbox()).filter((m) => m.kind === "renewal_digest")).toEqual(
+      [],
+    );
+    await service
+      .from("tenants")
+      .update({ renewal_digest_day: 15 })
+      .eq("id", queue.id);
     // The 11th: too early. The 15th: queued. The 20th: not again.
     expect(await added("2026-11-11T12:00:00Z")).toBe(0);
     expect(await added("2026-11-15T12:00:00Z")).toBeGreaterThan(0);
     await run("2026-11-20T12:00:00Z");
     const digests = (await outbox()).filter((m) => m.kind === "renewal_digest");
     expect(digests.map((m) => m.dedupe_key)).toEqual(["digest:2026-11"]);
-    const items = (digests[0].payload as { items: { expires_at: string }[] }).items;
+    const items = (digests[0].payload as { items: { expires_at: string }[] })
+      .items;
     // Only what expires in November 2026 (the lapsed road tax of 8 Nov).
     expect(items.map((i) => i.expires_at)).toEqual(["2026-11-08"]);
     // December gets its own.
@@ -1232,7 +1276,9 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
       expect(data, role).toEqual([]);
     }
     const owner = queue.members.owner.db;
-    expect((await owner.from("notification_outbox").select("id")).data?.length).toBeGreaterThan(0);
+    expect(
+      (await owner.from("notification_outbox").select("id")).data?.length,
+    ).toBeGreaterThan(0);
     const forged = await owner.from("notification_outbox").insert({
       tenant_id: queue.id,
       kind: "renewal_digest",

@@ -84,6 +84,7 @@ export default async function StickersPage({
         />
         <PageHeader title={t("sheetTitle")} intro={t("sheetIntro")} />
         <form
+          key={`${make}|${model}|${sort}`}
           action={`${base}/stickers`}
           className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-4"
         >

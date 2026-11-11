@@ -556,7 +556,8 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
     console.log(`  big fleet  ${count} bikes already there`);
     return;
   }
-  if (count) fail("the big demo shop is half-seeded; delete its bikes and run again");
+  if (count)
+    fail("the big demo shop is half-seeded; delete its bikes and run again");
 
   const { data: main, error } = await db
     .from("locations")
@@ -568,7 +569,11 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
   const { data: airport, error: airportError } = await db
     .from("locations")
     .upsert(
-      { tenant_id: tenantId, name: "Airport desk", timezone: "America/New_York" },
+      {
+        tenant_id: tenantId,
+        name: "Airport desk",
+        timezone: "America/New_York",
+      },
       { onConflict: "tenant_id,id" },
     )
     .select("id")
@@ -625,14 +630,14 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
       // A few with no model year, to show the "unknown year" band.
       model_year: n % 17 === 0 ? null : 2014 + (n % 13),
       current_odometer_km: n * 311,
-      status: n % 29 === 0 ? "retired" : n % 11 === 0 ? "maintenance" : "active",
+      status:
+        n % 29 === 0 ? "retired" : n % 11 === 0 ? "maintenance" : "active",
     };
   });
   const { error: unitError } = await db.from("units").insert(rows);
   if (unitError) throw unitError;
   console.log("  big fleet  150 demo bikes in 5 models (fake BIG- plates)");
 }
-
 
 async function main() {
   console.log(`Seeding ${staging ? "STAGING" : "local"}: ${url}`);

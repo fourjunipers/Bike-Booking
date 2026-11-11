@@ -14,12 +14,7 @@ export const upcomingDays = 7;
 
 /** Things due on a date: in Today, Tomorrow or Upcoming, or Late once past. */
 export type ScheduledKind =
-  | "pickup"
-  | "return"
-  | "delivery"
-  | "collection"
-  | "service"
-  | "renewal";
+  "pickup" | "return" | "delivery" | "collection" | "service" | "renewal";
 /** Things that are late by nature, whatever their date. */
 export type LateKind = "overdueBike" | "failedCharge" | "unpaid";
 
@@ -154,7 +149,10 @@ function scheduledSection(kind: ScheduledKind): DashboardSection {
 
 export type DashboardBoard = Record<
   DashboardTab,
-  { count: number; sections: Partial<Record<DashboardSection, DashboardItem[]>> }
+  {
+    count: number;
+    sections: Partial<Record<DashboardSection, DashboardItem[]>>;
+  }
 >;
 
 /**
