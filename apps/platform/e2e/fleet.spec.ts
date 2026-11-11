@@ -880,8 +880,11 @@ test("catalog requests are for platform admins, not shop owners", async ({
   await page.goto("/admin/catalog");
   await expect(notFound(page)).toBeVisible();
 
+  // Signing in with no address in mind lands the admin on their page, not
+  // on "You're not in a shop yet".
   const admin = await (await browser.newContext()).newPage();
-  await signIn(admin, demo.admin, "/admin/catalog");
+  await signIn(admin, demo.admin);
+  await expect(admin).toHaveURL(/\/admin\/catalog$/);
   await expect(
     admin.getByRole("heading", { name: "Catalog requests" }),
   ).toBeVisible();

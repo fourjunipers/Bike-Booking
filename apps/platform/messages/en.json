@@ -28,7 +28,8 @@
     "intro": "You work in more than one shop. Which one now?",
     "noShopTitle": "You're not in a shop yet",
     "noShopBody": "You're signed in as {email}, but no shop has added you to its team. Ask the shop owner to add you, then sign in again.",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "admin": "Platform admin: catalog requests"
   },
   "Nav": {
     "dashboard": "Dashboard",

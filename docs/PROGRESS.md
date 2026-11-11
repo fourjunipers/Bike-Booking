@@ -72,7 +72,7 @@ This replaces the spec rule "a model can't be saved without a catalog entry" and
 - **One list, two uses.** The approved entries of the vehicle catalog are the presets in the management system's make and model dropdowns, and they are the list Moto Mangos uses. There is no second list to keep in step: approving an entry makes it a preset for every shop at once.
 - **Presets first.** Make, then model, from the presets is the default path everywhere. "Not in the list? Add my own" is the link underneath.
 - **A shop's own make and model** is saved straight away with no approval, for any vehicle (motorbike, car, ATV, boat, other). A model now carries its own make, model, vehicle type, engine size and transmission; a model on a preset takes them from the preset (the database copies them, so they can't drift).
-- **Required specs:** vehicle type always. Engine size and transmission are required for motorbikes, because Moto Mangos search filters by them; for other vehicle types they are optional (a boat has no transmission to pick). This is narrower than "always required": say if cars should require them too.
+- **Required specs:** vehicle type always. Engine size and transmission are required for motorbikes, because Moto Mangos search filters by them; for other vehicle types they are optional (a boat has no transmission to pick). Confirmed by the owner (11 Nov 2026): motorbikes only.
 - **No duplicates within a shop:** the same make and model of the shop's own can't be added twice, ignoring case and spacing (database rule). Adding something that is exactly a preset is refused with a link to the preset. Models on presets are not affected: the catalog has one entry per generation, and a shop may keep two models on one entry (owner, 10 Nov).
 - **Listing on Moto Mangos is the only place approval comes up.** Each model page has a Moto Mangos box:
   - on a preset: "On the Moto Mangos list as …" and a "List this model on Moto Mangos" switch;
@@ -88,6 +88,8 @@ This replaces the spec rule "a model can't be saved without a catalog entry" and
 - While rerunning the tests, the four-way "who gets the bike" race sometimes hung for 20 seconds. Cause: with the exclusion constraint alone, simultaneous overlapping writes for one bike wait on each other in a circle; Postgres cancels one with "deadlock detected" and the API layer retries it, so losers could spin instead of being refused. Earlier runs passed because the requests happened not to overlap closely enough.
 - Fix: writes to one bike's blocks queue behind each other (a transaction-level advisory lock on the bike, taken in the trigger). The exclusion constraint is still the rule. Phase 2's booking function takes the same lock, as the review decision asks.
 - The test is now twelve simultaneous writers, five rounds, exact outcome every time (one success, eleven clean overlap refusals, within 5 seconds), plus "different bikes don't wait on each other" and "ending a block while another is added".
+
+- **Platform admins land on their page.** Signing in as a platform admin with no shop used to show "You're not in a shop yet" (found by the owner). They now go straight to the catalog requests; an admin who also works in a shop gets a link beside the shop list.
 
 Tests: 95 platform unit, 92 database, 50 Playwright, passing locally and against the PR #8 deploy preview.
 

@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { SignOutButton } from "@/components/sign-out-button";
 import { homeTab } from "@/lib/roles";
 import { getMemberships, getUser } from "@/lib/session";
+import { createClient } from "@mango/db/platform-server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Picker");
@@ -14,13 +15,22 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * The app's start page (also the installed app's start_url). One shop: go
  * straight to it, on the role's home tab. Several: pick one. None: explain.
+ * A platform admin (Mango Works staff) goes to the admin page, or gets a link
+ * to it beside their shops.
  */
 export default async function StartPage() {
   const user = await getUser();
   if (!user) redirect("/login");
-  const memberships = await getMemberships();
+  const supabase = await createClient();
+  const [memberships, { data: adminRow }] = await Promise.all([
+    getMemberships(),
+    // RLS shows a user only their own row, so any row means "platform admin".
+    supabase.from("platform_admins").select("user_id").maybeSingle(),
+  ]);
+  const isAdmin = !!adminRow;
 
-  if (memberships.length === 1) {
+  if (isAdmin && memberships.length === 0) redirect("/admin/catalog");
+  if (memberships.length === 1 && !isAdmin) {
     const [only] = memberships;
     redirect(`/${only.tenant.slug}/${homeTab(only.role)}`);
   }
@@ -59,6 +69,14 @@ export default async function StartPage() {
             ))}
           </ul>
         </>
+      )}
+      {isAdmin && (
+        <Link
+          href="/admin/catalog"
+          className="inline-flex min-h-11 items-center font-medium underline"
+        >
+          {t("admin")}
+        </Link>
       )}
       <SignOutButton label={t("signOut")} />
     </main>
