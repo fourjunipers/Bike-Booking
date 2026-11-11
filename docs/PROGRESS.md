@@ -9,7 +9,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
-| Database | 39 migrations in `supabase/migrations` (27 + 3 platform on `main`, 9 more on the Phase 1a branch). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 39 and the demo seed |
+| Database | 40 migrations in `supabase/migrations` (27 + 3 platform on `main`, 10 more on the Phase 1a branch). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 40 and the demo seed |
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
@@ -65,6 +65,16 @@ Ten requests from the owner after trying Phase 1a. Where they differ from the Ph
 - Models with no bikes had dropped off the first version of the grouped list; the browser test for adding a make caught it.
 - The catalog's entries are per generation (CB500X 2016–2018, 2019–2021, 2022–2023), so "make then model" can list the same model name more than once, told apart by years. Year bands are the shop's own and separate from those.
 
+**Spec rules that changed** (`docs/platform/SPEC.md` is not edited here: the owner keeps the spec in a separate document and re-exports it after merge)
+
+From the catalog and listing decision (11 Nov 2026):
+- **(a) A model no longer needs a catalog entry.** The spec says "a model can't be saved without a catalog entry, so cc and transmission are always filled in". Now a model is either on a preset (an approved catalog entry) or is the shop's own, with its make, model and specs stored on the model.
+- **(b) Required specs.** Vehicle type: always. Transmission: motorbikes and cars (an electric car is "automatic"); optional for ATVs, boats and "other". Engine size (cc): motorbikes only; optional for everything else.
+- **(c) Moto Mangos listing and approval.** Approval appears only when a shop wants a model on Moto Mangos. A model on an approved entry can be switched on directly. One of the shop's own is matched to a suggested entry ("Did you mean…") or sent to the platform admin, who approves it (it becomes a preset for every shop), merges it into an existing entry, or rejects it. Only a model on an approved entry can be listed. The spec's "a missing catalog entry goes to the platform admin for approval" now applies at listing, not when a bike is added.
+- **(d) Writes to one bike's `unit_blocks` queue behind each other** (a transaction-level advisory lock per bike), on top of the exclusion constraint. The spec's review decision asks for "check + insert inside one function under a per-location-and-model advisory lock" before Phase 2; the per-bike lock is in place now and Phase 2's booking function takes the same one.
+
+From the earlier follow-ups the same day (details further down): a lowered odometer is confirmed, not refused; borrowed units and "first registered" are removed; the tax and insurance log, reminder settings and dashboard items were built ahead of Phase 1b; the hourly reminder queue uses Supabase Cron.
+
 **Shops' own vehicles and one list for Moto Mangos (owner decision, 11 Nov 2026; built)**
 
 This replaces the spec rule "a model can't be saved without a catalog entry" and the open decision recorded just below. Migrations `20261111000300_platform_own_models.sql` and `20261111000400_platform_unit_block_lock.sql`.
@@ -72,7 +82,7 @@ This replaces the spec rule "a model can't be saved without a catalog entry" and
 - **One list, two uses.** The approved entries of the vehicle catalog are the presets in the management system's make and model dropdowns, and they are the list Moto Mangos uses. There is no second list to keep in step: approving an entry makes it a preset for every shop at once.
 - **Presets first.** Make, then model, from the presets is the default path everywhere. "Not in the list? Add my own" is the link underneath.
 - **A shop's own make and model** is saved straight away with no approval, for any vehicle (motorbike, car, ATV, boat, other). A model now carries its own make, model, vehicle type, engine size and transmission; a model on a preset takes them from the preset (the database copies them, so they can't drift).
-- **Required specs:** vehicle type always. Engine size and transmission are required for motorbikes, because Moto Mangos search filters by them; for other vehicle types they are optional (a boat has no transmission to pick). Confirmed by the owner (11 Nov 2026): motorbikes only.
+- **Required specs** (owner, 11 Nov 2026, final): vehicle type always; transmission for motorbikes and cars (an electric car is entered as automatic); engine size for motorbikes only. ATVs, boats and "other" need neither. The same rule holds in the Add my own form, the model edit form, CSV import and the database (`models_required_specs_check`, migration `20261111000500`).
 - **No duplicates within a shop:** the same make and model of the shop's own can't be added twice, ignoring case and spacing (database rule). Adding something that is exactly a preset is refused with a link to the preset. Models on presets are not affected: the catalog has one entry per generation, and a shop may keep two models on one entry (owner, 10 Nov).
 - **Listing on Moto Mangos is the only place approval comes up.** Each model page has a Moto Mangos box:
   - on a preset: "On the Moto Mangos list as …" and a "List this model on Moto Mangos" switch;
@@ -91,7 +101,9 @@ This replaces the spec rule "a model can't be saved without a catalog entry" and
 
 - **Platform admins land on their page.** Signing in as a platform admin with no shop used to show "You're not in a shop yet" (found by the owner). They now go straight to the catalog requests; an admin who also works in a shop gets a link beside the shop list.
 
-Tests: 95 platform unit, 92 database, 50 Playwright, passing locally and against the PR #8 deploy preview.
+- **Catalog reviews are audited.** Approve, merge and reject each write an audit record under the shop that sent the entry (who decided, the entry, the note, and for a merge the entry it went into). Before, only the entry's own status, note and review time recorded the decision.
+
+Tests: 95 platform unit, 93 database, 50 Playwright, passing locally and against the PR #8 deploy preview.
 
 **Second round of owner feedback (11 Nov 2026, later the same day)**
 - **Current fleet by default.** The Fleet list shows the working fleet: sold and retired bikes are kept, with all their records, but stay out of the list. A "Show" control switches between Current fleet, Sold and retired, and Everything; the header counts the working fleet and links to "N sold or retired". Choosing the Sold or Retired status in the filters finds them whatever "Show" says. The choice is remembered with the rest of the view.
@@ -101,7 +113,7 @@ Tests: 95 platform unit, 92 database, 50 Playwright, passing locally and against
 - **A note on bikes with sale details but a status other than Sold.** Saving sale details never changes the status (by design), so a bike could look sold on paper while still Active. The purchase and sale section now says so.
 - Tests: 92 platform unit, 84 database, 50 Playwright.
 
-**Was an open decision, now decided and built (see above): how the shared catalog and shops' own vehicles fit together**
+**Closed (11 Nov 2026): how the shared catalog and shops' own vehicles fit together.** Decided and built as described above: the catalog link is optional, and approval happens only when a model is listed on Moto Mangos. The notes below are the question as it was first put.
 - Today every model must link to a catalog entry, and the catalog only describes motorbikes (engine size and a bike type are required). A shop can add its own entry and use it at once, but each one lands in the platform admin's review list.
 - The owner wants shops to add any vehicle (cars, boats, ATVs) with no approval, while Moto Mangos stays tidy: one Honda PCX, not three spellings.
 - Recommended: a model's catalog link becomes optional. A shop's own make and model are stored on its model and need no approval. Moto Mangos lists only models linked to an approved catalog entry, so linking (or asking for a new entry) happens when a shop chooses to list a model there, not when it adds a bike. The catalog is pre-loaded with the popular bikes and year ranges so most shops just pick. This changes the spec rule "a model can't be saved without a catalog entry" and needs the owner's OK before any migration.
