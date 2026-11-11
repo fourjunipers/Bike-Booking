@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+import { writeFakeCamera } from "./e2e/fake-camera";
 
 // DEMO_PASSWORD and the Supabase keys come from .env.local locally, from the
 // workflow's environment in CI.
@@ -29,12 +30,13 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
-    // A stand-in camera, so the QR scan button can be tested: Chromium shows
-    // a test pattern instead of asking for a real one.
+    // A stand-in camera, so the QR scan button can be tested: Chromium plays
+    // a file showing a QR sticker instead of asking for a real camera.
     launchOptions: {
       args: [
         "--use-fake-ui-for-media-stream",
         "--use-fake-device-for-media-stream",
+        `--use-file-for-fake-video-capture=${writeFakeCamera()}`,
       ],
     },
     ...(remote && { navigationTimeout: 15_000 }),

@@ -1,13 +1,16 @@
 /**
  * Maintenance › Scan QR: the camera button beside the plate search.
  *
- * The camera here is Chromium's stand-in (a test pattern), so what these
- * tests prove is everything around the reading: the button, the camera
- * opening, a read code opening the right bike, a code that isn't a sticker
- * being refused, and the message where a browser can't read codes. Reading a
- * real printed sticker with a real phone camera is checked by hand.
+ * The camera here is Chromium's stand-in, playing a file that shows a QR
+ * sticker (e2e/fake-camera.ts). One test reads that code for real, from the
+ * camera frames, with the decoder used where a browser has no reader of its
+ * own (iPhone). The others swap in a stand-in reader to choose what is
+ * "seen": the right bike opening, a foreign code refused, the camera turned
+ * off on close. A real phone pointed at a real printed sticker is still
+ * checked by hand.
  */
 import { expect, test, type Page } from "@playwright/test";
+import { cameraStickerToken } from "./fake-camera";
 import { demo, signIn } from "./helpers";
 
 /** Replaces the browser's code reader with one that "sees" window.__code. */
@@ -114,11 +117,29 @@ test("closing the scanner turns the camera off", async ({ page }) => {
   ).toBe(true);
 });
 
-test("a browser that can't read codes says so and points at the camera app", async ({
+test("without a built-in reader (iPhone, Firefox) the code is still read, from the camera frames", async ({
+  page,
+}) => {
+  // As on an iPhone: the browser has no code reader of its own.
+  await page.addInitScript(() => {
+    delete (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector;
+  });
+  await signIn(page, demo.bsrMechanic);
+  await page.goto("/bsr/maintenance");
+  await page.getByRole("button", { name: "Scan QR" }).click();
+  // The stand-in camera shows a sticker printed for another address, with a
+  // token no bike has. Reading it for real lands on /q/<that token>.
+  await expect(page).toHaveURL(new RegExp(`/q/${cameraStickerToken}$`));
+  await expect(
+    page.getByRole("heading", { name: "Page not found" }),
+  ).toBeVisible();
+});
+
+test("a browser with no camera access says so and points at the camera app", async ({
   page,
 }) => {
   await page.addInitScript(() => {
-    delete (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector;
+    Object.defineProperty(navigator, "mediaDevices", { value: undefined });
   });
   await signIn(page, demo.bsrMechanic);
   await page.goto("/bsr/maintenance");
@@ -127,7 +148,7 @@ test("a browser that can't read codes says so and points at the camera app", asy
     page
       .getByRole("dialog")
       .getByText(
-        /This browser can't read QR codes here\. Use your phone's camera app/,
+        /This browser can't use the camera here\. Use your phone's camera app/,
       ),
   ).toBeVisible();
   await page.keyboard.press("Escape");

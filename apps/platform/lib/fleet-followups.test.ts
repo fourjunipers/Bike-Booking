@@ -457,11 +457,10 @@ describe("fleet import: make, then model, from the catalog", () => {
       "2:transmission:ownNeedsSpecs",
     ]);
     expect(specs("motorbike", "", "manual")).toEqual(["2:cc:ownNeedsSpecs"]);
-    // A car needs a transmission, not an engine size (an EV is "automatic").
-    expect(specs("car", "", "")).toEqual(["2:transmission:ownNeedsSpecs"]);
-    expect(specs("car", "1500", "")).toEqual(["2:transmission:ownNeedsSpecs"]);
+    // Everything else needs neither; a shop may still give them.
+    expect(specs("car", "", "")).toEqual([]);
+    expect(specs("car", "1500", "")).toEqual([]);
     expect(specs("car", "", "automatic")).toEqual([]);
-    // ATVs, boats and "other" need neither.
     for (const type of ["atv", "boat", "other"])
       expect(specs(type, "", ""), type).toEqual([]);
   });
@@ -563,19 +562,8 @@ describe("the shop's own models and the presets", () => {
       "cc:required",
       "transmission:required",
     ]);
-    // A car without a transmission is refused; without an engine size it is fine.
-    expect(messages({ vehicle_type: "car", transmission: "" })).toEqual([
-      "transmission:required",
-    ]);
-    expect(
-      ownModelSchema.parse({ ...base, vehicle_type: "car", cc: "" }),
-    ).toMatchObject({
-      vehicle_type: "car",
-      cc: null,
-      transmission: "automatic",
-    });
-    // A boat, an ATV or "other" with neither is accepted.
-    for (const vehicle_type of ["boat", "atv", "other"])
+    // A car, a boat, an ATV or "other" with neither is accepted.
+    for (const vehicle_type of ["car", "boat", "atv", "other"])
       expect(
         ownModelSchema.parse({
           ...base,
@@ -585,9 +573,18 @@ describe("the shop's own models and the presets", () => {
         }),
         vehicle_type,
       ).toMatchObject({ vehicle_type, cc: null, transmission: null });
-    expect(needsEngineSize("motorbike") && !needsEngineSize("car")).toBe(true);
-    expect(needsTransmission("car") && !needsTransmission("atv")).toBe(true);
+    // What a shop does give for a car is kept.
+    expect(
+      ownModelSchema.parse({ ...base, vehicle_type: "car", cc: "" }),
+    ).toMatchObject({ cc: null, transmission: "automatic" });
     expect(vehicleTypes).toEqual(["motorbike", "car", "atv", "boat", "other"]);
+    for (const type of ["car", "atv", "boat", "other"]) {
+      expect(needsEngineSize(type), type).toBe(false);
+      expect(needsTransmission(type), type).toBe(false);
+    }
+    expect(needsEngineSize("motorbike") && needsTransmission("motorbike")).toBe(
+      true,
+    );
   });
 
   it("the same make and model, ignoring case and spacing", () => {

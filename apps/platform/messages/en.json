@@ -139,7 +139,7 @@
     "scanTitle": "Scan a bike's QR sticker",
     "scanHint": "Point the camera at the sticker. The bike opens as soon as the code is read.",
     "scanProblem": {
-      "unsupported": "This browser can't read QR codes here. Use your phone's camera app instead: it opens the same sticker.",
+      "unsupported": "This browser can't use the camera here. Use your phone's camera app instead: it opens the same sticker.",
       "denied": "The camera is blocked for this site. Allow it in the browser's site settings, then try again.",
       "failed": "The camera couldn't be opened. Close other apps using it and try again.",
       "notSticker": "That code isn't one of your bike stickers. Keep the camera on a sticker."
@@ -264,7 +264,7 @@
     "already_linked": "This model is already on the Moto Mangos list, or waiting for review.",
     "only_motorbikes": "Moto Mangos lists motorbikes only, for now.",
     "merge_target_not_approved": "Choose an approved entry to merge into.",
-    "requiredSpecs": "A motorbike needs an engine size and a transmission; a car needs a transmission."
+    "requiredSpecs": "A motorbike needs an engine size and a transmission."
   },
   "Fleet": {
     "title": "Fleet",
@@ -279,7 +279,7 @@
       "title": "Import bikes from CSV",
       "intro": "One row per bike. The whole file is checked first: if any row has a problem, nothing is saved.",
       "columns": "Columns",
-      "columnsHelp": "“make” and “model” are required. If they match the list below, the bike goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle becomes one of your own models: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike). A motorbike or a car needs “transmission” (automatic, semi_auto or manual; an electric car is automatic), and a motorbike also needs “cc”. “name” is optional: your own name for the model. Leave “plate” blank for a bike without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
+      "columnsHelp": "“make” and “model” are required. If they match the list below, the bike goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle becomes one of your own models: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike). A motorbike needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the model. Leave “plate” blank for a bike without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
       "template": "Download a template",
       "file": "CSV file",
       "paste": "Or paste the rows here",
@@ -316,7 +316,7 @@
         "modelNeedsName": "You have several models on this catalog entry. Say which in the “name” column.",
         "nameOtherModel": "This name belongs to a different make or model.",
         "invalidYear": "Not a year, such as 2024.",
-        "ownNeedsSpecs": "This make and model isn't in the list, so it will be one of your own. A motorbike needs “cc” and “transmission”; a car needs “transmission”.",
+        "ownNeedsSpecs": "This make and model isn't in the list, so it will be one of your own. A motorbike needs “cc” and “transmission”.",
         "invalidVehicleType": "Use motorbike, car, atv, boat or other.",
         "invalidTransmission": "Use automatic, semi_auto or manual."
       },
@@ -553,8 +553,8 @@
       "cc": "Engine size (cc)",
       "transmission": "Transmission",
       "submit": "Add",
-      "ccHelp": "Required for motorbikes.",
-      "transmissionHelp": "Required for motorbikes and cars. For an electric car, choose Automatic."
+      "ccHelp": "Required for motorbikes. Optional for everything else.",
+      "transmissionHelp": "Required for motorbikes. Optional for everything else."
     },
     "motoMangos": {
       "title": "Moto Mangos",

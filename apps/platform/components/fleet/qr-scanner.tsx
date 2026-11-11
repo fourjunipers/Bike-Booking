@@ -13,14 +13,56 @@ type Detector = {
 };
 type DetectorClass = new (options: { formats: string[] }) => Detector;
 
+/** Reads one camera frame: the code's text, or null when none is in view. */
+type ReadFrame = (video: HTMLVideoElement) => Promise<string | null>;
+
 type Problem = "unsupported" | "denied" | "failed" | "notSticker";
+
+/** Frames are shrunk to this before decoding: plenty for a sticker, and quick. */
+const maxEdge = 640;
+
+/**
+ * How frames are read on this device. Chrome on Android has a code reader
+ * built in. Safari on iPhone and Firefox don't, so there the frame is drawn
+ * to a canvas and decoded by the jsQR library, which is only downloaded on
+ * those browsers and only when the scanner is opened.
+ */
+async function frameReader(): Promise<ReadFrame> {
+  const Reader = (window as unknown as { BarcodeDetector?: DetectorClass })
+    .BarcodeDetector;
+  if (Reader) {
+    const reader = new Reader({ formats: ["qr_code"] });
+    return async (video) => (await reader.detect(video))[0]?.rawValue ?? null;
+  }
+  const { default: jsQR } = await import("jsqr");
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("no canvas");
+  return async (video) => {
+    const scale = Math.min(
+      1,
+      maxEdge / Math.max(video.videoWidth, video.videoHeight),
+    );
+    const width = Math.round(video.videoWidth * scale);
+    const height = Math.round(video.videoHeight * scale);
+    if (!width || !height) return null;
+    canvas.width = width;
+    canvas.height = height;
+    context.drawImage(video, 0, 0, width, height);
+    const image = context.getImageData(0, 0, width, height);
+    // A printed sticker is dark on light; skipping the inverted pass halves the work.
+    return (
+      jsQR(image.data, width, height, { inversionAttempts: "dontInvert" })
+        ?.data ?? null
+    );
+  };
+}
 
 /**
  * A camera button that reads a bike's QR sticker and opens the bike (SPEC ›
- * Staff app 4: "search by plate or scan the bike's QR"). It uses the browser's
- * own code reader, so nothing is uploaded and nothing extra is downloaded.
- * Where the browser has no code reader, it says so and points at the phone's
- * camera app, which opens the same sticker link.
+ * Staff app 4: "search by plate or scan the bike's QR"). Frames are read on
+ * the device; nothing is uploaded. Works on Android, iPhone and laptops with
+ * a camera.
  */
 export function QrScanner() {
   const t = useTranslations("Maintenance");
@@ -60,13 +102,13 @@ export function QrScanner() {
   async function start() {
     setProblem(null);
     setOpen(true);
-    const Reader = (window as unknown as { BarcodeDetector?: DetectorClass })
-      .BarcodeDetector;
-    if (!Reader || !navigator.mediaDevices?.getUserMedia) {
+    // No camera access at all (an old browser, or a page not served securely).
+    if (!navigator.mediaDevices?.getUserMedia) {
       setProblem("unsupported");
       return;
     }
     try {
+      // Asked for first, while the tap that opened the scanner still counts.
       const media = await navigator.mediaDevices.getUserMedia({
         // The back camera on a phone; whatever there is on a laptop.
         video: { facingMode: { ideal: "environment" } },
@@ -76,15 +118,15 @@ export function QrScanner() {
       if (!video.current) return stop();
       video.current.srcObject = media;
       await video.current.play();
-      const reader = new Reader({ formats: ["qr_code"] });
+      const read = await frameReader();
       let busy = false;
       timer.current = setInterval(async () => {
         if (busy || !video.current || video.current.readyState < 2) return;
         busy = true;
         try {
-          const [found] = await reader.detect(video.current);
-          if (found) {
-            const token = stickerToken(found.rawValue);
+          const code = await read(video.current);
+          if (code !== null) {
+            const token = stickerToken(code);
             if (token) {
               stop();
               router.push(`/q/${token}`);

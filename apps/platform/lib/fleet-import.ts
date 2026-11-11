@@ -22,8 +22,8 @@ import { parseMoney } from "./money";
  *   the one whose years include it.
  * - If it doesn't, it is one of the shop's own: an existing own model with
  *   that make and model (ignoring case and spacing), or a new one, for which
- *   the row gives the vehicle type, the transmission for a motorbike or a
- *   car, and the engine size for a motorbike.
+ *   the row gives the vehicle type, and for a motorbike the engine size and
+ *   transmission.
  * The optional "name" column is the shop's own name for the model.
  */
 

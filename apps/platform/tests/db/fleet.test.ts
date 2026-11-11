@@ -832,7 +832,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     expect(unknown.error?.code).toBe("23503");
   });
 
-  it("required specs: transmission for motorbikes and cars, engine size for motorbikes only", async () => {
+  it("required specs: engine size and transmission for motorbikes only", async () => {
     const insert = (extra: object) =>
       shop.members.owner.db.from("models").insert(own(extra));
     const refused = async (extra: object, what: string) => {
@@ -847,39 +847,34 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     await refused({ cc: null }, "motorbike, no cc");
     await refused({ transmission: null }, "motorbike, no transmission");
     await refused({ cc: null, transmission: null }, "motorbike, neither");
-    // A car without a transmission is refused; without an engine size it is
-    // accepted (an electric car has none).
-    await refused(
-      { vehicle_type: "car", transmission: null },
-      "car, no transmission",
-    );
-    await refused(
-      { vehicle_type: "car", cc: null, transmission: null },
-      "car, neither",
-    );
-    await accepted({ vehicle_type: "car", cc: null }, "car, no cc");
-    // A boat, an ATV or "other" with neither is accepted.
-    for (const vehicle_type of ["boat", "atv", "other"])
+    // A car, a boat, an ATV or "other": both optional.
+    for (const vehicle_type of ["car", "boat", "atv", "other"]) {
       await accepted(
         { vehicle_type, cc: null, transmission: null },
         `${vehicle_type}, neither`,
       );
+      await accepted({ vehicle_type, cc: null }, `${vehicle_type}, no cc`);
+      await accepted(
+        { vehicle_type, transmission: null },
+        `${vehicle_type}, no transmission`,
+      );
+    }
     // The service role is held to it too: it's a rule, not a permission.
     const asService = await service
       .from("models")
-      .insert(own({ vehicle_type: "car", transmission: null }));
+      .insert(own({ transmission: null }));
     expect(asService.error?.message).toContain("models_required_specs_check");
-    // Changing a saved boat into a car needs the transmission then.
-    const { data: boat } = await service
+    // Changing a saved car into a motorbike needs both then.
+    const { data: car } = await service
       .from("models")
-      .insert(own({ vehicle_type: "boat", cc: null, transmission: null }))
+      .insert(own({ vehicle_type: "car", cc: null, transmission: null }))
       .select("id")
       .single();
-    const toCar = await shop.members.manager.db
+    const toBike = await shop.members.manager.db
       .from("models")
-      .update({ vehicle_type: "car" })
-      .eq("id", boat!.id);
-    expect(toCar.error?.message).toContain("models_required_specs_check");
+      .update({ vehicle_type: "motorbike" })
+      .eq("id", car!.id);
+    expect(toBike.error?.message).toContain("models_required_specs_check");
     expect((await insert({ make: null })).error?.code).toBe("23502");
     expect((await insert({ vehicle_type: null })).error?.code).toBe("23502");
   });

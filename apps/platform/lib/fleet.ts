@@ -251,15 +251,15 @@ export type VehicleType = (typeof vehicleTypes)[number];
  * Which specs a vehicle must have (owner, 11 Nov 2026). The database holds
  * the same rule (models_required_specs_check).
  *   vehicle type   always
- *   transmission   motorbikes and cars (an electric car is "automatic")
+ *   transmission   motorbikes only
  *   engine size    motorbikes only
- * ATVs, boats and "other" need neither.
+ * For cars, ATVs, boats and "other" both are optional.
  */
 export function needsEngineSize(vehicleType: string): boolean {
   return vehicleType === "motorbike";
 }
 export function needsTransmission(vehicleType: string): boolean {
-  return vehicleType === "motorbike" || vehicleType === "car";
+  return vehicleType === "motorbike";
 }
 
 /** A shop's own make and model: anything it rents, with no approval. */

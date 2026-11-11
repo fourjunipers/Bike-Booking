@@ -678,28 +678,18 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await page.getByRole("button", { name: "Delete model" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
 
-  // A car needs a transmission (an electric car is "Automatic") but no
-  // engine size. Close to a preset in name, so its model page offers the match.
+  // A car needs neither: engine size and transmission are for a shop to add
+  // if it wants. Close to a preset in name, so its model page offers the match.
   await page.goto("/bsr/fleet/own-model");
   await expect(
-    page.getByText(
-      "Required for motorbikes and cars. For an electric car, choose Automatic.",
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Required for motorbikes.", { exact: true }),
-  ).toBeVisible();
+    page.getByText("Required for motorbikes. Optional for everything else."),
+  ).toHaveCount(2);
   const carModel = `Forza 350 ${Date.now().toString(36)}`;
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByLabel("Model", { exact: true }).fill(carModel);
   await page.getByLabel("Vehicle type").selectOption("car");
   await page.getByLabel("Engine size (cc)").fill("");
   await page.getByLabel("Transmission").selectOption("");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  // Refused for the transmission only; the engine size isn't asked for.
-  await expect(page.getByText("Required.")).toHaveCount(1);
-  await expect(page).toHaveURL(/\/fleet\/own-model/);
-  await page.getByLabel("Transmission").selectOption("automatic");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: `Honda ${carModel}`, level: 1 }),
