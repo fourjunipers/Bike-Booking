@@ -6,7 +6,14 @@ import { inputClass } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { reviewRequest, type ReviewState } from "./actions";
 
-export function ReviewForm({ id }: { id: string }) {
+export function ReviewForm({
+  id,
+  presets,
+}: {
+  id: string;
+  /** Approved entries to merge into, closest matches first. */
+  presets: { value: string; label: string }[];
+}) {
   const t = useTranslations("Admin");
   const [state, action, pending] = useActionState<ReviewState, FormData>(
     reviewRequest,
@@ -44,6 +51,33 @@ export function ReviewForm({ id }: { id: string }) {
           disabled={pending}
         >
           {t("reject")}
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor={`merge-${id}`}
+            className="mb-1.5 block text-sm font-medium"
+          >
+            {t("mergeInto")}
+          </label>
+          <select id={`merge-${id}`} name="merge_into" className={inputClass}>
+            {presets.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button
+          type="submit"
+          name="decision"
+          value="merge"
+          variant="outline"
+          className="h-11 px-5"
+          disabled={pending || presets.length === 0}
+        >
+          {t("merge")}
         </Button>
       </div>
       {state.failed && (

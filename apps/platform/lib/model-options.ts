@@ -31,7 +31,7 @@ export function entryLabel(entry: Entry, pendingLabel?: string): string {
 /** Catalog entries, for choosing what a model is. Values are catalog ids. */
 export function catalogOptions(
   catalog: Entry[],
-  pendingLabel: string,
+  pendingLabel?: string,
 ): ModelOption[] {
   return catalog.map((entry) => ({
     value: entry.id,
@@ -45,10 +45,17 @@ export function catalogOptions(
  * model for yet (choosing one creates the model). Values are "model:<id>" or
  * "catalog:<id>" (lib/fleet parseModelChoice).
  */
+/** A shop's model, with what it is (from a preset or its own). */
+type ShopModel = {
+  id: string;
+  name: string;
+  catalog: { id: string | null; make: string };
+};
+
 export function bikeModelOptions(
-  models: { id: string; name: string; catalog?: Entry }[],
+  models: ShopModel[],
   catalog: Entry[],
-  labels: { yours: string; catalog: string; pending: string },
+  labels: { yours: string; catalog: string },
 ): ModelOption[] {
   const used = new Set(models.map((m) => m.catalog?.id));
   return [
@@ -63,16 +70,14 @@ export function bikeModelOptions(
       .map((entry) => ({
         value: `catalog:${entry.id}`,
         make: entry.make,
-        label: entryLabel(entry, labels.pending),
+        label: entryLabel(entry),
         group: labels.catalog,
       })),
   ];
 }
 
 /** For filters: the shop's models only. Values are model ids. */
-export function shopModelOptions(
-  models: { id: string; name: string; catalog?: Entry }[],
-): ModelOption[] {
+export function shopModelOptions(models: ShopModel[]): ModelOption[] {
   return models.map((model) => ({
     value: model.id,
     make: model.catalog?.make ?? "",

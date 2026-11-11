@@ -103,7 +103,8 @@ const optionalPhone = z.preprocess(
 export const modelSchema = z
   .object({
     name: z.string().trim().min(1, "required").max(120, "tooLong"),
-    catalog_id: uuid,
+    // Blank for one of the shop's own models (not a preset).
+    catalog_id: z.preprocess(blankToNull, uuid.nullable()),
     description: optionalText(2000),
     bookable_online: checkbox,
     buffer_before_minutes: optionalInt(0, 10080),
@@ -236,19 +237,52 @@ export const bikeTypes = [
 ] as const;
 export const transmissions = ["automatic", "semi_auto", "manual"] as const;
 
-export const catalogRequestSchema = z
+/** Kinds of vehicle a shop can keep (public.vehicle_types). */
+export const vehicleTypes = [
+  "motorbike",
+  "car",
+  "atv",
+  "boat",
+  "other",
+] as const;
+export type VehicleType = (typeof vehicleTypes)[number];
+
+/**
+ * A shop's own make and model: anything it rents, with no approval. Vehicle
+ * type is always asked. Engine size and transmission are required for
+ * motorbikes, because Moto Mangos search filters by them.
+ */
+export const ownModelSchema = z
   .object({
     make: z.string().trim().min(1, "required").max(40, "tooLong"),
     model: z.string().trim().min(1, "required").max(60, "tooLong"),
+    vehicle_type: z.enum(vehicleTypes, "required"),
+    cc: optionalInt(1, 20000),
+    transmission: z.preprocess(
+      blankToNull,
+      z.enum(transmissions, "required").nullable(),
+    ),
+  })
+  .strict()
+  .superRefine((m, ctx) => {
+    if (m.vehicle_type !== "motorbike") return;
+    if (m.cc === null)
+      ctx.addIssue({ code: "custom", path: ["cc"], message: "required" });
+    if (m.transmission === null)
+      ctx.addIssue({
+        code: "custom",
+        path: ["transmission"],
+        message: "required",
+      });
+  });
+export type OwnModelInput = z.infer<typeof ownModelSchema>;
+
+/** Sending one of the shop's own models to Moto Mangos for a catalog entry. */
+export const catalogSubmitSchema = z
+  .object({
+    type: z.enum(bikeTypes, "required"),
     year_from: optionalInt(1950, 2100, "invalidYear"),
     year_to: optionalInt(1950, 2100, "invalidYear"),
-    type: z.enum(bikeTypes, "required"),
-    transmission: z.enum(transmissions, "required"),
-    cc: z.coerce
-      .number("invalidNumber")
-      .int("invalidNumber")
-      .min(50, "invalidNumber")
-      .max(2500, "invalidNumber"),
     note: optionalText(500),
   })
   .strict()
@@ -312,6 +346,8 @@ export function dbErrorKey(
   if (error.code === "23P01") return "blockOverlap";
   if (message.includes("units_plate_idx")) return "plateExists";
   if (message.includes("models_name_idx")) return "nameExists";
+  if (message.includes("models_own_make_model_idx")) return "ownModelExists";
+  if (message.includes("models_motorbike_specs_check")) return "motorbikeSpecs";
   if (message.includes("locations_name_idx")) return "nameExists";
   // A row other rows still point at (a model with units, a unit with blocks).
   if (error.code === "23503") return "inUse";
@@ -320,6 +356,10 @@ export function dbErrorKey(
     "unit_not_in_fleet",
     "more_units_than_active",
     "catalog_entry_not_usable",
+    "not_listable",
+    "already_linked",
+    "only_motorbikes",
+    "merge_target_not_approved",
     "only_owner_or_manager",
     "currency_locked",
   ])

@@ -185,11 +185,10 @@ export default async function UnitPage({
               <UnitForm
                 slug={slug}
                 distanceUnit={tenant.distanceUnit}
-                addModelHref={`${base}/catalog-request?then=bike`}
+                addModelHref={`${base}/own-model?then=bike`}
                 models={bikeModelOptions(fleet, catalog, {
                   yours: tUnit("yourModels"),
                   catalog: tUnit("fromCatalog"),
-                  pending: t("model.pendingRequest"),
                 })}
                 locations={locations.map((l) => ({
                   value: l.id,

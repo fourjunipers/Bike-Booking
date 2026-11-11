@@ -22,21 +22,24 @@ export type CatalogEntry = {
   year_to: number | null;
   cc: number;
   type: string;
-  transmission: string;
+  transmission: "automatic" | "semi_auto" | "manual";
   status: string;
 };
 
 const catalogColumns =
   "id, slug, make, model, year_from, year_to, cc, type, transmission, status";
 
-/** Entries the shop may use: approved ones and its own pending requests (RLS). */
+/**
+ * The presets: approved catalog entries, the same list Moto Mangos uses.
+ * Approving an entry makes it a preset for every shop at once.
+ */
 export const getCatalog = cache(async (): Promise<CatalogEntry[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("public")
     .from("bike_catalog")
     .select(catalogColumns)
-    .in("status", ["approved", "requested"])
+    .eq("status", "approved")
     .order("make")
     .order("model")
     .order("year_from");
@@ -67,7 +70,9 @@ export const getFleet = cache(async (tenantId: string) => {
   const [models, units, catalog] = await Promise.all([
     supabase
       .from("models")
-      .select("id, name, catalog_id, bookable_online")
+      .select(
+        "id, name, catalog_id, make, model, vehicle_type, cc, transmission, bookable_online, marketplace_listed",
+      )
       .eq("tenant_id", tenantId)
       .order("name"),
     supabase
@@ -79,10 +84,17 @@ export const getFleet = cache(async (tenantId: string) => {
   ]);
   if (models.error) throw models.error;
   if (units.error) throw units.error;
-  const entries = new Map(catalog.map((c) => [c.id, c]));
+  void catalog;
   return models.data.map((model) => ({
     ...model,
-    catalog: entries.get(model.catalog_id),
+    // What the model is, whether it came from a preset or is the shop's own.
+    catalog: {
+      id: model.catalog_id,
+      make: model.make,
+      model: model.model,
+      cc: model.cc,
+      transmission: model.transmission,
+    },
     units: units.data.filter((u) => u.model_id === model.id),
   }));
 });
@@ -118,7 +130,7 @@ export async function getModel(tenantId: string, id: string) {
   const { data, error } = await supabase
     .from("models")
     .select(
-      "id, name, catalog_id, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now",
+      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now",
     )
     .eq("tenant_id", tenantId)
     .eq("id", id)
@@ -239,6 +251,19 @@ export async function getReminderSettings(tenantId: string) {
     .select("renewal_reminder_days, renewal_digest_day")
     .eq("id", tenantId)
     .single();
+  if (error) throw error;
+  return data;
+}
+
+/** One catalog entry by id: an approved preset, or the shop's own submission (RLS). */
+export async function getCatalogEntry(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("public")
+    .from("bike_catalog")
+    .select(`${catalogColumns}, review_notes`)
+    .eq("id", id)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }

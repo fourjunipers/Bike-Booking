@@ -37,7 +37,6 @@ export default async function NewUnitPage({
   const models = bikeModelOptions(fleet, catalog, {
     yours: t("yourModels"),
     catalog: t("fromCatalog"),
-    pending: tFleet("model.pendingRequest"),
   });
   // Arriving from a model's page, or from adding a make or model.
   const wanted =
@@ -58,7 +57,7 @@ export default async function NewUnitPage({
         <UnitForm
           slug={slug}
           distanceUnit={tenant.distanceUnit}
-          addModelHref={`/${slug}/fleet/catalog-request?then=bike`}
+          addModelHref={`/${slug}/fleet/own-model?then=bike`}
           models={models}
           locations={locations.map((l) => ({ value: l.id, label: l.name }))}
           values={{

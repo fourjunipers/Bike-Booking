@@ -38,8 +38,8 @@ export default async function NewModelPage({
         <ModelForm
           slug={slug}
           currency={membership.tenant.currency}
-          requestHref={`/${slug}/fleet/catalog-request`}
-          catalogOptions={catalogOptions(catalog, t("pendingRequest"))}
+          requestHref={`/${slug}/fleet/own-model`}
+          catalogOptions={catalogOptions(catalog)}
           values={{
             name: chosen ? catalogName(chosen) : "",
             catalog_id: chosen?.id ?? "",

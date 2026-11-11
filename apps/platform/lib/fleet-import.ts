@@ -1,6 +1,7 @@
+import { normName } from "./catalog-match";
 import type { CsvTable } from "./csv";
 import { toKm, type DistanceUnit } from "./distance";
-import { isIsoDate } from "./fleet";
+import { isIsoDate, transmissions, vehicleTypes } from "./fleet";
 import { parseMoney } from "./money";
 
 /**
@@ -9,11 +10,15 @@ import { parseMoney } from "./money";
  * One row per bike. Every problem is reported with its line and column;
  * nothing is saved unless the whole file is clean.
  *
- * A bike's model is given the way it is chosen on screen: make, then model,
- * from the catalog. Where the catalog has several entries for one make and
- * model (generations), the bike's model year picks the one whose years include
- * it. The optional "name" column is the shop's own name for the model, for
- * shops that keep several models on one catalog entry.
+ * A bike's model is given the way it is chosen on screen: make, then model.
+ * - If the catalog has that make and model, the bike goes on that preset.
+ *   Where the catalog has several generations, the bike's model year picks
+ *   the one whose years include it.
+ * - If it doesn't, it is one of the shop's own: an existing own model with
+ *   that make and model (ignoring case and spacing), or a new one, for which
+ *   the row gives the vehicle type, and for motorbikes the engine size and
+ *   transmission.
+ * The optional "name" column is the shop's own name for the model.
  */
 
 export const importColumns = [
@@ -30,6 +35,9 @@ export const importColumns = [
   "purchase_date",
   "purchase_price",
   "purchased_from",
+  "vehicle_type",
+  "cc",
+  "transmission",
 ] as const;
 export type ImportColumn = (typeof importColumns)[number];
 
@@ -42,8 +50,9 @@ export type ImportErrorCode =
   | "tooManyRows"
   | "required"
   | "tooLong"
-  | "makeUnknown"
-  | "modelUnknown"
+  | "ownNeedsSpecs"
+  | "invalidVehicleType"
+  | "invalidTransmission"
   | "modelNeedsYear"
   | "modelNeedsName"
   | "nameOtherModel"
@@ -74,16 +83,32 @@ export type ImportContext = {
   currency: string;
   distanceUnit: DistanceUnit;
   locations: { id: string; name: string; isDefault: boolean }[];
-  /** Models the shop already has. */
-  models: { id: string; name: string; catalog_id: string }[];
-  /** Catalog entries the shop may use: approved, or its own pending requests. */
+  /** Models the shop already has. `catalog_id` is null for its own models. */
+  models: {
+    id: string;
+    name: string;
+    catalog_id: string | null;
+    make: string;
+    model: string;
+  }[];
+  /** The presets: approved catalog entries. */
   catalog: ImportCatalogEntry[];
   /** Plates already in the shop's fleet. */
   plates: string[];
   newId: () => string;
 };
 
-export type ImportModel = { id: string; catalog_id: string; name: string };
+/** A model to create: on a preset (`catalog_id`), or the shop's own (the rest). */
+export type ImportModel = {
+  id: string;
+  name: string;
+  catalog_id: string | null;
+  make?: string;
+  model?: string;
+  vehicle_type?: string;
+  cc?: number | null;
+  transmission?: string | null;
+};
 export type ImportUnit = {
   model_id: string;
   location_id: string;
@@ -124,12 +149,22 @@ export function catalogName(entry: {
 }
 
 const limits: Partial<Record<ImportColumn, number>> = {
+  make: 40,
+  model: 60,
   name: 120,
   plate: 30,
   frame_number: 40,
   engine_number: 40,
   colour: 40,
   purchased_from: 200,
+};
+
+type KnownModel = {
+  id: string;
+  name: string;
+  catalog_id: string | null;
+  make: string;
+  model: string;
 };
 
 export function planImport(
@@ -152,7 +187,6 @@ export function planImport(
     errors.push({ line: 1, column: "", code: "tooManyRows" });
   if (errors.length > 0) return { errors, models: [], units: [] };
 
-  const makes = new Set(context.catalog.map((c) => key(c.make)));
   const locationIds = new Map(
     context.locations.map((l) => [key(l.name), l.id]),
   );
@@ -160,16 +194,32 @@ export function planImport(
     context.locations.find((l) => l.isDefault) ?? context.locations[0];
   const plates = new Set(context.plates.map(key));
   const platesInFile = new Set<string>();
-  // The shop's models, old and about to be created, by name and by catalog entry.
-  const models: ImportModel[] = context.models.map((m) => ({ ...m }));
+  // The shop's models, old and about to be created.
+  const models: KnownModel[] = context.models.map((m) => ({ ...m }));
   const newModels: ImportModel[] = [];
   const units: ImportUnit[] = [];
 
-  const addModel = (catalogId: string, name: string) => {
-    const model = { id: context.newId(), catalog_id: catalogId, name };
-    models.push(model);
-    newModels.push(model);
-    return model;
+  const uniqueName = (wanted: string) => {
+    let name = wanted;
+    for (let n = 2; models.some((m) => key(m.name) === key(name)); n++)
+      name = `${wanted} (${n})`;
+    return name;
+  };
+  const addModel = (model: ImportModel & { make: string; model: string }) => {
+    models.push({
+      id: model.id,
+      name: model.name,
+      catalog_id: model.catalog_id,
+      make: model.make,
+      model: model.model,
+    });
+    // A preset's description comes from the catalog, so only its link is sent.
+    newModels.push(
+      model.catalog_id
+        ? { id: model.id, name: model.name, catalog_id: model.catalog_id }
+        : model,
+    );
+    return model.id;
   };
 
   for (const { line, values } of table.rows) {
@@ -199,47 +249,89 @@ export function planImport(
     }
 
     // Make, then model, as on screen; then which of the shop's models it is.
-    const make = get("make");
-    const modelName = get("model");
+    const make = text("make");
+    const modelName = text("model");
     const ownName = text("name");
     let modelId: string | undefined;
     if (!make) fail("make", "required");
     if (!modelName) fail("model", "required");
     if (make && modelName) {
-      const candidates = context.catalog.filter(
-        (c) => key(c.make) === key(make) && key(c.model) === key(modelName),
-      );
-      let entry = candidates.length === 1 ? candidates[0] : undefined;
-      if (candidates.length > 1 && modelYear !== null) {
-        const inRange = candidates.filter(
-          (c) =>
-            c.year_from !== null &&
-            modelYear! >= c.year_from &&
-            modelYear! <= (c.year_to ?? c.year_from),
-        );
-        if (inRange.length === 1) entry = inRange[0];
-      }
-      if (candidates.length === 0)
-        fail(
-          makes.has(key(make)) ? "model" : "make",
-          makes.has(key(make)) ? "modelUnknown" : "makeUnknown",
-        );
-      else if (!entry) fail("model_year", "modelNeedsYear");
-      else {
-        const onEntry = models.filter((m) => m.catalog_id === entry.id);
-        if (ownName) {
-          const named = models.find((m) => key(m.name) === key(ownName));
-          if (named && named.catalog_id !== entry.id)
-            fail("name", "nameOtherModel");
-          else modelId = (named ?? addModel(entry.id, ownName)).id;
-        } else if (onEntry.length > 1) fail("name", "modelNeedsName");
-        else if (onEntry.length === 1) modelId = onEntry[0].id;
+      const same = (m: { make: string; model: string }) =>
+        normName(m.make) === normName(make) &&
+        normName(m.model) === normName(modelName);
+      const presets = context.catalog.filter(same);
+      const named = ownName
+        ? models.find((m) => key(m.name) === key(ownName))
+        : undefined;
+
+      if (named) {
+        // The shop's own name for a model it already has.
+        if (!same(named)) fail("name", "nameOtherModel");
+        else modelId = named.id;
+      } else if (presets.length > 0) {
+        let entry = presets.length === 1 ? presets[0] : undefined;
+        if (!entry && modelYear !== null) {
+          const inRange = presets.filter(
+            (c) =>
+              c.year_from !== null &&
+              modelYear! >= c.year_from &&
+              modelYear! <= (c.year_to ?? c.year_from),
+          );
+          if (inRange.length === 1) entry = inRange[0];
+        }
+        if (!entry) fail("model_year", "modelNeedsYear");
         else {
-          // A new model takes the catalog's name, unless that name is taken.
-          let name = catalogName(entry);
-          for (let n = 2; models.some((m) => key(m.name) === key(name)); n++)
-            name = `${catalogName(entry)} (${n})`;
-          modelId = addModel(entry.id, name).id;
+          const onEntry = models.filter((m) => m.catalog_id === entry.id);
+          if (ownName)
+            modelId = addModel({
+              id: context.newId(),
+              name: ownName,
+              catalog_id: entry.id,
+              make: entry.make,
+              model: entry.model,
+            });
+          else if (onEntry.length > 1) fail("name", "modelNeedsName");
+          else if (onEntry.length === 1) modelId = onEntry[0].id;
+          else
+            modelId = addModel({
+              id: context.newId(),
+              name: uniqueName(catalogName(entry)),
+              catalog_id: entry.id,
+              make: entry.make,
+              model: entry.model,
+            });
+        }
+      } else {
+        // Not a preset: one of the shop's own, old or new.
+        const own = models.find((m) => m.catalog_id === null && same(m));
+        if (own) modelId = own.id;
+        else {
+          const typeText = key(get("vehicle_type")) || "motorbike";
+          const ccText = get("cc");
+          const gearText = key(get("transmission")).replace(/[\s-]+/g, "_");
+          const cc = ccText ? Number(ccText) : null;
+          if (!(vehicleTypes as readonly string[]).includes(typeText))
+            fail("vehicle_type", "invalidVehicleType");
+          if (ccText && (!/^\d{1,5}$/.test(ccText) || cc! < 1 || cc! > 20000))
+            fail("cc", "invalidNumber");
+          if (
+            gearText &&
+            !(transmissions as readonly string[]).includes(gearText)
+          )
+            fail("transmission", "invalidTransmission");
+          if (typeText === "motorbike" && (!ccText || !gearText))
+            fail(!ccText ? "cc" : "transmission", "ownNeedsSpecs");
+          if (errors.length === before)
+            modelId = addModel({
+              id: context.newId(),
+              name: uniqueName(ownName ?? `${make} ${modelName}`),
+              catalog_id: null,
+              make,
+              model: modelName,
+              vehicle_type: typeText,
+              cc,
+              transmission: gearText || null,
+            });
         }
       }
     }
@@ -300,6 +392,6 @@ export function planImport(
 export function importTemplate(): string {
   return [
     importColumns.join(","),
-    "Honda,PCX 160,2026,,DEMO-0001,DEMOFRAME0001,DEMOENG0001,White,1200,,2026-01-10,95000,Demo dealer",
+    "Honda,PCX 160,2026,,DEMO-0001,DEMOFRAME0001,DEMOENG0001,White,1200,,2026-01-10,95000,Demo dealer,,,",
   ].join("\n");
 }

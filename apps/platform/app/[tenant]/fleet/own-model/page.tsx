@@ -7,31 +7,32 @@ import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
 import { getCatalog } from "@/lib/fleet-data";
 import { canManageFleet } from "@/lib/roles";
-import { CatalogRequestForm } from "./request-form";
+import { OwnModelForm } from "./request-form";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Fleet.catalogRequest");
+  const t = await getTranslations("Fleet.ownModel");
   return { title: t("title") };
 }
 
 /**
- * Ask for a catalog entry that's missing (SPEC › Built for any country: a
- * model can't be saved without one). The shop can use its own request at once;
- * a platform admin approves it for everyone.
+ * "Add my own": a make or model that isn't among the presets (owner, 11 Nov
+ * 2026). Any vehicle, saved at once, no approval. It is the secondary path:
+ * the make and model dropdowns come first. Approval only comes up later, if
+ * the shop wants the model on Moto Mangos.
  */
-export default async function CatalogRequestPage({
+export default async function OwnModelPage({
   params,
   searchParams,
-}: PageProps<"/[tenant]/fleet/catalog-request">) {
+}: PageProps<"/[tenant]/fleet/own-model">) {
   const [{ tenant: slug }, query] = await Promise.all([params, searchParams]);
   const { membership } = await requireArea(slug, "fleet");
   if (!canManageFleet(membership.role)) notFound();
   const [t, tFleet, catalog] = await Promise.all([
-    getTranslations("Fleet.catalogRequest"),
+    getTranslations("Fleet.ownModel"),
     getTranslations("Fleet"),
     getCatalog(),
   ]);
-  // Where to go back to once it's added: the bike or the model being set up.
+  // Where to go once it's added: the bike being added, or the model's page.
   const then = query.then === "bike" ? "bike" : "model";
 
   return (
@@ -48,7 +49,7 @@ export default async function CatalogRequestPage({
       />
       <PageHeader title={t("title")} intro={t("intro")} />
       <Panel className="max-w-3xl">
-        <CatalogRequestForm
+        <OwnModelForm
           slug={slug}
           then={then}
           makes={[...new Set(catalog.map((c) => c.make))].sort()}

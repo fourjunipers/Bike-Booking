@@ -151,14 +151,14 @@ isOneToOne: false
                   ]
                 },"models": {
                   Row: {
-                    "bookable_online": boolean,"buffer_after_minutes": number | null,"buffer_before_minutes": number | null,"catalog_id": string,"created_at": string,"deposit": number | null,"deposit_currency": string | null,"description": string | null,"id": string,"instant_units": number,"licence_class": string | null,"min_age": number | null,"name": string,"photos": (string)[],"ready_now": number,"ready_updated_at": string | null,"request_units": number,"tenant_id": string,"updated_at": string
+                    "bookable_online": boolean,"buffer_after_minutes": number | null,"buffer_before_minutes": number | null,"catalog_id": string | null,"cc": number | null,"created_at": string,"deposit": number | null,"deposit_currency": string | null,"description": string | null,"id": string,"instant_units": number,"licence_class": string | null,"make": string,"marketplace_listed": boolean,"min_age": number | null,"model": string,"name": string,"photos": (string)[],"ready_now": number,"ready_updated_at": string | null,"request_units": number,"tenant_id": string,"transmission": Database["public"]['Enums']["transmission"] | null,"updated_at": string,"vehicle_type": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "bookable_online"?: boolean,"buffer_after_minutes"?: number | null,"buffer_before_minutes"?: number | null,"catalog_id": string,"created_at"?: string,"deposit"?: number | null,"deposit_currency"?: string | null,"description"?: string | null,"id"?: string,"instant_units"?: number,"licence_class"?: string | null,"min_age"?: number | null,"name": string,"photos"?: (string)[],"ready_now"?: number,"ready_updated_at"?: string | null,"request_units"?: number,"tenant_id": string,"updated_at"?: string
+                    "bookable_online"?: boolean,"buffer_after_minutes"?: number | null,"buffer_before_minutes"?: number | null,"catalog_id"?: string | null,"cc"?: number | null,"created_at"?: string,"deposit"?: number | null,"deposit_currency"?: string | null,"description"?: string | null,"id"?: string,"instant_units"?: number,"licence_class"?: string | null,"make": string,"marketplace_listed"?: boolean,"min_age"?: number | null,"model": string,"name": string,"photos"?: (string)[],"ready_now"?: number,"ready_updated_at"?: string | null,"request_units"?: number,"tenant_id": string,"transmission"?: Database["public"]['Enums']["transmission"] | null,"updated_at"?: string,"vehicle_type": string
                   }
                   Update: {
-                    "bookable_online"?: boolean,"buffer_after_minutes"?: number | null,"buffer_before_minutes"?: number | null,"catalog_id"?: string,"created_at"?: string,"deposit"?: number | null,"deposit_currency"?: string | null,"description"?: string | null,"id"?: string,"instant_units"?: number,"licence_class"?: string | null,"min_age"?: number | null,"name"?: string,"photos"?: (string)[],"ready_now"?: number,"ready_updated_at"?: string | null,"request_units"?: number,"tenant_id"?: string,"updated_at"?: string
+                    "bookable_online"?: boolean,"buffer_after_minutes"?: number | null,"buffer_before_minutes"?: number | null,"catalog_id"?: string | null,"cc"?: number | null,"created_at"?: string,"deposit"?: number | null,"deposit_currency"?: string | null,"description"?: string | null,"id"?: string,"instant_units"?: number,"licence_class"?: string | null,"make"?: string,"marketplace_listed"?: boolean,"min_age"?: number | null,"model"?: string,"name"?: string,"photos"?: (string)[],"ready_now"?: number,"ready_updated_at"?: string | null,"request_units"?: number,"tenant_id"?: string,"transmission"?: Database["public"]['Enums']["transmission"] | null,"updated_at"?: string,"vehicle_type"?: string
                   }
                   Relationships: [
                     {
@@ -412,14 +412,14 @@ isOneToOne: false
 "remove_member":
 { Args: { "p_membership_id": string }; Returns: undefined
                            },
-"request_catalog_entry":
-{ Args: { "p_cc": number,"p_make": string,"p_model": string,"p_note"?: string,"p_tenant_id": string,"p_transmission": Database["public"]['Enums']["transmission"],"p_type": Database["public"]['Enums']["bike_type"],"p_year_from": number,"p_year_to": number }; Returns: string
-                           },
 "review_catalog_request":
-{ Args: { "p_approve": boolean,"p_catalog_id": string,"p_notes"?: string }; Returns: undefined
+{ Args: { "p_approve": boolean,"p_catalog_id": string,"p_merge_into"?: string,"p_notes"?: string }; Returns: undefined
                            },
 "set_member_role":
 { Args: { "p_membership_id": string,"p_role": Database["platform"]['Enums']["platform_role"] }; Returns: undefined
+                           },
+"submit_model_to_catalog":
+{ Args: { "p_model_id": string,"p_note"?: string,"p_type": Database["public"]['Enums']["bike_type"],"p_year_from"?: number,"p_year_to"?: number }; Returns: string
                            },
 "tenant_members":
 { Args: { "p_tenant_id": string }; Returns: {

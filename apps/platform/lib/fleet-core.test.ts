@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { CsvError, parseCsv, parseCsvRecords } from "./csv";
 import { formatDistance, fromKm, toKm } from "./distance";
 import {
-  catalogRequestSchema,
   closureSchema,
   dbErrorKey,
   hoursSchema,
@@ -245,30 +244,6 @@ describe("form rules", () => {
         note: "",
         repeats_yearly: "",
       }).success,
-    ).toBe(false);
-  });
-
-  it("a catalog request needs the fields search depends on", () => {
-    const request = {
-      make: "Honda",
-      model: "Wave 110i",
-      year_from: "2020",
-      year_to: "",
-      type: "city_scooter",
-      transmission: "semi_auto",
-      cc: "110",
-      note: "",
-    };
-    expect(catalogRequestSchema.parse(request)).toMatchObject({
-      cc: 110,
-      year_to: null,
-    });
-    expect(catalogRequestSchema.safeParse({ ...request, cc: "" }).success).toBe(
-      false,
-    );
-    expect(
-      catalogRequestSchema.safeParse({ ...request, transmission: "cvt" })
-        .success,
     ).toBe(false);
   });
 

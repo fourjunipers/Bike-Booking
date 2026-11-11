@@ -18,7 +18,12 @@ import { cn } from "@/lib/utils";
  * What a server action returns to its form: field errors as message keys of
  * "FormErrors" (the key "form" is the whole-form error), or ok.
  */
-export type FormState = { ok?: boolean; errors?: Record<string, string> };
+export type FormState = {
+  ok?: boolean;
+  errors?: Record<string, string>;
+  /** "Did you mean…": links offered with an error, e.g. matching presets. */
+  suggestions?: { label: string; href: string }[];
+};
 
 export type FormAction = (
   state: FormState,
@@ -127,6 +132,23 @@ export function ActionForm({
             </p>
           )}
         </div>
+        {state.suggestions && state.suggestions.length > 0 && !pending && (
+          <div className="rounded-md border border-highlight-border bg-highlight p-3 text-sm text-highlight-foreground">
+            <p className="font-medium">{tCommon("didYouMean")}</p>
+            <ul className="mt-1">
+              {state.suggestions.map((suggestion) => (
+                <li key={suggestion.href}>
+                  <a
+                    href={suggestion.href}
+                    className="inline-flex min-h-11 items-center font-medium underline"
+                  >
+                    {suggestion.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </form>
     </FormContext.Provider>
   );

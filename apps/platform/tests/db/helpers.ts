@@ -167,3 +167,15 @@ export function period(from: Date, to?: Date): string {
 }
 
 export const hours = (n: number) => new Date(Date.now() + n * 3_600_000);
+
+/**
+ * A model row's own description. For a model on a catalog entry the database
+ * replaces these with the entry's values; they are here so the row is complete.
+ */
+export const modelSpec = {
+  make: "Testmake",
+  model: "Test",
+  vehicle_type: "motorbike",
+  cc: 125,
+  transmission: "automatic" as const,
+};

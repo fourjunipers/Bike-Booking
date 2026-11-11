@@ -419,7 +419,10 @@ async function seedBsrFleet(
   approved: CatalogRow[],
 ) {
   const [{ data: models }, { data: units }] = await Promise.all([
-    db.from("models").select("id, name, catalog_id").eq("tenant_id", tenantId),
+    db
+      .from("models")
+      .select("id, name, catalog_id, make, model")
+      .eq("tenant_id", tenantId),
     db.from("units").select("plate, frame_number").eq("tenant_id", tenantId),
   ]);
   const table = parseCsv(
@@ -452,7 +455,8 @@ async function seedBsrFleet(
   if (plan.models.length > 0) {
     const { error } = await db
       .from("models")
-      .insert(plan.models.map((m) => ({ ...m, tenant_id: tenantId })));
+      // Models on presets: the database fills in make, model and specs.
+      .insert(plan.models.map((m) => ({ ...m, tenant_id: tenantId })) as never);
     if (error) throw error;
   }
   for (const unit of plan.units) {
@@ -600,6 +604,9 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
       .insert({
         tenant_id: tenantId,
         catalog_id: entry.id,
+        make: entry.make,
+        model: entry.model,
+        vehicle_type: "motorbike",
         name: `${entry.make} ${entry.model}`,
       })
       .select("id, name")

@@ -9,8 +9,11 @@ import { UnitRow } from "@/components/fleet/unit-bits";
 import { PageHeader } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
 import { requireArea } from "@/lib/access";
+import { suggestCatalog } from "@/lib/catalog-match";
 import {
+  catalogName,
   getCatalog,
+  getCatalogEntry,
   getFleet,
   getLocations,
   getModel,
@@ -21,6 +24,11 @@ import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { deleteModel } from "../../actions";
+import {
+  ListingForm,
+  SubmitToCatalogForm,
+  UsePresetButton,
+} from "../../moto-mangos-forms";
 import {
   DeleteYearBandButton,
   ModelForm,
@@ -67,7 +75,14 @@ export default async function ModelPage({
   if (!model) notFound();
   const manage = canManageFleet(role);
   const units = fleet.find((m) => m.id === id)?.units ?? [];
-  const entry = catalog.find((c) => c.id === model.catalog_id);
+  // The catalog entry it is linked to: a preset, or its own submission.
+  const entry = model.catalog_id
+    ? (catalog.find((c) => c.id === model.catalog_id) ??
+      (await getCatalogEntry(model.catalog_id)))
+    : null;
+  const waiting = entry?.status === "requested";
+  const own = !model.catalog_id;
+  const matches = own ? suggestCatalog(model.make, model.model, catalog) : [];
   const base = `/${slug}/fleet`;
 
   return (
@@ -75,30 +90,44 @@ export default async function ModelPage({
       <BackLink href={base} label={tFleet("title")} />
       <PageHeader
         title={model.name}
-        intro={
-          entry &&
-          tFleet("catalogLine", {
-            make: entry.make,
-            model: entry.model,
-            cc: entry.cc,
-            transmission: tFleet(
-              `transmission.${entry.transmission}` as "transmission.manual",
-            ),
-          })
-        }
+        intro={[
+          `${model.make} ${model.model}`,
+          model.cc ? `${model.cc} cc` : null,
+          model.transmission
+            ? tFleet(`transmission.${model.transmission}`)
+            : null,
+          model.vehicle_type === "motorbike"
+            ? null
+            : tFleet(`vehicleType.${model.vehicle_type}` as "vehicleType.car"),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         {manage && (
           <Panel>
             <ModelForm
+              own={
+                own
+                  ? {
+                      make: model.make,
+                      model: model.model,
+                      vehicle_type: model.vehicle_type,
+                      cc: model.cc === null ? "" : String(model.cc),
+                      transmission: model.transmission ?? "",
+                    }
+                  : undefined
+              }
+              waiting={waiting}
+              makes={[...new Set(catalog.map((c) => c.make))].sort()}
               slug={slug}
               currency={tenant.currency}
-              requestHref={`${base}/catalog-request`}
-              catalogOptions={catalogOptions(catalog, t("pendingRequest"))}
+              requestHref={`${base}/own-model`}
+              catalogOptions={catalogOptions(catalog)}
               values={{
                 id: model.id,
                 name: model.name,
-                catalog_id: model.catalog_id,
+                catalog_id: own || waiting ? "" : (model.catalog_id ?? ""),
                 description: model.description ?? "",
                 bookable_online: model.bookable_online,
                 buffer_before_minutes: text(model.buffer_before_minutes),
@@ -161,6 +190,66 @@ export default async function ModelPage({
               </ul>
             )}
           </section>
+          {manage && (
+            <Panel
+              title={tFleet("motoMangos.title")}
+              intro={tFleet("motoMangos.intro")}
+            >
+              {waiting ? (
+                <p className="text-sm">{tFleet("motoMangos.waiting")}</p>
+              ) : entry ? (
+                <>
+                  <p className="mb-3 text-sm">
+                    {tFleet("motoMangos.ready", { name: catalogName(entry) })}
+                  </p>
+                  <ListingForm
+                    slug={slug}
+                    id={model.id}
+                    listed={model.marketplace_listed}
+                  />
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {tFleet("motoMangos.later")}
+                  </p>
+                </>
+              ) : model.vehicle_type !== "motorbike" ? (
+                <p className="text-sm">{tFleet("motoMangos.bikesOnly")}</p>
+              ) : (
+                <>
+                  <p className="text-sm">{tFleet("motoMangos.own")}</p>
+                  {matches.length > 0 && (
+                    <div className="mt-4">
+                      <p className="mb-2 font-medium">
+                        {tFleet("motoMangos.didYouMean")}
+                      </p>
+                      <ul className="space-y-2">
+                        {matches.map((match) => (
+                          <li key={match.id}>
+                            <UsePresetButton
+                              slug={slug}
+                              id={model.id}
+                              catalogId={match.id}
+                              label={tFleet("motoMangos.use", {
+                                name: catalogName(match),
+                              })}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="mt-5 border-t pt-5">
+                    <h3 className="mb-1 font-medium">
+                      {tFleet("motoMangos.submitTitle")}
+                    </h3>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      {tFleet("motoMangos.submitHelp")}
+                    </p>
+                    <SubmitToCatalogForm slug={slug} id={model.id} />
+                  </div>
+                </>
+              )}
+            </Panel>
+          )}
           <Panel title={tFleet("bands.title")} intro={tFleet("bands.intro")}>
             {bands.length === 0 ? (
               <p className="text-sm text-muted-foreground">

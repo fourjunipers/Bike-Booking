@@ -4,7 +4,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page";
 import { SignOutButton } from "@/components/sign-out-button";
-import { catalogName, type CatalogEntry } from "@/lib/fleet-data";
+import { suggestCatalog } from "@/lib/catalog-match";
+import { catalogName, getCatalog, type CatalogEntry } from "@/lib/fleet-data";
 import { getUser } from "@/lib/session";
 import { createClient } from "@mango/db/platform-server";
 import { ReviewForm } from "./review-form";
@@ -45,6 +46,7 @@ export default async function AdminCatalogPage() {
       .order("created_at"),
   ]);
   if (requests.error) throw requests.error;
+  const presets = await getCatalog();
 
   return (
     <NextIntlClientProvider>
@@ -76,7 +78,22 @@ export default async function AdminCatalogPage() {
                   <p className="mt-2 text-sm">“{entry.request_note}”</p>
                 )}
                 <div className="mt-4">
-                  <ReviewForm id={entry.id} />
+                  <ReviewForm
+                    id={entry.id}
+                    presets={[
+                      // "Did you mean" first, then every preset.
+                      ...suggestCatalog(entry.make, entry.model, presets),
+                      ...presets,
+                    ]
+                      .filter(
+                        (preset, i, all) =>
+                          all.findIndex((x) => x.id === preset.id) === i,
+                      )
+                      .map((preset) => ({
+                        value: preset.id,
+                        label: catalogName(preset),
+                      }))}
+                  />
                 </div>
               </li>
             ))}

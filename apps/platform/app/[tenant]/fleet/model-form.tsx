@@ -13,6 +13,15 @@ import {
   type ModelOption,
 } from "@/components/fleet/make-model-picker";
 import { addYearBand, deleteYearBand, saveModel } from "./actions";
+import { OwnModelFields } from "./own-model/request-form";
+
+export type OwnValues = {
+  make: string;
+  model: string;
+  vehicle_type: string;
+  cc: string;
+  transmission: string;
+};
 
 export type ModelFormValues = {
   id?: string;
@@ -37,39 +46,55 @@ export function ModelForm({
   values,
   catalogOptions,
   requestHref,
+  own,
+  waiting,
+  makes = [],
 }: {
   slug: string;
   currency: string;
   values: ModelFormValues;
   catalogOptions: ModelOption[];
   requestHref: string;
+  /** One of the shop's own models: its make, model and specs are edited here. */
+  own?: OwnValues;
+  /** Sent to Moto Mangos and not yet reviewed: its description stays as it is. */
+  waiting?: boolean;
+  makes?: string[];
 }) {
   const t = useTranslations("Fleet.model");
   return (
     <ActionForm
       action={saveModel}
-      hidden={{ slug, ...(values.id ? { id: values.id } : {}) }}
+      hidden={{
+        slug,
+        ...(values.id ? { id: values.id } : {}),
+        ...(waiting ? { waiting: "1" } : {}),
+      }}
       className="max-w-3xl"
     >
-      <div className="grid gap-5 md:grid-cols-2">
-        <MakeModelPicker
-          modelName="catalog_id"
-          makeLabel={t("make")}
-          modelLabel={t("catalog")}
-          help={t("catalogHelp")}
-          models={catalogOptions}
-          defaultModel={values.catalog_id}
-          required
-          footer={
-            <Link
-              href={requestHref}
-              className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
-            >
-              {t("catalogMissing")}
-            </Link>
-          }
-        />
-      </div>
+      {waiting ? null : own ? (
+        <OwnModelFields makes={makes} values={own} />
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2">
+          <MakeModelPicker
+            modelName="catalog_id"
+            makeLabel={t("make")}
+            modelLabel={t("catalog")}
+            help={t("catalogHelp")}
+            models={catalogOptions}
+            defaultModel={values.catalog_id}
+            required
+            footer={
+              <Link
+                href={requestHref}
+                className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
+              >
+                {t("catalogMissing")}
+              </Link>
+            }
+          />
+        </div>
+      )}
       <TextInput
         name="name"
         label={t("name")}

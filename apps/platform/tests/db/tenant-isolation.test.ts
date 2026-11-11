@@ -19,6 +19,7 @@ import {
   deleteTenant,
   deleteUser,
   hours,
+  modelSpec,
   period,
   removeCatalogEntry,
   serviceClient,
@@ -77,7 +78,12 @@ async function addFixtures(tenant: TestTenant): Promise<Fixture> {
   const model = ok(
     await service
       .from("models")
-      .insert({ tenant_id: tenant.id, catalog_id: catalogId, name: "Fixture" })
+      .insert({
+        tenant_id: tenant.id,
+        catalog_id: catalogId,
+        ...modelSpec,
+        name: "Fixture",
+      })
       .select("id")
       .single(),
   )!;
@@ -186,7 +192,12 @@ const payloads: Record<string, (t: Fixture, userId: string) => Row> = {
     start_date: "2028-01-01",
     end_date: "2028-01-02",
   }),
-  models: (t) => ({ tenant_id: t.id, catalog_id: catalogId, name: "Sneaky" }),
+  models: (t) => ({
+    tenant_id: t.id,
+    catalog_id: catalogId,
+    ...modelSpec,
+    name: "Sneaky",
+  }),
   units: (t) => ({
     tenant_id: t.id,
     model_id: t.modelId,
@@ -584,6 +595,7 @@ describe("a row can't point at another tenant's parent (service role, so this is
     await refused("models", {
       tenant_id: a.id,
       catalog_id: catalogId,
+      ...modelSpec,
       name: "Wrong currency",
       deposit: 100,
       deposit_currency: "USD",
@@ -610,19 +622,19 @@ describe("functions, as tenant A's owner and as an outsider", () => {
     }
   });
 
-  it("can't request a catalog entry in tenant B's name", async () => {
+  it("can't submit tenant B's model to the catalog, or list it", async () => {
     for (const { who, db } of callers()) {
-      const { error } = await db.rpc("request_catalog_entry", {
-        p_tenant_id: b.id,
-        p_make: "Sneaky",
-        p_model: "Request",
-        p_year_from: null as unknown as number,
-        p_year_to: null as unknown as number,
+      const { error } = await db.rpc("submit_model_to_catalog", {
+        p_model_id: b.modelId,
         p_type: "city_scooter",
-        p_transmission: "automatic",
-        p_cc: 125,
       });
       expect(error?.code, who).toBe("42501");
+      const listed = await db
+        .from("models")
+        .update({ marketplace_listed: true })
+        .eq("id", b.modelId)
+        .select("id");
+      expect(listed.data ?? [], who).toEqual([]);
     }
   });
 

@@ -1,13 +1,22 @@
 import { describe, expect, it } from "vitest";
+import {
+  editDistance,
+  exactPresets,
+  normName,
+  sameMakeModel,
+  suggestCatalog,
+} from "./catalog-match";
 import { parseCsv } from "./csv";
 import { buildBoard, placeItem } from "./dashboard";
 import {
   isIsoDate,
   isRentable,
+  ownModelSchema,
   parseModelChoice,
   renewalSchema,
   unitSchema,
   unitStatuses,
+  vehicleTypes,
   yearBandSchema,
 } from "./fleet";
 import {
@@ -139,7 +148,23 @@ describe("fleet import: make, then model, from the catalog", () => {
       { id: "loc-main", name: "Main shop", isDefault: true },
       { id: "loc-2", name: "Airport", isDefault: false },
     ],
-    models: [{ id: "model-pcx", name: "Our PCX", catalog_id: "cat-pcx" }],
+    models: [
+      {
+        id: "model-pcx",
+        name: "Our PCX",
+        catalog_id: "cat-pcx",
+        make: "Honda",
+        model: "PCX 160",
+      },
+      // One of the shop's own: not in the catalog.
+      {
+        id: "model-own",
+        name: "Old Wave",
+        catalog_id: null,
+        make: "Honda",
+        model: "Wave 100",
+      },
+    ],
     catalog: [
       {
         id: "cat-pcx",
@@ -272,8 +297,20 @@ describe("fleet import: make, then model, from the catalog", () => {
     // Two models on the entry and no name given: ask which.
     const two = {
       models: [
-        { id: "a", name: "PCX A", catalog_id: "cat-pcx" },
-        { id: "b", name: "PCX B", catalog_id: "cat-pcx" },
+        {
+          id: "a",
+          name: "PCX A",
+          catalog_id: "cat-pcx",
+          make: "Honda",
+          model: "PCX 160",
+        },
+        {
+          id: "b",
+          name: "PCX B",
+          catalog_id: "cat-pcx",
+          make: "Honda",
+          model: "PCX 160",
+        },
       ],
     };
     expect(codes("make,model,plate\nHonda,PCX 160,N-4", two)).toEqual([
@@ -313,8 +350,10 @@ describe("fleet import: make, then model, from the catalog", () => {
     expect(result.errors.map((e) => `${e.line}:${e.column}:${e.code}`)).toEqual(
       [
         "2:make:required",
-        "3:make:makeUnknown",
-        "4:model:modelUnknown",
+        // Not in the list, so they would be the shop's own: a motorbike
+        // needs its engine size and transmission.
+        "3:cc:ownNeedsSpecs",
+        "4:cc:ownNeedsSpecs",
         "5:plate:plateExists",
         "6:plate:plateDuplicateInFile",
         "7:model_year:invalidYear",
@@ -340,6 +379,71 @@ describe("fleet import: make, then model, from the catalog", () => {
     expect(codes("make,model")).toEqual(["1::noRows"]);
   });
 
+  it("a make and model outside the list becomes one of the shop's own, with no approval", () => {
+    const result = plan(
+      [
+        "make,model,plate,vehicle_type,cc,transmission",
+        "Kymco,Like 125,K-1,,125,automatic",
+        "kymco,like125,K-2,,,",
+        "Toyota,Yaris,K-3,car,,",
+        "Honda,Wave 100,K-4,,,",
+        "HONDA,wave100,K-5,,,",
+        "Yamaha,242X,K-6,Boat,,",
+      ].join("\n"),
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.models).toEqual([
+      {
+        id: "new-1",
+        name: "Kymco Like 125",
+        catalog_id: null,
+        make: "Kymco",
+        model: "Like 125",
+        vehicle_type: "motorbike",
+        cc: 125,
+        transmission: "automatic",
+      },
+      {
+        id: "new-2",
+        name: "Toyota Yaris",
+        catalog_id: null,
+        make: "Toyota",
+        model: "Yaris",
+        vehicle_type: "car",
+        cc: null,
+        transmission: null,
+      },
+      {
+        id: "new-3",
+        name: "Yamaha 242X",
+        catalog_id: null,
+        make: "Yamaha",
+        model: "242X",
+        vehicle_type: "boat",
+        cc: null,
+        transmission: null,
+      },
+    ]);
+    // Same make and model, whatever the case and spacing: one model, not two.
+    expect(result.units.map((u) => u.model_id)).toEqual([
+      "new-1",
+      "new-1",
+      "new-2",
+      "model-own",
+      "model-own",
+      "new-3",
+    ]);
+    expect(codes("make,model,vehicle_type\nKymco,Like,plane")).toEqual([
+      "2:vehicle_type:invalidVehicleType",
+    ]);
+    expect(codes("make,model,cc,transmission\nKymco,Like,125,cvt")).toEqual([
+      "2:transmission:invalidTransmission",
+    ]);
+    expect(codes("make,model,cc\nKymco,Like,125")).toEqual([
+      "2:transmission:ownNeedsSpecs",
+    ]);
+  });
+
   it("ships a template that imports cleanly", () => {
     const result = plan(importTemplate());
     expect(result.errors).toEqual([]);
@@ -356,6 +460,124 @@ describe("fleet import: make, then model, from the catalog", () => {
         year_to: null,
       }),
     ).toBe("Honda Wave");
+  });
+});
+
+describe("the shop's own models and the presets", () => {
+  const presets = [
+    {
+      id: "pcx26",
+      make: "Honda",
+      model: "PCX 160",
+      year_from: 2026,
+      year_to: 2026,
+    },
+    {
+      id: "pcx21",
+      make: "Honda",
+      model: "PCX 160",
+      year_from: 2021,
+      year_to: 2025,
+    },
+    {
+      id: "click",
+      make: "Honda",
+      model: "Click 160",
+      year_from: 2023,
+      year_to: 2025,
+    },
+    {
+      id: "adv",
+      make: "Honda",
+      model: "ADV 160",
+      year_from: 2026,
+      year_to: 2026,
+    },
+    {
+      id: "nmax",
+      make: "Yamaha",
+      model: "NMAX",
+      year_from: 2026,
+      year_to: 2026,
+    },
+    {
+      id: "forza",
+      make: "Honda",
+      model: "Forza 350",
+      year_from: null,
+      year_to: null,
+    },
+  ];
+  const ids = (make: string, model: string) =>
+    suggestCatalog(make, model, presets).map((p) => p.id);
+
+  it("own models: vehicle type always; engine size and transmission for motorbikes", () => {
+    const base = {
+      make: " Kymco ",
+      model: "Like 125",
+      vehicle_type: "motorbike",
+      cc: "125",
+      transmission: "automatic",
+    };
+    expect(ownModelSchema.parse(base)).toEqual({
+      make: "Kymco",
+      model: "Like 125",
+      vehicle_type: "motorbike",
+      cc: 125,
+      transmission: "automatic",
+    });
+    const messages = (extra: object) =>
+      ownModelSchema
+        .safeParse({ ...base, ...extra })
+        .error?.issues.map((i) => `${String(i.path[0])}:${i.message}`);
+    expect(messages({ cc: "" })).toEqual(["cc:required"]);
+    expect(messages({ transmission: "" })).toEqual(["transmission:required"]);
+    expect(messages({ vehicle_type: "plane" })).toEqual([
+      "vehicle_type:required",
+    ]);
+    expect(messages({ make: " " })).toEqual(["make:required"]);
+    // A boat needs neither.
+    expect(
+      ownModelSchema.parse({
+        ...base,
+        vehicle_type: "boat",
+        cc: "",
+        transmission: "",
+      }),
+    ).toMatchObject({ vehicle_type: "boat", cc: null, transmission: null });
+    expect(vehicleTypes).toEqual(["motorbike", "car", "atv", "boat", "other"]);
+  });
+
+  it("the same make and model, ignoring case and spacing", () => {
+    expect(normName("  Honda  PCX 160 ")).toBe("hondapcx160");
+    expect(sameMakeModel({ make: "HONDA", model: "pcx160" }, presets[0])).toBe(
+      true,
+    );
+    expect(sameMakeModel({ make: "Honda", model: "PCX 150" }, presets[0])).toBe(
+      false,
+    );
+    // Every generation of it is "already in the list".
+    expect(
+      exactPresets("honda", "p c x 160", presets).map((p) => p.id),
+    ).toEqual(["pcx26", "pcx21"]);
+    expect(exactPresets("Honda", "Wave", presets)).toEqual([]);
+  });
+
+  it("suggests close matches: Did you mean Honda PCX 160?", () => {
+    // Punctuation and a missing number; newest generation first.
+    expect(ids("Honda", "PCX-160")).toEqual(["pcx26", "pcx21"]);
+    expect(ids("Honda", "PCX")).toEqual(["pcx26", "pcx21"]);
+    // A typo in the make, and in the model.
+    expect(ids("Hodna", "PCX 160")).toEqual(["pcx26", "pcx21"]);
+    expect(ids("Honda", "Clikc 160")[0]).toBe("click");
+    // Extra words.
+    expect(ids("Honda", "ADV 160 ABS")[0]).toBe("adv");
+    expect(ids("Yamaha", "N-Max")).toEqual(["nmax"]);
+    // The make has to be about right, and something has to be alike.
+    expect(ids("Yamaha", "PCX 160")).toEqual([]);
+    expect(ids("Honda", "Gold Wing")).toEqual([]);
+    expect(ids("Kymco", "Like 125")).toEqual([]);
+    expect(editDistance("clikc160", "click160")).toBe(2);
   });
 });
 

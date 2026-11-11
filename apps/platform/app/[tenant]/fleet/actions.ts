@@ -4,14 +4,16 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { FormState } from "@/components/action-form";
+import { exactPresets } from "@/lib/catalog-match";
 import { CsvError, parseCsv } from "@/lib/csv";
 import { toKm } from "@/lib/distance";
 import {
-  catalogRequestSchema,
+  catalogSubmitSchema,
   dbErrorKey,
   fieldErrors,
   isIsoDate,
   modelSchema,
+  ownModelSchema,
   parseModelChoice,
   renewalSchema,
   unitSchema,
@@ -98,19 +100,75 @@ export async function saveModel(
       },
     };
   }
-  const row = {
-    ...parsed.data,
+
+  // What the model is. Three cases:
+  //  - a preset: its make, model and specs come from the catalog entry;
+  //  - the shop's own: typed in, with the specs Moto Mangos search needs;
+  //  - waiting on its own submission to Moto Mangos: left as it is.
+  const { catalog_id: presetId, ...rest } = parsed.data;
+  let what: {
+    catalog_id: string | null;
+    make: string;
+    model: string;
+    vehicle_type: string;
+    cc: number | null;
+    transmission: "automatic" | "semi_auto" | "manual" | null;
+  } | null = null;
+  if (field(formData, "waiting") !== "1") {
+    const catalog = await getCatalog();
+    if (presetId) {
+      const entry = catalog.find((c) => c.id === presetId);
+      if (!entry) return { errors: { catalog_id: "catalog_entry_not_usable" } };
+      what = {
+        catalog_id: entry.id,
+        make: entry.make,
+        model: entry.model,
+        vehicle_type: "motorbike",
+        cc: entry.cc,
+        transmission: entry.transmission,
+      };
+    } else {
+      const own = ownModelSchema.safeParse({
+        make: raw.make,
+        model: raw.model,
+        vehicle_type: raw.vehicle_type,
+        cc: raw.cc,
+        transmission: raw.transmission,
+      });
+      if (!own.success) return { errors: fieldErrors(own.error) };
+      // One of the shop's own can't be a preset under another spelling.
+      const presets = exactPresets(own.data.make, own.data.model, catalog);
+      if (presets.length > 0)
+        return {
+          errors: { model: "inPresets" },
+          suggestions: presets.map((c) => ({
+            label: catalogName(c),
+            href: `/${slug}/fleet/models/new?catalog=${c.id}`,
+          })),
+        };
+      what = { catalog_id: null, ...own.data };
+    }
+  }
+  const common = {
+    ...rest,
     deposit,
     deposit_currency: deposit === null ? null : tenant.currency,
   };
+  const failed = (error: Parameters<typeof dbErrorKey>[0]): FormState => {
+    const key = dbErrorKey(error);
+    if (key === "ownModelExists") return { errors: { model: key } };
+    if (key === "nameExists") return { errors: { name: key } };
+    return { errors: { form: key } };
+  };
 
   if (!id) {
+    if (!what) return { errors: { form: "saveFailed" } };
     const { data, error } = await supabase
       .from("models")
-      .insert({ ...row, tenant_id: tenant.id })
+      .insert({ ...common, ...what, tenant_id: tenant.id })
       .select("id")
       .single();
-    if (error) return { errors: { form: dbErrorKey(error) } };
+    if (error) return failed(error);
     refresh(slug);
     redirect(`/${slug}/fleet/models/${data.id}`);
   }
@@ -118,16 +176,16 @@ export async function saveModel(
   const { data, error } = await supabase
     .from("models")
     .update({
-      ...row,
-      ...(row.ready_now > 0
+      ...common,
+      ...(what ?? {}),
+      ...(common.ready_now > 0
         ? { ready_updated_at: new Date().toISOString() }
         : {}),
     })
     .eq("tenant_id", tenant.id)
     .eq("id", id)
     .select("id");
-  if (error || data.length !== 1)
-    return { errors: { form: dbErrorKey(error) } };
+  if (error || data.length !== 1) return failed(error);
   refresh(slug);
   return { ok: true };
 }
@@ -231,7 +289,18 @@ async function resolveModel(
     name = `${catalogName(entry)} (${n})`;
   const { data: created } = await supabase
     .from("models")
-    .insert({ tenant_id: tenantId, catalog_id: entry.id, name })
+    .insert({
+      tenant_id: tenantId,
+      catalog_id: entry.id,
+      name,
+      // The database copies these from the catalog entry; they are sent so
+      // the row is complete on its own.
+      make: entry.make,
+      model: entry.model,
+      vehicle_type: "motorbike",
+      cc: entry.cc,
+      transmission: entry.transmission,
+    })
     .select("id")
     .single();
   return created?.id ?? null;
@@ -649,7 +718,7 @@ export async function importFleet(
     getCatalog(),
     supabase
       .from("models")
-      .select("id, name, catalog_id")
+      .select("id, name, catalog_id, make, model")
       .eq("tenant_id", tenant.id),
     supabase.from("units").select("plate").eq("tenant_id", tenant.id),
   ]);
@@ -679,67 +748,140 @@ export async function importFleet(
   return { done: data as { models: number; units: number } };
 }
 
-// A make or model that isn't in the catalog -----------------------------------------------
+// A shop's own make or model ------------------------------------------------------------
 
 /**
- * Adds the shop's own make or model. It becomes a catalog request: the shop
- * can use it at once, and a platform admin approves it for every shop.
+ * Adds one of the shop's own makes or models: any vehicle, no approval. If
+ * the make and model is already a preset, the shop is pointed at it instead,
+ * so the same bike isn't kept under two names.
  */
-export async function requestCatalogEntry(
+export async function addOwnModel(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
+  const then = field(formData, "then") === "bike" ? "bike" : "model";
 
   const raw = Object.fromEntries(formData);
-  const parsed = catalogRequestSchema.safeParse({
+  const parsed = ownModelSchema.safeParse({
     make: raw.make,
     model: raw.model,
+    vehicle_type: raw.vehicle_type,
+    cc: raw.cc,
+    transmission: raw.transmission,
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const own = parsed.data;
+
+  const presets = exactPresets(own.make, own.model, await getCatalog());
+  if (presets.length > 0)
+    return {
+      errors: { model: "inPresets" },
+      suggestions: presets.map((entry) => ({
+        label: catalogName(entry),
+        href:
+          then === "bike"
+            ? `/${slug}/fleet/units/new?catalog=${entry.id}`
+            : `/${slug}/fleet/models/new?catalog=${entry.id}`,
+      })),
+    };
+
+  const { data: names } = await supabase
+    .from("models")
+    .select("name")
+    .eq("tenant_id", tenant.id);
+  const taken = new Set((names ?? []).map((m) => m.name.trim().toLowerCase()));
+  let name = `${own.make} ${own.model}`;
+  for (let n = 2; taken.has(name.toLowerCase()); n++)
+    name = `${own.make} ${own.model} (${n})`;
+
+  const { data, error } = await supabase
+    .from("models")
+    .insert({ ...own, tenant_id: tenant.id, catalog_id: null, name })
+    .select("id")
+    .single();
+  if (error) {
+    const key = dbErrorKey(error);
+    return {
+      errors: key === "ownModelExists" ? { model: key } : { form: key },
+    };
+  }
+  refresh(slug);
+  redirect(
+    then === "bike"
+      ? `/${slug}/fleet/units/new?model=${data.id}`
+      : `/${slug}/fleet/models/${data.id}`,
+  );
+}
+
+// Listing on Moto Mangos -------------------------------------------------------------------
+
+/** Links one of the shop's own models to a preset ("Did you mean Honda PCX 160?"). */
+export async function linkModelToPreset(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canManageFleet(role)) return notAllowed;
+  const { data, error } = await supabase
+    .from("models")
+    .update({ catalog_id: field(formData, "catalog_id") })
+    .eq("tenant_id", tenant.id)
+    .eq("id", field(formData, "id"))
+    .select("id");
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
+  refresh(slug);
+  return { ok: true };
+}
+
+/**
+ * Sends one of the shop's own models to the platform admin, to be added to
+ * the presets or merged into one. The model waits, linked to its submission.
+ */
+export async function submitModelToCatalog(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, role, supabase } = await context(formData);
+  if (!canManageFleet(role)) return notAllowed;
+  const raw = Object.fromEntries(formData);
+  const parsed = catalogSubmitSchema.safeParse({
+    type: raw.type,
     year_from: raw.year_from,
     year_to: raw.year_to,
-    type: raw.type,
-    transmission: raw.transmission,
-    cc: raw.cc,
     note: raw.note,
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-  const entry = parsed.data;
 
-  // Already in the list (approved, or this shop's own request) for those
-  // years: pick it from the dropdowns, don't add it twice. An entry with no
-  // years covers every year.
-  const same = (a: string, b: string) =>
-    a.trim().toLowerCase() === b.trim().toLowerCase();
-  const from = entry.year_from ?? -Infinity;
-  const to = entry.year_to ?? entry.year_from ?? Infinity;
-  const duplicate = (await getCatalog()).some(
-    (c) =>
-      same(c.make, entry.make) &&
-      same(c.model, entry.model) &&
-      (c.year_from ?? -Infinity) <= to &&
-      (c.year_to ?? c.year_from ?? Infinity) >= from,
-  );
-  if (duplicate) return { errors: { model: "catalogExists" } };
-
-  const { data: id, error } = await supabase.rpc("request_catalog_entry", {
-    p_tenant_id: tenant.id,
-    p_make: entry.make,
-    p_model: entry.model,
-    // The generated types mark these as required; the function accepts null.
-    p_year_from: entry.year_from as number,
-    p_year_to: entry.year_to as number,
-    p_type: entry.type,
-    p_transmission: entry.transmission,
-    p_cc: entry.cc,
-    p_note: entry.note ?? undefined,
+  const { error } = await supabase.rpc("submit_model_to_catalog", {
+    p_model_id: field(formData, "id"),
+    p_type: parsed.data.type,
+    p_year_from: parsed.data.year_from ?? undefined,
+    p_year_to: parsed.data.year_to ?? undefined,
+    p_note: parsed.data.note ?? undefined,
   });
   if (error) return { errors: { form: dbErrorKey(error) } };
-  revalidatePath(`/${slug}/fleet`, "layout");
-  // Back to where the make or model was needed, with it chosen.
-  redirect(
-    field(formData, "then") === "bike"
-      ? `/${slug}/fleet/units/new?catalog=${id}`
-      : `/${slug}/fleet/models/new?catalog=${id}`,
-  );
+  refresh(slug);
+  return { ok: true };
+}
+
+/** Switches a model's Moto Mangos listing on or off. Only a model on an approved preset can be on. */
+export async function setMarketplaceListed(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canManageFleet(role)) return notAllowed;
+  const { data, error } = await supabase
+    .from("models")
+    .update({ marketplace_listed: field(formData, "listed") === "on" })
+    .eq("tenant_id", tenant.id)
+    .eq("id", field(formData, "id"))
+    .select("id");
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
+  refresh(slug);
+  return { ok: true };
 }

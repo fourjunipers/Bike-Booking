@@ -317,7 +317,7 @@ export default async function FleetPage({
                 </select>
               </Field>
             )}
-            <Field id="transmission" label={t("catalogRequest.transmission")}>
+            <Field id="transmission" label={t("ownModel.transmission")}>
               <select
                 id="transmission"
                 name="transmission"

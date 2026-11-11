@@ -71,7 +71,8 @@
     "yes": "Yes",
     "no": "No",
     "print": "Print",
-    "none": "None"
+    "none": "None",
+    "didYouMean": "Did you mean:"
   },
   "Dashboard": {
     "title": "What's coming up",
@@ -246,7 +247,13 @@
     "bandOverlap": "These years overlap another band of this model.",
     "invalidReminderDays": "Enter up to 10 whole numbers from 1 to 365, separated by commas.",
     "invalidDigestDay": "Choose a day from 1 to 28.",
-    "catalogExists": "This make and model is already in the list for those years. Pick it from the dropdowns instead."
+    "inPresets": "This make and model is already in the list. Pick it from the dropdowns instead.",
+    "ownModelExists": "You already have this make and model.",
+    "motorbikeSpecs": "A motorbike needs an engine size and a transmission.",
+    "not_listable": "Only a model on the Moto Mangos list can be listed there.",
+    "already_linked": "This model is already on the Moto Mangos list, or waiting for review.",
+    "only_motorbikes": "Moto Mangos lists motorbikes only, for now.",
+    "merge_target_not_approved": "Choose an approved entry to merge into."
   },
   "Fleet": {
     "title": "Fleet",
@@ -261,7 +268,7 @@
       "title": "Import bikes from CSV",
       "intro": "One row per bike. The whole file is checked first: if any row has a problem, nothing is saved.",
       "columns": "Columns",
-      "columnsHelp": "“make” and “model” are required and must match the catalog (list below). Where a model has several generations, “model_year” picks the right one. “name” is optional: your own name for the model. Leave “plate” blank for a bike without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
+      "columnsHelp": "“make” and “model” are required. If they match the list below, the bike goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the bike becomes one of your own models: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and, for a motorbike, “cc” and “transmission” (automatic, semi_auto or manual). “name” is optional: your own name for the model. Leave “plate” blank for a bike without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
       "template": "Download a template",
       "file": "CSV file",
       "paste": "Or paste the rows here",
@@ -274,7 +281,7 @@
       "column": "Column",
       "problem": "Problem",
       "value": "Value",
-      "catalogCodes": "Makes and models in the catalog",
+      "catalogCodes": "Makes and models in the list",
       "errors": {
         "tooLarge": "That file is too big (limit 1 MB).",
         "noFile": "Choose a file or paste the rows.",
@@ -294,12 +301,13 @@
         "locationUnknown": "No location has this name.",
         "saveFailed": "The file passed the checks but couldn't be saved. Nothing was imported.",
         "missingColumns": "The file needs this column.",
-        "makeUnknown": "This make isn't in the catalog. Add it first (link below the catalog list).",
-        "modelUnknown": "This make has no such model in the catalog. Add it first.",
         "modelNeedsYear": "This model has several generations. Give a model year that one of them covers.",
         "modelNeedsName": "You have several models on this catalog entry. Say which in the “name” column.",
         "nameOtherModel": "This name belongs to a different make or model.",
-        "invalidYear": "Not a year, such as 2024."
+        "invalidYear": "Not a year, such as 2024.",
+        "ownNeedsSpecs": "This make and model isn't in the list, so it will be one of your own. A motorbike needs “cc” and “transmission”.",
+        "invalidVehicleType": "Use motorbike, car, atv, boat or other.",
+        "invalidTransmission": "Use automatic, semi_auto or manual."
       },
       "showCodes": "{count, plural, one {Show # entry} other {Show # entries}}",
       "years": "years"
@@ -334,9 +342,8 @@
       "name": "Name",
       "nameHelp": "Your own name for it. Several models can share one catalog entry.",
       "catalog": "Model",
-      "catalogHelp": "Sets the engine size and transmission renters search by.",
-      "catalogMissing": "Not in the list? Add a make or model",
-      "pendingRequest": "your request, awaiting approval",
+      "catalogHelp": "The same list Moto Mangos uses. Picking from it means the model can be listed there with no extra step.",
+      "catalogMissing": "Not in the list? Add my own",
       "description": "Description",
       "bookableOnline": "Can be booked online",
       "bufferBefore": "Buffer before pickup (minutes)",
@@ -379,7 +386,7 @@
       "make": "Make",
       "modelYear": "Model year",
       "modelYearHelp": "Used to group the fleet list by year band.",
-      "makeOrModelMissing": "Not in the list? Add a make or model",
+      "makeOrModelMissing": "Not in the list? Add my own",
       "yourModels": "Your models",
       "fromCatalog": "From the catalog",
       "statusIntro": "One status per bike. Scheduled downtime is separate, below.",
@@ -429,20 +436,6 @@
       "selectAll": "{count, plural, one {Select the # bike listed} other {Select all # listed}}",
       "selected": "{count} selected",
       "sortRecent": "Most recently added"
-    },
-    "catalogRequest": {
-      "title": "Add a make or model",
-      "intro": "For a bike that isn't in the catalog. You can use it straight away; Mango Works then checks it before other shops see it.",
-      "make": "Make",
-      "model": "Model",
-      "yearFrom": "First model year",
-      "yearTo": "Last model year",
-      "type": "Type",
-      "transmission": "Transmission",
-      "cc": "Engine size (cc)",
-      "note": "Note for the reviewer",
-      "submit": "Send request",
-      "makeHelp": "Pick an existing make, or type a new one."
     },
     "importCsv": "Import CSV",
     "printStickers": "Print stickers",
@@ -531,6 +524,44 @@
       "expiry": "Expiry date",
       "delete": "Delete",
       "deleteConfirm": "Delete this record?"
+    },
+    "vehicleType": {
+      "motorbike": "Motorbike",
+      "car": "Car",
+      "atv": "ATV",
+      "boat": "Boat",
+      "other": "Other"
+    },
+    "ownModel": {
+      "title": "Add my own make or model",
+      "intro": "For any vehicle that isn't in the list: bikes, cars, ATVs, boats. It is saved straight away, with no approval.",
+      "make": "Make",
+      "makeHelp": "Pick an existing make, or type a new one.",
+      "model": "Model",
+      "vehicleType": "Vehicle type",
+      "cc": "Engine size (cc)",
+      "transmission": "Transmission",
+      "specsHelp": "Engine size and transmission are required for motorbikes.",
+      "submit": "Add"
+    },
+    "motoMangos": {
+      "title": "Moto Mangos",
+      "intro": "Moto Mangos keeps one entry per bike, so renters see one Honda PCX, not three spellings.",
+      "ready": "On the Moto Mangos list as {name}.",
+      "list": "List this model on Moto Mangos",
+      "later": "Listing takes effect when Moto Mangos starts reading from this system.",
+      "waiting": "Sent to Moto Mangos. It is waiting for review; you can keep using the model meanwhile.",
+      "bikesOnly": "Moto Mangos lists motorbikes only, for now. This model is yours to use here.",
+      "own": "This is your own make and model. To list it on Moto Mangos it has to match an entry on their list.",
+      "didYouMean": "Did you mean:",
+      "use": "Use {name}",
+      "submitTitle": "None of these? Send it to Moto Mangos",
+      "submitHelp": "We check it, then add it to the list for every shop or match it to an existing entry.",
+      "submit": "Send to Moto Mangos",
+      "bikeType": "Bike type",
+      "yearFrom": "First model year",
+      "yearTo": "Last model year",
+      "note": "Note for the reviewer"
     }
   },
   "Locations": {
@@ -573,12 +604,14 @@
   },
   "Admin": {
     "title": "Catalog requests",
-    "intro": "Entries shops have asked for. Approving one opens it to every shop.",
+    "intro": "Models shops want on Moto Mangos that match no entry. Approve to add it to the list for every shop, or merge it into the entry it really is.",
     "none": "No requests waiting.",
     "requestedBy": "Requested by {shop}",
     "approve": "Approve",
     "reject": "Reject",
     "notes": "Review note",
-    "failed": "That didn't work. Please try again."
+    "failed": "That didn't work. Please try again.",
+    "mergeInto": "It is the same bike as",
+    "merge": "Merge"
   }
 }

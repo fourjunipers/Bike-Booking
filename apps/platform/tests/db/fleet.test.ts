@@ -12,6 +12,7 @@ import {
   deleteTenant,
   deleteUser,
   hours,
+  modelSpec,
   period,
   removeCatalogEntry,
   serviceClient,
@@ -67,7 +68,12 @@ beforeAll(async () => {
   await service.from("platform_admins").insert({ user_id: admin.id });
   const { data, error } = await service
     .from("models")
-    .insert({ tenant_id: shop.id, catalog_id: catalogId, name: "Test model" })
+    .insert({
+      tenant_id: shop.id,
+      catalog_id: catalogId,
+      ...modelSpec,
+      name: "Test model",
+    })
     .select("id")
     .single();
   if (error) throw error;
@@ -125,9 +131,12 @@ describe("role limits", () => {
   it("staff, mechanics and drivers can't add models, units or locations", async () => {
     for (const role of ["staff", "mechanic", "driver"] as const) {
       const db = shop.members[role].db;
-      const model = await db
-        .from("models")
-        .insert({ tenant_id: shop.id, catalog_id: catalogId, name: role });
+      const model = await db.from("models").insert({
+        tenant_id: shop.id,
+        catalog_id: catalogId,
+        ...modelSpec,
+        name: role,
+      });
       expect(model.error?.code, `${role} model`).toBe("42501");
       const unit = await db.from("units").insert({
         tenant_id: shop.id,
@@ -293,17 +302,74 @@ describe("unit blocks: one lock for every kind", () => {
     expect(results.map((r) => r.error)).toEqual([null, null]);
   });
 
-  it("gives one winner when two people block the same unit at once", async () => {
-    const id = await addUnit();
+  it("gives one winner, at once, however many people block the same unit at the same instant", async () => {
+    // Writers for one unit queue (an advisory lock), so the losers get the
+    // overlap refusal straight away rather than waiting on each other.
+    const racers = ["mechanic", "staff", "manager", "owner"] as const;
+    for (let round = 0; round < 5; round++) {
+      const id = await addUnit();
+      const started = Date.now();
+      const results = await Promise.all(
+        // Twelve at once: each member three times.
+        [...racers, ...racers, ...racers].map((role) =>
+          shop.members[role].db
+            .from("unit_blocks")
+            .insert(block(id, hours(40), hours(50))),
+        ),
+      );
+      const codes = results.map((r) => r.error?.code ?? "ok").sort();
+      expect(codes, `round ${round}`).toEqual([
+        ...Array<string>(11).fill("23P01"),
+        "ok",
+      ]);
+      expect(Date.now() - started, `round ${round}`).toBeLessThan(5000);
+      const { count } = await service
+        .from("unit_blocks")
+        .select("*", { count: "exact", head: true })
+        .eq("unit_id", id);
+      expect(count).toBe(1);
+    }
+  });
+
+  it("doesn't make writers for different units wait on each other", async () => {
+    const ids = await Promise.all(Array.from({ length: 6 }, () => addUnit()));
     const results = await Promise.all(
-      (["mechanic", "staff", "manager", "owner"] as const).map((role) =>
-        shop.members[role].db
+      ids.map((id) =>
+        shop.members.mechanic.db
           .from("unit_blocks")
           .insert(block(id, hours(40), hours(50))),
       ),
     );
-    const codes = results.map((r) => r.error?.code ?? "ok").sort();
-    expect(codes).toEqual(["23P01", "23P01", "23P01", "ok"]);
+    expect(results.map((r) => r.error)).toEqual(Array(6).fill(null));
+  });
+
+  it("ending a block while someone adds one after it gives a consistent answer", async () => {
+    const id = await addUnit();
+    const { data: open } = await service
+      .from("unit_blocks")
+      .insert(block(id, hours(1)))
+      .select("id")
+      .single();
+    // The open-ended block is cut to end at +2h while another is added from +3h.
+    const [ended, added] = await Promise.all([
+      shop.members.staff.db
+        .from("unit_blocks")
+        .update({ period: period(hours(1), hours(2)) })
+        .eq("id", open!.id)
+        .select("id"),
+      shop.members.mechanic.db
+        .from("unit_blocks")
+        .insert(block(id, hours(3), hours(4))),
+    ]);
+    expect(ended.error).toBeNull();
+    // Whichever went first, nothing overlaps afterwards: the add either
+    // succeeded (after the cut) or was refused (before it).
+    expect([null, "23P01"]).toContain(added.error?.code ?? null);
+    const { data: blocks } = await service
+      .from("unit_blocks")
+      .select("period")
+      .eq("unit_id", id);
+    expect(blocks).toHaveLength(added.error ? 1 : 2);
   });
 
   it("refuses an empty, reversed or unbounded-start period", async () => {
@@ -414,7 +480,12 @@ describe("units and models", () => {
     expect((await unit(shop, modelId, "AB-77")).error?.code).toBe("23505");
     const { data: otherModel } = await service
       .from("models")
-      .insert({ tenant_id: other.id, catalog_id: catalogId, name: "Other" })
+      .insert({
+        tenant_id: other.id,
+        catalog_id: catalogId,
+        ...modelSpec,
+        name: "Other",
+      })
       .select("id")
       .single();
     expect((await unit(other, otherModel!.id, "AB-77")).error).toBeNull();
@@ -442,9 +513,12 @@ describe("units and models", () => {
 
   it("several models may share a catalog entry, each with its own name", async () => {
     const add = (name: string) =>
-      shop.members.manager.db
-        .from("models")
-        .insert({ tenant_id: shop.id, catalog_id: catalogId, name });
+      shop.members.manager.db.from("models").insert({
+        tenant_id: shop.id,
+        catalog_id: catalogId,
+        ...modelSpec,
+        name,
+      });
     expect((await add("With top box")).error).toBeNull();
     expect((await add("Without top box")).error).toBeNull();
     expect((await add(" with TOP box ")).error?.code).toBe("23505");
@@ -453,7 +527,12 @@ describe("units and models", () => {
   it("booking-mode counts can't exceed the model's active units", async () => {
     const { data: model } = await service
       .from("models")
-      .insert({ tenant_id: shop.id, catalog_id: catalogId, name: "Counted" })
+      .insert({
+        tenant_id: shop.id,
+        catalog_id: catalogId,
+        ...modelSpec,
+        name: "Counted",
+      })
       .select("id")
       .single();
     await addUnit(shop, model!.id);
@@ -491,7 +570,12 @@ describe("money", () => {
 
       const { data: model } = await service
         .from("models")
-        .insert({ tenant_id: fresh.id, catalog_id: catalogId, name: "M" })
+        .insert({
+          tenant_id: fresh.id,
+          catalog_id: catalogId,
+          ...modelSpec,
+          name: "M",
+        })
         .select("id")
         .single();
       const unitId = await addUnit(fresh, model!.id);
@@ -524,6 +608,7 @@ describe("money", () => {
       .insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
+        ...modelSpec,
         name: "Deposit",
         deposit: 200_000,
         deposit_currency: "THB",
@@ -539,6 +624,7 @@ describe("money", () => {
     const noCurrency = await service.from("models").insert({
       tenant_id: shop.id,
       catalog_id: catalogId,
+      ...modelSpec,
       name: "No currency",
       deposit: 100,
     });
@@ -546,6 +632,7 @@ describe("money", () => {
     const fraction = await service.from("models").insert({
       tenant_id: shop.id,
       catalog_id: catalogId,
+      ...modelSpec,
       name: "Fraction",
       deposit: 100.5 as number,
       deposit_currency: "THB",
@@ -557,6 +644,7 @@ describe("money", () => {
       .insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
+        ...modelSpec,
         name: "Big",
         deposit: 9_000_000_000_000,
         deposit_currency: "THB",
@@ -639,103 +727,342 @@ describe("locations", () => {
   });
 });
 
-describe("catalog link", () => {
-  const request = (db: Db, tenant: TestTenant, model: string) =>
-    db.rpc("request_catalog_entry", {
-      p_tenant_id: tenant.id,
-      p_make: "Requested",
-      p_model: model,
-      p_year_from: 2024,
-      p_year_to: null as unknown as number,
+describe("presets, a shop's own models, and listing on Moto Mangos", () => {
+  const own = (extra: object = {}) => ({
+    tenant_id: shop.id,
+    catalog_id: null,
+    name: `Own ${Math.random().toString(36).slice(2, 8)}`,
+    make: "Kymco",
+    model: `Like ${Math.random().toString(36).slice(2, 8)}`,
+    vehicle_type: "motorbike",
+    cc: 125,
+    transmission: "automatic" as const,
+    ...extra,
+  });
+  const submit = (db: Db, modelId: string) =>
+    db.rpc("submit_model_to_catalog", {
+      p_model_id: modelId,
       p_type: "city_scooter",
-      p_transmission: "automatic",
-      p_cc: 110,
+      p_year_from: 2024,
       p_note: "Please add",
     });
-
-  it("a shop uses its own pending request; another shop can't; staff can't ask", async () => {
-    const staff = await request(shop.members.staff.db, shop, "Staff ask");
-    expect(staff.error?.code).toBe("42501");
-
-    const { data: id, error } = await request(
-      shop.members.manager.db,
-      shop,
-      `Mine ${Date.now()}`,
-    );
-    expect(error).toBeNull();
-    extraCatalog.push(id!);
-
-    const mine = await shop.members.manager.db
+  const model = async (id: string) => {
+    const { data } = await service
       .from("models")
-      .insert({ tenant_id: shop.id, catalog_id: id!, name: "On my request" });
-    expect(mine.error).toBeNull();
+      .select(
+        "catalog_id, make, model, cc, transmission, vehicle_type, marketplace_listed",
+      )
+      .eq("id", id)
+      .single();
+    return data!;
+  };
+  const addOwn = async (extra: object = {}) => {
+    const { data, error } = await shop.members.manager.db
+      .from("models")
+      .insert(own(extra))
+      .select("id")
+      .single();
+    if (error) throw error;
+    return data.id;
+  };
+
+  it("a model on a preset takes its make, model and specs from the catalog", async () => {
+    const { data, error } = await shop.members.manager.db
+      .from("models")
+      .insert({
+        tenant_id: shop.id,
+        catalog_id: catalogId,
+        name: "Preset with made-up specs",
+        // Whatever is sent, the preset's own description is what's saved.
+        make: "Wrong",
+        model: "Wrong",
+        vehicle_type: "car",
+        cc: 9999,
+      })
+      .select("make, model, vehicle_type, cc, transmission")
+      .single();
+    expect(error).toBeNull();
+    expect(data).toMatchObject({
+      make: "Testmake",
+      vehicle_type: "motorbike",
+      cc: 125,
+      transmission: "automatic",
+    });
+  });
+
+  it("a shop adds any vehicle of its own, with no approval", async () => {
+    for (const vehicle of [
+      {
+        vehicle_type: "car",
+        make: "Toyota",
+        model: "Yaris",
+        cc: 1200,
+        transmission: "automatic",
+      },
+      // Not a motorbike: engine size and transmission may be left out.
+      {
+        vehicle_type: "boat",
+        make: "Yamaha",
+        model: "242X",
+        cc: null,
+        transmission: null,
+      },
+      {
+        vehicle_type: "atv",
+        make: "Polaris",
+        model: "Sportsman",
+        cc: 570,
+        transmission: null,
+      },
+    ]) {
+      const { data, error } = await shop.members.owner.db
+        .from("models")
+        .insert(own({ ...vehicle, name: `${vehicle.make} ${vehicle.model}` }))
+        .select("catalog_id, vehicle_type")
+        .single();
+      expect(error, vehicle.vehicle_type).toBeNull();
+      expect(data).toEqual({
+        catalog_id: null,
+        vehicle_type: vehicle.vehicle_type,
+      });
+    }
+    const unknown = await shop.members.owner.db
+      .from("models")
+      .insert(own({ vehicle_type: "spaceship" }));
+    expect(unknown.error?.code).toBe("23503");
+  });
+
+  it("a motorbike of its own still needs engine size and transmission", async () => {
+    const insert = (extra: object) =>
+      shop.members.owner.db.from("models").insert(own(extra));
+    expect((await insert({ cc: null })).error?.message).toContain(
+      "models_motorbike_specs_check",
+    );
+    expect((await insert({ transmission: null })).error?.message).toContain(
+      "models_motorbike_specs_check",
+    );
+    expect((await insert({ make: null })).error?.code).toBe("23502");
+    expect((await insert({ vehicle_type: null })).error?.code).toBe("23502");
+  });
+
+  it("blocks a duplicate make and model within a shop, ignoring case and spacing", async () => {
+    await addOwn({ make: "Lifan", model: "KP 150" });
+    for (const [make, modelName] of [
+      ["lifan", "kp 150"],
+      ["LIFAN", "KP150"],
+      ["  Li fan ", "K P 1 5 0"],
+    ]) {
+      const { error } = await shop.members.manager.db
+        .from("models")
+        .insert(own({ make, model: modelName }));
+      expect(error?.code, `${make} / ${modelName}`).toBe("23505");
+      expect(error?.message).toContain("models_own_make_model_idx");
+    }
+    // Another model of that make, and the same pair in another shop, are fine.
+    expect(
+      (
+        await shop.members.manager.db
+          .from("models")
+          .insert(own({ make: "Lifan", model: "KPR 200" }))
+      ).error,
+    ).toBeNull();
+    expect(
+      (
+        await service.from("models").insert({
+          ...own({ make: "Lifan", model: "KP 150" }),
+          tenant_id: other.id,
+        })
+      ).error,
+    ).toBeNull();
+    // Models on presets are not affected: two may share one catalog entry.
+    const onPreset = (name: string) =>
+      service.from("models").insert({
+        ...modelSpec,
+        tenant_id: shop.id,
+        catalog_id: catalogId,
+        name,
+      });
+    expect((await onPreset("Shared A")).error).toBeNull();
+    expect((await onPreset("Shared B")).error).toBeNull();
+  });
+
+  it("only a model on an approved preset can be listed on Moto Mangos", async () => {
+    const id = await addOwn();
+    const list = (modelId: string, on = true) =>
+      shop.members.owner.db
+        .from("models")
+        .update({ marketplace_listed: on })
+        .eq("id", modelId)
+        .select("marketplace_listed");
+    expect((await list(id)).error?.message).toBe("not_listable");
+
+    // Sent to the admin: linked to its own submission, still not listable.
+    const sent = await submit(shop.members.manager.db, id);
+    expect(sent.error).toBeNull();
+    expect((await model(id)).catalog_id).toBe(sent.data);
+    extraCatalog.push(sent.data!);
+    expect((await list(id)).error?.message).toBe("not_listable");
+    // The submission is the shop's alone: another shop can't use it or see it.
     const theirs = await other.members.owner.db.from("models").insert({
+      ...modelSpec,
       tenant_id: other.id,
-      catalog_id: id!,
-      name: "On their request",
+      catalog_id: sent.data!,
+      name: "Borrowed",
     });
     expect(theirs.error?.message).toBe("catalog_entry_not_usable");
+    const seen = await other.members.owner.db
+      .schema("public")
+      .from("bike_catalog")
+      .select("id")
+      .eq("id", sent.data!);
+    expect(seen.data).toEqual([]);
 
-    // The requesting shop sees it; the other shop and the public don't.
-    const seen = (db: Db) =>
-      db.schema("public").from("bike_catalog").select("status").eq("id", id!);
-    expect((await seen(shop.members.staff.db)).data).toEqual([
-      { status: "requested" },
-    ]);
-    expect((await seen(other.members.owner.db)).data).toEqual([]);
+    // Approved: it is a preset for every shop, and the model can be listed.
+    const approve = await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: sent.data!,
+      p_approve: true,
+    });
+    expect(approve.error).toBeNull();
+    expect((await list(id)).data).toEqual([{ marketplace_listed: true }]);
+    const preset = await other.members.staff.db
+      .schema("public")
+      .from("bike_catalog")
+      .select("status, make")
+      .eq("id", sent.data!);
+    expect(preset.data).toEqual([{ status: "approved", make: "Kymco" }]);
+    const nowTheirs = await other.members.owner.db.from("models").insert({
+      ...modelSpec,
+      tenant_id: other.id,
+      catalog_id: sent.data!,
+      name: "Now a preset",
+    });
+    expect(nowTheirs.error).toBeNull();
   });
 
-  it("only a platform admin approves or rejects, and approval opens it to every shop", async () => {
-    const { data: id } = await request(
-      shop.members.owner.db,
-      shop,
-      `Review ${Date.now()}`,
-    );
-    extraCatalog.push(id!);
-    const review = (db: Db, approve: boolean) =>
+  it("a model on a preset is listable at once; picking the preset later works too", async () => {
+    const { data: onPreset } = await service
+      .from("models")
+      .insert({
+        ...modelSpec,
+        tenant_id: shop.id,
+        catalog_id: catalogId,
+        name: "Listable",
+      })
+      .select("id")
+      .single();
+    const listed = await shop.members.manager.db
+      .from("models")
+      .update({ marketplace_listed: true })
+      .eq("id", onPreset!.id)
+      .select("marketplace_listed");
+    expect(listed.data).toEqual([{ marketplace_listed: true }]);
+
+    // "Did you mean…": the shop links its own model to the preset.
+    const id = await addOwn({ make: "Tsetmake", cc: 999 });
+    const linked = await shop.members.manager.db
+      .from("models")
+      .update({ catalog_id: catalogId })
+      .eq("id", id)
+      .select("make, cc");
+    expect(linked.data).toEqual([{ make: "Testmake", cc: 125 }]);
+  });
+
+  it("the admin merges a submission into the entry it really is", async () => {
+    const id = await addOwn({ make: "Testmakee" });
+    const sent = await submit(shop.members.owner.db, id);
+    extraCatalog.push(sent.data!);
+    const merge = (db: Db, into: string) =>
       db.rpc("review_catalog_request", {
-        p_catalog_id: id!,
-        p_approve: approve,
-        p_notes: "ok",
+        p_catalog_id: sent.data!,
+        p_approve: false,
+        p_merge_into: into,
       });
-    // A shop owner isn't a platform admin, whatever their marketplace role.
-    expect((await review(shop.members.owner.db, true)).error?.code).toBe(
+    // Not an admin; not an approved target.
+    expect((await merge(shop.members.owner.db, catalogId)).error?.code).toBe(
       "42501",
     );
-    expect((await review(admin.db, true)).error).toBeNull();
-    // Already reviewed: nothing left to review.
-    expect((await review(admin.db, false)).error?.code).toBe("P0002");
-
-    const theirs = await other.members.owner.db
-      .from("models")
-      .insert({ tenant_id: other.id, catalog_id: id!, name: "Now approved" });
-    expect(theirs.error).toBeNull();
-  });
-
-  it("a rejected or unknown entry can't be used", async () => {
-    const { data: id } = await request(
-      shop.members.owner.db,
-      shop,
-      `Reject ${Date.now()}`,
+    expect((await merge(admin.db, sent.data!)).error?.message).toBe(
+      "merge_target_not_approved",
     );
-    extraCatalog.push(id!);
-    await admin.db.rpc("review_catalog_request", {
-      p_catalog_id: id!,
-      p_approve: false,
+    expect((await merge(admin.db, catalogId)).error).toBeNull();
+
+    // The shop's model now sits on the existing preset, with its description.
+    expect(await model(id)).toMatchObject({
+      catalog_id: catalogId,
+      make: "Testmake",
+      cc: 125,
     });
-    const rejected = await shop.members.owner.db
-      .from("models")
-      .insert({ tenant_id: shop.id, catalog_id: id!, name: "Rejected" });
-    expect(rejected.error?.message).toBe("catalog_entry_not_usable");
+    const { data: request } = await service
+      .schema("public")
+      .from("bike_catalog")
+      .select("status, review_notes")
+      .eq("id", sent.data!)
+      .single();
+    expect(request?.status).toBe("rejected");
+    expect(request?.review_notes).toMatch(/^Merged into testmake-/);
+    // Already decided: nothing left to review.
+    expect((await merge(admin.db, catalogId)).error?.code).toBe("P0002");
   });
 
-  it("the catalog has a path for cars", async () => {
+  it("a rejected submission goes back to being the shop's own, unlisted", async () => {
+    const id = await addOwn({ make: "Rejectme", model: "R1" });
+    const sent = await submit(shop.members.owner.db, id);
+    extraCatalog.push(sent.data!);
+    await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: sent.data!,
+      p_approve: false,
+      p_notes: "Not a real bike",
+    });
+    expect(await model(id)).toMatchObject({
+      catalog_id: null,
+      make: "Rejectme",
+      model: "R1",
+      marketplace_listed: false,
+    });
+    // It can be sent again later.
+    const again = await submit(shop.members.owner.db, id);
+    expect(again.error).toBeNull();
+    extraCatalog.push(again.data!);
+  });
+
+  it("who may submit, and what", async () => {
+    const id = await addOwn();
+    for (const role of ["staff", "mechanic", "driver"] as const)
+      expect((await submit(shop.members[role].db, id)).error?.code, role).toBe(
+        "42501",
+      );
+    // Another shop's owner gets the same answer as for a model that doesn't exist.
+    expect((await submit(other.members.owner.db, id)).error?.code).toBe(
+      "42501",
+    );
+    const car = await addOwn({
+      vehicle_type: "car",
+      make: "Honda",
+      model: "City",
+    });
+    expect((await submit(shop.members.owner.db, car)).error?.message).toBe(
+      "only_motorbikes",
+    );
+    const sent = await submit(shop.members.owner.db, id);
+    extraCatalog.push(sent.data!);
+    expect((await submit(shop.members.owner.db, id)).error?.message).toBe(
+      "already_linked",
+    );
+  });
+
+  it("the catalog has a path for other vehicles", async () => {
     const { data: types } = await shop.members.staff.db
       .schema("public")
       .from("vehicle_types")
       .select("key")
       .order("key");
-    expect(types).toEqual([{ key: "car" }, { key: "motorbike" }]);
+    expect(types?.map((t) => t.key)).toEqual([
+      "atv",
+      "boat",
+      "car",
+      "motorbike",
+      "other",
+    ]);
     const { data: entry } = await service
       .schema("public")
       .from("bike_catalog")
@@ -765,7 +1092,9 @@ describe("import", () => {
     const newModel = crypto.randomUUID();
     const { data, error } = await shop.members.manager.db.rpc("import_fleet", {
       p_tenant_id: shop.id,
-      p_models: [{ id: newModel, catalog_id: catalogId, name: "Imported" }],
+      p_models: [
+        { id: newModel, catalog_id: catalogId, ...modelSpec, name: "Imported" },
+      ],
       p_units: [
         unit("IMP-1", {
           purchase_price: 9_500_000,
@@ -810,7 +1139,12 @@ describe("import", () => {
     const { error } = await shop.members.owner.db.rpc("import_fleet", {
       p_tenant_id: shop.id,
       p_models: [
-        { id: crypto.randomUUID(), catalog_id: catalogId, name: "Half done" },
+        {
+          id: crypto.randomUUID(),
+          catalog_id: catalogId,
+          ...modelSpec,
+          name: "Half done",
+        },
       ],
       p_units: [
         unit("ATOMIC-1", { purchase_price: 1 }),
@@ -1157,7 +1491,12 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
     });
     const { data: model } = await service
       .from("models")
-      .insert({ tenant_id: queue.id, catalog_id: catalogId, name: "Queue" })
+      .insert({
+        tenant_id: queue.id,
+        catalog_id: catalogId,
+        ...modelSpec,
+        name: "Queue",
+      })
       .select("id")
       .single();
     unitId = await addUnit(queue, model!.id);
