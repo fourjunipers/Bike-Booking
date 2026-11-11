@@ -249,6 +249,41 @@ describe("every tenant table", () => {
     }
   });
 
+  it("is never readable without RLS: every platform table, with or without a tenant_id", async () => {
+    const { data, error } = await serviceClient().rpc(
+      "platform_exposure_report",
+    );
+    expect(error).toBeNull();
+    // Every tenant table, plus the ones with no tenant_id (platform_admins).
+    expect(data!.map((r) => r.relation)).toEqual(
+      expect.arrayContaining([
+        ...tables.map((t) => t.table_name),
+        "platform_admins",
+      ]),
+    );
+    for (const r of data!) {
+      // A view would run as its owner and skip RLS unless written with care,
+      // so none may exist until one is added here with its own test.
+      expect.soft(r.kind, `${r.relation}: kind`).toBe("table");
+      expect.soft(r.rls_enabled, `${r.relation}: RLS`).toBe(true);
+      expect.soft(r.policy_count, `${r.relation}: policies`).toBeGreaterThan(0);
+      expect
+        .soft(r.anon_has_any_privilege, `${r.relation}: anon grant`)
+        .toBe(false);
+      expect
+        .soft(r.authenticated_can_truncate, `${r.relation}: truncate`)
+        .toBe(false);
+    }
+  });
+
+  it("gives a new table nothing automatically: only the service role is in the schema's default grants", async () => {
+    const { data, error } = await serviceClient().rpc("platform_schema_access");
+    expect(error).toBeNull();
+    expect(data).toEqual([
+      { anon_usage: false, default_grantees: ["service_role"] },
+    ]);
+  });
+
   it("has no policy that lets a role see every row", async () => {
     const { data, error } = await serviceClient().rpc("platform_open_policies");
     expect(error).toBeNull();
@@ -555,6 +590,12 @@ describe("functions, as tenant A's owner and as an outsider", () => {
       expect(review.error?.code, who).toBe("42501");
       expect((await db.rpc("platform_rls_report")).error?.code).toBe("42501");
       expect((await db.rpc("platform_open_policies")).error?.code).toBe(
+        "42501",
+      );
+      expect((await db.rpc("platform_exposure_report")).error?.code).toBe(
+        "42501",
+      );
+      expect((await db.rpc("platform_schema_access")).error?.code).toBe(
         "42501",
       );
     }

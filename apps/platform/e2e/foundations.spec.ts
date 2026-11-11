@@ -112,20 +112,21 @@ test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
     /^Upcoming\s*0/,
     /^Late\s*0/,
   ]);
+  // The panel being shown. While tabs switch, the outgoing panel stays in the
+  // page for a moment, marked inert, so "the tabpanel" alone can match two.
+  const panel = page.locator('[role="tabpanel"]:not([inert])');
   const today = page.getByRole("tab", { name: /^Today/ });
   await expect(today).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel")).toContainText("Pickups");
+  await expect(panel).toContainText("Pickups");
 
   // Late: its own sections, and the choice survives a reload.
   await page.getByRole("tab", { name: /^Late/ }).click();
   await expect(page).toHaveURL(/\?view=late$/);
-  await expect(page.getByRole("tabpanel")).toContainText("Overdue bikes");
-  await expect(page.getByRole("tabpanel")).toContainText(
+  await expect(panel).toContainText("Overdue bikes");
+  await expect(panel).toContainText(
     "Missed pickups, deliveries and collections",
   );
-  await expect(page.getByRole("tabpanel")).toContainText(
-    "Unpaid past deadline",
-  );
+  await expect(panel).toContainText("Unpaid past deadline");
   await page.reload();
   await expect(page.getByRole("tab", { name: /^Late/ })).toHaveAttribute(
     "aria-selected",
@@ -137,7 +138,7 @@ test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByRole("tab", { name: /^Upcoming/ })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("tabpanel")).toContainText("Next 7 days");
+  await expect(panel).toContainText("Next 7 days");
 });
 
 test("the look: grey page, white panels, orange accent", async ({

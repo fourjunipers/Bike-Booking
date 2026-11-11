@@ -282,6 +282,11 @@ isOneToOne: false
 "import_fleet":
 { Args: { "p_models": Json,"p_tenant_id": string,"p_units": Json }; Returns: Json
                            },
+"platform_exposure_report":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "anon_has_any_privilege": boolean,"authenticated_can_truncate": boolean,"kind": string,"policy_count": number,"relation": string,"rls_enabled": boolean
+            }[]
+                           },
 "platform_open_policies":
 { Args: Record<PropertyKey, never>; Returns: {
               "policy_name": string,"table_name": string
@@ -290,6 +295,11 @@ isOneToOne: false
 "platform_rls_report":
 { Args: Record<PropertyKey, never>; Returns: {
               "policy_count": number,"rls_enabled": boolean,"table_name": string
+            }[]
+                           },
+"platform_schema_access":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "anon_usage": boolean,"default_grantees": (string)[]
             }[]
                            },
 "remove_member":
