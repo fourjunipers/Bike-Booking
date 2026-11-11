@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Search } from "lucide-react";
+import { QrScanner } from "@/components/fleet/qr-scanner";
 import { matchesUnit, UnitRow } from "@/components/fleet/unit-bits";
 import { inputClass } from "@/components/form";
 import { PageHeader, PlannedCard } from "@/components/page";
@@ -17,7 +18,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * Maintenance tab (SPEC › Staff app 4): find a bike by plate or frame number,
- * or scan its QR sticker with the phone camera (the sticker is a link). The
+ * or scan its QR sticker with the camera button beside the search (or with
+ * the phone's own camera app: the sticker is a link). The
  * bike page has the odometer, status and downtime. The due list arrives with
  * service schedules and renewals in Phase 1b.
  */
@@ -72,6 +74,7 @@ export default async function MaintenancePage({
               <Search aria-hidden />
               <span className="max-sm:sr-only">{tCommon("search")}</span>
             </Button>
+            <QrScanner />
           </form>
           <p className="text-sm text-muted-foreground">{t("searchHelp")}</p>
 

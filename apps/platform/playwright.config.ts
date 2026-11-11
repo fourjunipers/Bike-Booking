@@ -29,6 +29,14 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // A stand-in camera, so the QR scan button can be tested: Chromium shows
+    // a test pattern instead of asking for a real one.
+    launchOptions: {
+      args: [
+        "--use-fake-ui-for-media-stream",
+        "--use-fake-device-for-media-stream",
+      ],
+    },
     ...(remote && { navigationTimeout: 15_000 }),
   },
   // Every staff screen works on a phone and fully on desktop (SPEC › Staff app).

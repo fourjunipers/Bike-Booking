@@ -65,6 +65,13 @@ Ten requests from the owner after trying Phase 1a. Where they differ from the Ph
 - Models with no bikes had dropped off the first version of the grouped list; the browser test for adding a make caught it.
 - The catalog's entries are per generation (CB500X 2016–2018, 2019–2021, 2022–2023), so "make then model" can list the same model name more than once, told apart by years. Year bands are the shop's own and separate from those.
 
+**Scan QR on the Maintenance tab (owner request, 11 Nov 2026; QR scanning was planned for Phase 5)**
+- A camera button sits beside the plate search. It opens the camera, reads a bike's sticker and opens that bike. Only the sticker's token is used, so a sticker printed with another address (a preview, an old domain) still opens the bike on the site the person is signed in to, and a code that isn't a sticker is never followed.
+- It uses the browser's built-in code reader, with no new dependency. **That reader exists in Chrome on Android; it does not exist in Safari on iPhone, or in Firefox.** There the button says so and points at the phone's camera app, which opens the same sticker. Reading codes on iPhone inside the app needs a small decoder library (for example `jsqr`); adding it is the owner's call and is not done.
+- Tests: the token rule (unit), and the button, the camera opening and closing, a read code opening the bike, a foreign code refused, and the unsupported message (Playwright, with Chromium's stand-in camera and a stand-in reader). Not tested: a real camera reading a real printed sticker.
+- Stickers hold the address of the site they were printed from. Print the real ones from the final domain, not from a deploy preview: the in-app scanner copes either way, but a phone's own camera app follows the printed address.
+- Playwright: 56 (28 at 375 px, 28 at 1280 px).
+
 **Spec rules that changed** (`docs/platform/SPEC.md` is not edited here: the owner keeps the spec in a separate document and re-exports it after merge)
 
 From the catalog and listing decision (11 Nov 2026):

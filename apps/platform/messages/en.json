@@ -73,7 +73,8 @@
     "no": "No",
     "print": "Print",
     "none": "None",
-    "didYouMean": "Did you mean:"
+    "didYouMean": "Did you mean:",
+    "close": "Close"
   },
   "Dashboard": {
     "title": "What's coming up",
@@ -131,9 +132,18 @@
     "searchPlaceholder": "Plate number",
     "due": "Due and overdue across the fleet",
     "noMatch": "No bike matches “{query}”.",
-    "searchHelp": "Type a plate or frame number, or scan a bike's QR sticker with your phone camera.",
+    "searchHelp": "Type a plate or frame number, or press the camera button to scan a bike's QR sticker.",
     "openFleet": "See the whole fleet",
-    "dueLater": "Service and renewal alerts arrive in Phase 1b."
+    "dueLater": "Service and renewal alerts arrive in Phase 1b.",
+    "scan": "Scan QR",
+    "scanTitle": "Scan a bike's QR sticker",
+    "scanHint": "Point the camera at the sticker. The bike opens as soon as the code is read.",
+    "scanProblem": {
+      "unsupported": "This browser can't read QR codes here. Use your phone's camera app instead: it opens the same sticker.",
+      "denied": "The camera is blocked for this site. Allow it in the browser's site settings, then try again.",
+      "failed": "The camera couldn't be opened. Close other apps using it and try again.",
+      "notSticker": "That code isn't one of your bike stickers. Keep the camera on a sticker."
+    }
   },
   "Team": {
     "title": "Team",
