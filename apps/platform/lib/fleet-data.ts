@@ -62,7 +62,7 @@ export const getLocations = cache(async (tenantId: string) => {
 });
 
 const unitColumns =
-  "id, model_id, location_id, plate, plate_pending, frame_number, engine_number, colour, model_year, current_odometer_km, status, qr_token, notes, created_at";
+  "id, model_id, location_id, plate, plate_pending, frame_number, engine_number, colour, model_year, current_odometer_km, status, qr_token, notes, created_at, updated_at";
 
 /** Every model with its catalog entry and its units, by model name then plate. */
 export const getFleet = cache(async (tenantId: string) => {
@@ -261,7 +261,7 @@ export async function getCatalogEntry(id: string) {
   const { data, error } = await supabase
     .schema("public")
     .from("bike_catalog")
-    .select(`${catalogColumns}, review_notes`)
+    .select(catalogColumns)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;

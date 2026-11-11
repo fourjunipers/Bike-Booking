@@ -196,6 +196,7 @@ export default async function UnitPage({
                 }))}
                 values={{
                   id: unit.id,
+                  updated_at: unit.updated_at,
                   model_choice: `model:${unit.model_id}`,
                   location_id: unit.location_id,
                   plate: text(unit.plate),

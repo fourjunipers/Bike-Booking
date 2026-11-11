@@ -197,6 +197,8 @@ export default async function ModelPage({
             >
               {waiting ? (
                 <p className="text-sm">{tFleet("motoMangos.waiting")}</p>
+              ) : entry?.status === "rejected" ? (
+                <p className="text-sm">{tFleet("motoMangos.rejectedLinked")}</p>
               ) : entry ? (
                 <>
                   <p className="mb-3 text-sm">

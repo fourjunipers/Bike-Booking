@@ -16,6 +16,7 @@ import {
   ownModelSchema,
   parseModelChoice,
   renewalSchema,
+  runningAt,
   unitSchema,
   unitStatuses,
   yearBandSchema,
@@ -367,8 +368,20 @@ export async function saveUnit(
     })
     .eq("tenant_id", tenant.id)
     .eq("id", id)
+    // Only if nobody has changed the bike since this form was opened: an old
+    // form would otherwise put back an old odometer reading.
+    .eq("updated_at", field(formData, "updated_at"))
     .select("id");
-  if (error || data.length !== 1) return unitError(error);
+  if (error) return unitError(error);
+  if (data.length !== 1) {
+    const { data: still } = await supabase
+      .from("units")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("id", id)
+      .maybeSingle();
+    return { errors: { form: still ? "staleUnit" : "saveFailed" } };
+  }
   refresh(slug);
   return { ok: true };
 }
@@ -658,13 +671,20 @@ export async function endDowntime(
       ? supabase.from("unit_blocks").delete()
       : supabase
           .from("unit_blocks")
-          .update({ period: `[${start.toISOString()},${now.toISOString()})` });
+          .update({ period: `[${start.toISOString()},${now.toISOString()})` })
+          // Only a block that is running right now. From a stale page, one
+          // that someone already ended would otherwise be stretched to now.
+          .overlaps("period", runningAt(now));
   const { data, error } = await query
     .eq("tenant_id", tenant.id)
     .eq("id", blockId)
     .select("id");
-  if (error || data.length !== 1)
-    return { errors: { form: dbErrorKey(error) } };
+  if (error) return { errors: { form: dbErrorKey(error) } };
+  if (data.length !== 1) {
+    // Already ended or removed by someone else: show the page as it is now.
+    refresh(slug);
+    return { errors: { form: "alreadyEnded" } };
+  }
   refresh(slug);
   return { ok: true };
 }

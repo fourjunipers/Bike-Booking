@@ -268,7 +268,7 @@ export const ownModelSchema = z
     make: z.string().trim().min(1, "required").max(40, "tooLong"),
     model: z.string().trim().min(1, "required").max(60, "tooLong"),
     vehicle_type: z.enum(vehicleTypes, "required"),
-    cc: optionalInt(1, 20000),
+    cc: optionalInt(1, 20000, "ccRange"),
     transmission: z.preprocess(
       blankToNull,
       z.enum(transmissions, "required").nullable(),
@@ -358,6 +358,8 @@ export function dbErrorKey(
   if (message.includes("models_name_idx")) return "nameExists";
   if (message.includes("models_own_make_model_idx")) return "ownModelExists";
   if (message.includes("models_required_specs_check")) return "requiredSpecs";
+  // Engine size outside 1 to 20000 cc, on a model or on the catalog entry made from it.
+  if (/(models|bike_catalog)_cc_check/.test(message)) return "ccRange";
   if (message.includes("locations_name_idx")) return "nameExists";
   // A row other rows still point at (a model with units, a unit with blocks).
   if (error.code === "23503") return "inUse";
@@ -378,4 +380,14 @@ export function dbErrorKey(
   if (message.includes("default location")) return "keepDefaultLocation";
   if (error.code === "42501") return "notAllowed";
   return "saveFailed";
+}
+
+/**
+ * A filter value for "this block is running at `now`": a one-instant range to
+ * test a block's period against with `overlaps`. Used when ending downtime, so
+ * a block that already ended is never written again from a stale page.
+ */
+export function runningAt(now: Date): string {
+  const at = now.toISOString();
+  return `[${at},${at}]`;
 }

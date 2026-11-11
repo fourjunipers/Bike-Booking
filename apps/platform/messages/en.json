@@ -264,7 +264,10 @@
     "already_linked": "This model is already on the Moto Mangos list, or waiting for review.",
     "only_motorbikes": "Moto Mangos lists motorbikes only, for now.",
     "merge_target_not_approved": "Choose an approved entry to merge into.",
-    "requiredSpecs": "A motorbike needs an engine size and a transmission."
+    "requiredSpecs": "A motorbike needs an engine size and a transmission.",
+    "ccRange": "Enter an engine size from 1 to 20000 cc.",
+    "staleUnit": "This bike was changed by someone else while this form was open. Reload the page to see the latest, then make your change again.",
+    "alreadyEnded": "This downtime was already ended or removed by someone else. Nothing was changed."
   },
   "Fleet": {
     "title": "Fleet",
@@ -573,7 +576,8 @@
       "bikeType": "Bike type",
       "yearFrom": "First model year",
       "yearTo": "Last model year",
-      "note": "Note for the reviewer"
+      "note": "Note for the reviewer",
+      "rejectedLinked": "Moto Mangos didn't add this model, so it can't be listed. It is still tied to that request because you have another model of your own with the same make and model, and a shop can't have two."
     }
   },
   "Locations": {
@@ -624,6 +628,7 @@
     "notes": "Review note",
     "failed": "That didn't work. Please try again.",
     "mergeInto": "It is the same bike as",
-    "merge": "Merge"
+    "merge": "Merge",
+    "keptLinked": "Rejected. {count, plural, one {One model stays} other {# models stay}} linked to the rejected entry, unlisted: while waiting, the shop added the same make and model again as its own, and it can't have two."
   }
 }

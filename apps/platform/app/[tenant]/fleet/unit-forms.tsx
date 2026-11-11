@@ -30,6 +30,8 @@ type Option = { value: string; label: string };
 
 export type UnitFormValues = {
   id?: string;
+  /** When the bike was last changed, as loaded: a save from an older form is refused. */
+  updated_at?: string;
   model_choice: string;
   location_id: string;
   plate: string;
@@ -67,7 +69,12 @@ export function UnitForm({
   return (
     <ActionForm
       action={saveUnit}
-      hidden={{ slug, ...(values.id ? { id: values.id } : {}) }}
+      hidden={{
+        slug,
+        ...(values.id
+          ? { id: values.id, updated_at: values.updated_at ?? "" }
+          : {}),
+      }}
       confirmIf={(data) => {
         if (!values.id) return undefined;
         const typed = Number(

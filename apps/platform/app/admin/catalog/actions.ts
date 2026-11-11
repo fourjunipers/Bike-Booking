@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@mango/db/platform-server";
 
 export type ReviewState = { failed?: boolean };
@@ -18,7 +19,7 @@ export async function reviewRequest(
   formData: FormData,
 ): Promise<ReviewState> {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("review_catalog_request", {
+  const { data, error } = await supabase.rpc("review_catalog_request", {
     p_catalog_id: String(formData.get("id") ?? ""),
     p_approve: formData.get("decision") === "approve",
     p_notes: String(formData.get("notes") ?? "") || undefined,
@@ -30,5 +31,10 @@ export async function reviewRequest(
   });
   if (error) return { failed: true };
   revalidatePath("/admin/catalog");
-  return {};
+  // Reject: models the shop had meanwhile added again as its own stay linked
+  // to the rejected entry. Say so, on the refreshed page.
+  const kept = (data as { kept_linked?: unknown[] } | null)?.kept_linked ?? [];
+  redirect(
+    kept.length ? `/admin/catalog?kept=${kept.length}` : "/admin/catalog",
+  );
 }

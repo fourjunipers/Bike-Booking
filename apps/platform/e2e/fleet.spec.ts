@@ -484,6 +484,8 @@ test("the dashboard lists seeded renewals: overdue road tax under Late", async (
 test("a manager adds a model with make and model dropdowns, year bands, a bike, and marks it sold", async ({
   page,
 }) => {
+  // Many steps on one bike: three times the usual time limit.
+  test.slow();
   await signIn(page, demo.bsrManager);
   const name = `E2E model ${freshPlate()}`;
   const frame = `F${freshPlate()}`;
@@ -542,6 +544,30 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
       "This bike has no plate yet. Staff are warned before check-out.",
     ),
   ).toBeVisible();
+
+  // An old form can't overwrite a newer save. The same bike is open in a
+  // second tab and saved there; saving from this, now stale, tab is refused.
+  const second = await page.context().newPage();
+  await second.goto(page.url());
+  const secondDetails = panel(second, "Details");
+  await secondDetails.getByLabel(/^Odometer/).fill("1500");
+  await secondDetails.getByRole("button", { name: "Save" }).click();
+  await expect(secondDetails.getByText("Saved")).toBeVisible();
+  await second.close();
+  const details = panel(page, "Details");
+  await details.getByLabel("Colour").fill("Blue");
+  await details.getByRole("button", { name: "Save" }).click();
+  await expect(
+    details.getByText(/changed by someone else while this form was open/),
+  ).toBeVisible();
+  await page.reload();
+  // The newer reading is still there; after the reload the change saves.
+  await expect(panel(page, "Details").getByLabel(/^Odometer/)).toHaveValue(
+    "1500",
+  );
+  await panel(page, "Details").getByLabel("Colour").fill("Blue");
+  await panel(page, "Details").getByRole("button", { name: "Save" }).click();
+  await expect(panel(page, "Details").getByText("Saved")).toBeVisible();
 
   // It lands in its year band on the Fleet list.
   await page.goto(`/bsr/fleet?q=${frame}`);
@@ -609,6 +635,8 @@ test("my own make and model: added with no approval, no duplicates, then matched
   page,
   browser,
 }) => {
+  // Two people and many steps: three times the usual time limit.
+  test.slow();
   await signIn(page, demo.bsrOwner);
   const make = `E2emake${Date.now().toString(36)}`;
   await page.goto("/bsr/fleet/units/new");

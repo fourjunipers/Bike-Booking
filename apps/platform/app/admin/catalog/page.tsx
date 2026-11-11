@@ -20,7 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
  * platform.platform_admins (the one place that role is defined); anyone else
  * gets "not found". The rest of platform admin arrives in Phase 11.
  */
-export default async function AdminCatalogPage() {
+export default async function AdminCatalogPage({
+  searchParams,
+}: PageProps<"/admin/catalog">) {
+  const kept = Number((await searchParams).kept) || 0;
   const user = await getUser();
   if (!user) redirect("/login?next=%2Fadmin%2Fcatalog");
   const supabase = await createClient();
@@ -35,15 +38,9 @@ export default async function AdminCatalogPage() {
     getTranslations("Admin"),
     getTranslations("Fleet"),
     getTranslations("Nav"),
-    supabase
-      .schema("public")
-      .from("bike_catalog")
-      .select(
-        "id, slug, make, model, year_from, year_to, cc, type, transmission, status, request_note, requested_by_tenant_id",
-      )
-      .eq("status", "requested")
-      .not("requested_by_tenant_id", "is", null)
-      .order("created_at"),
+    // The shop's note and name are private: only this function returns
+    // them, and only to a platform admin.
+    supabase.rpc("catalog_requests"),
   ]);
   if (requests.error) throw requests.error;
   const presets = await getCatalog();
@@ -56,6 +53,14 @@ export default async function AdminCatalogPage() {
           intro={t("intro")}
           actions={<SignOutButton label={tNav("signOut")} />}
         />
+        {kept > 0 && (
+          <p
+            role="status"
+            className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+          >
+            {t("keptLinked", { count: kept })}
+          </p>
+        )}
         {requests.data.length === 0 ? (
           <p className="rounded-lg border bg-card p-5 text-muted-foreground">
             {t("none")}
@@ -73,6 +78,9 @@ export default async function AdminCatalogPage() {
                     tFleet(`type.${entry.type}`),
                     tFleet(`transmission.${entry.transmission}`),
                   ].join(" · ")}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("requestedBy", { shop: entry.requested_by_tenant_name })}
                 </p>
                 {entry.request_note && (
                   <p className="mt-2 text-sm">“{entry.request_note}”</p>
