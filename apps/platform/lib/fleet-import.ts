@@ -202,7 +202,7 @@ export function planImport(
     }
 
     const locationName = get("location");
-    let locationId = defaultLocation?.id;
+    let locationId: string | undefined = defaultLocation?.id;
     if (locationName) {
       locationId = locationIds.get(key(locationName));
       if (!locationId) fail("location", "locationUnknown");

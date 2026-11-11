@@ -26,8 +26,11 @@ export function hasLeftFleet(status: string): boolean {
   return status === "sold" || status === "retired";
 }
 
+/** A field left blank, or not on the form at all, is "no value". */
 const blankToNull = (value: unknown) =>
-  typeof value === "string" && value.trim() === "" ? null : value;
+  value === undefined || (typeof value === "string" && value.trim() === "")
+    ? null
+    : value;
 
 const optionalText = (max: number) =>
   z.preprocess(blankToNull, z.string().trim().max(max, "tooLong").nullable());

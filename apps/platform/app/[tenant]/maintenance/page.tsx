@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
-import { QrCode, Search } from "lucide-react";
+import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
+import { Search } from "lucide-react";
+import { matchesUnit, UnitRow } from "@/components/fleet/unit-bits";
 import { inputClass } from "@/components/form";
 import { PageHeader, PlannedCard } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { requireTab } from "@/lib/access";
+import { getFleet } from "@/lib/fleet-data";
 import { cn } from "@/lib/utils";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,20 +16,32 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Maintenance tab (SPEC › Staff app 4): find a bike by plate or QR, and the
- * fleet's due list. Bikes arrive in Phase 1; QR scanning in Phase 5.
+ * Maintenance tab (SPEC › Staff app 4): find a bike by plate or frame number,
+ * or scan its QR sticker with the phone camera (the sticker is a link). The
+ * bike page has the odometer, status and downtime. The due list arrives with
+ * service schedules and renewals in Phase 1b.
  */
 export default async function MaintenancePage({
   params,
   searchParams,
 }: PageProps<"/[tenant]/maintenance">) {
   const [{ tenant: slug }, query] = await Promise.all([params, searchParams]);
-  await requireTab(slug, "maintenance");
-  const [t, tCommon] = await Promise.all([
+  const { membership } = await requireTab(slug, "maintenance");
+  const { tenant } = membership;
+  const [t, tCommon, locale, fleet] = await Promise.all([
     getTranslations("Maintenance"),
     getTranslations("Common"),
+    getLocale(),
+    getFleet(tenant.id),
   ]);
   const plate = typeof query.plate === "string" ? query.plate.trim() : "";
+  const all = fleet.flatMap((model) =>
+    model.units.map((unit) => ({ unit, modelName: model.name })),
+  );
+  // With no search: the bikes in maintenance, which is what a mechanic opens this for.
+  const shown = plate
+    ? all.filter(({ unit }) => matchesUnit(unit, plate))
+    : all.filter(({ unit }) => unit.status === "maintenance");
 
   return (
     <>
@@ -58,29 +73,43 @@ export default async function MaintenancePage({
               <span className="max-sm:sr-only">{tCommon("search")}</span>
             </Button>
           </form>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 w-full"
-            disabled
-            aria-describedby="scan-later"
+          <p className="text-sm text-muted-foreground">{t("searchHelp")}</p>
+
+          {plate && shown.length === 0 && (
+            <p className="rounded-lg border bg-card p-4 text-muted-foreground">
+              {t("noMatch", { query: plate })}
+            </p>
+          )}
+          {shown.length > 0 && (
+            <ul className="divide-y overflow-hidden rounded-lg border bg-card">
+              {shown.slice(0, 50).map(({ unit, modelName }) => (
+                <UnitRow
+                  key={unit.id}
+                  unit={unit}
+                  href={`/${slug}/fleet/units/${unit.id}`}
+                  distanceUnit={tenant.distanceUnit}
+                  locale={locale}
+                  detail={modelName}
+                />
+              ))}
+            </ul>
+          )}
+          <Link
+            href={`/${slug}/fleet`}
+            className="inline-flex min-h-11 items-center font-medium underline"
           >
-            <QrCode aria-hidden />
-            {t("scan")}
-          </Button>
-          <p id="scan-later" className="text-xs text-muted-foreground">
-            {tCommon("comingIn", { phase: 5 })}
-          </p>
-          <PlannedCard title={t("searchLabel")} phase={1}>
-            {plate && <p className="mt-2 text-sm font-medium">“{plate}”</p>}
-            <p className="mt-2 text-sm text-muted-foreground">{t("noBikes")}</p>
-          </PlannedCard>
+            {t("openFleet")}
+          </Link>
         </section>
         <section aria-labelledby="due-list" className="space-y-3">
           <h2 id="due-list" className="text-lg font-semibold">
             {t("due")}
           </h2>
-          <PlannedCard title={t("due")} phase={1} />
+          <PlannedCard title={t("due")} phase={1}>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t("dueLater")}
+            </p>
+          </PlannedCard>
         </section>
       </div>
     </>

@@ -58,7 +58,8 @@ test("an owner gets all four tabs and the admin pages", async ({
   await expect(page.getByRole("heading", { name: "Team" })).toBeVisible();
   await expect(page.getByText(demo.bsrMechanic)).toBeVisible();
   await page.goto("/bsr/settings");
-  await expect(page.getByLabel("Time zone")).toHaveValue("Asia/Bangkok");
+  // The time zone moved to the location in Phase 1a.
+  await expect(page.getByLabel("Distances")).toHaveValue("km");
 });
 
 test("a mechanic opens on Maintenance and sees only its tabs", async ({
@@ -67,7 +68,12 @@ test("a mechanic opens on Maintenance and sees only its tabs", async ({
   await signIn(page, demo.bsrMechanic);
   await expect(page).toHaveURL(/\/bsr\/maintenance$/);
   const nav = mainNav(page, isPhone(info.project.name));
-  await expect(nav.getByRole("link")).toHaveText(["Dashboard", "Maintenance"]);
+  // The sidebar also lists Fleet, which every role can read (Phase 1a).
+  await expect(nav.getByRole("link")).toHaveText(
+    isPhone(info.project.name)
+      ? ["Dashboard", "Maintenance"]
+      : ["Dashboard", "Maintenance", "Fleet"],
+  );
 
   // A tab the role doesn't have sends it home; admin pages don't exist for it.
   await page.goto("/bsr/new-order");
@@ -87,7 +93,11 @@ test("a driver gets Dashboard and Orders", async ({ page }, info) => {
   await expect(page).toHaveURL(/\/bsr\/dashboard$/);
   await expect(
     mainNav(page, isPhone(info.project.name)).getByRole("link"),
-  ).toHaveText(["Dashboard", "Orders"]);
+  ).toHaveText(
+    isPhone(info.project.name)
+      ? ["Dashboard", "Orders"]
+      : ["Dashboard", "Orders", "Fleet"],
+  );
 });
 
 test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
