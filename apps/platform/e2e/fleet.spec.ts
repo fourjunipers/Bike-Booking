@@ -130,9 +130,10 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
   const started = Date.now();
   await page.goto("/big-fleet/fleet?reset=1");
   // The working fleet: the demo's 5 retired bikes are kept, one link away.
-  await expect(page.getByText("145 bikes in 5 models.")).toBeVisible();
+  // About 145 in 5 models; people trying the demo may have added their own.
+  await expect(page.getByText(/1\d\d bikes in \d+ models\./)).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "5 sold or retired" }),
+    page.getByRole("link", { name: /^\d+ sold or retired$/ }),
   ).toBeVisible();
   const loaded = Date.now() - started;
 
@@ -175,17 +176,17 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
     "Airport desk",
   ]);
   await page.goto("/big-fleet/fleet?year=2024&group=none");
-  await expect(page.getByText(/Showing \d+ of 145 bikes/)).toBeVisible();
+  await expect(page.getByText(/Showing \d+ of 1\d\d bikes/)).toBeVisible();
   // Sold and retired bikes: out of the way, not gone.
   await page.goto("/big-fleet/fleet?reset=1");
-  await page.getByRole("link", { name: "5 sold or retired" }).click();
+  await page.getByRole("link", { name: /^\d+ sold or retired$/ }).click();
   await expect(page).toHaveURL(/scope=past/);
   await expect(page.getByLabel("Show")).toHaveValue("past");
   await expect(page.getByRole("link", { name: /BIG-029/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /BIG-001/ })).toHaveCount(0);
   await page.getByLabel("Show").selectOption("all");
   await page.getByRole("button", { name: "Apply" }).click();
-  await expect(page.getByText("150 bikes", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^1\d\d bikes$/)).toBeVisible();
   await page.goto("/big-fleet/fleet?reset=1");
 
   // Generous: a preview's functions are far from its database.
