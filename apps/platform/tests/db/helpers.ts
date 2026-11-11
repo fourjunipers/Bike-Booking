@@ -1,3 +1,4 @@
+import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mango/db/database.types";
@@ -179,3 +180,49 @@ export const modelSpec = {
   cc: 125,
   transmission: "automatic" as const,
 };
+
+/**
+ * Runs SQL straight in the local database, as its superuser unless the SQL
+ * itself switches role. For what the API can't reach: functions in the
+ * platform_private schema. Returns psql's output; `failed` is its error text.
+ */
+export function sql(statements: string): { out: string; failed: string } {
+  const container = execFileSync(
+    "docker",
+    ["ps", "--filter", "name=supabase_db_", "--format", "{{.Names}}"],
+    { encoding: "utf8" },
+  )
+    .trim()
+    .split("\n")[0];
+  if (!container) throw new Error("The local Supabase database isn't running");
+  const run = spawnSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      container,
+      "psql",
+      "-U",
+      "postgres",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+    ],
+    { input: statements, encoding: "utf8" },
+  );
+  return { out: run.stdout.trim(), failed: run.status === 0 ? "" : run.stderr };
+}
+
+/** SQL run as a signed-in user, the way the API would run it. */
+export function sqlAs(userId: string, statement: string) {
+  const claims = JSON.stringify({ sub: userId, role: "authenticated" });
+  return sql(
+    [
+      "begin;",
+      `select set_config('request.jwt.claims', '${claims}', true);`,
+      "set local role authenticated;",
+      statement,
+      "commit;",
+    ].join("\n"),
+  );
+}

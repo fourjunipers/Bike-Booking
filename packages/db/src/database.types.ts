@@ -377,7 +377,12 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "create_tenant":
+            "catalog_requests":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "cc": number,"created_at": string,"id": string,"make": string,"model": string,"request_note": string,"requested_by_tenant_id": string,"requested_by_tenant_name": string,"slug": string,"status": Database["public"]['Enums']["catalog_status"],"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"year_from": number,"year_to": number
+            }[]
+                           },
+"create_tenant":
 { Args: { "p_country": string,"p_currency": string,"p_id"?: string,"p_locale": string,"p_name": string,"p_slug": string,"p_timezone": string }; Returns: string
                            },
 "currency_locked":
@@ -413,7 +418,7 @@ isOneToOne: false
 { Args: { "p_membership_id": string }; Returns: undefined
                            },
 "review_catalog_request":
-{ Args: { "p_approve": boolean,"p_catalog_id": string,"p_merge_into"?: string,"p_notes"?: string }; Returns: undefined
+{ Args: { "p_approve": boolean,"p_catalog_id": string,"p_merge_into"?: string,"p_notes"?: string }; Returns: Json
                            },
 "set_member_role":
 { Args: { "p_membership_id": string,"p_role": Database["platform"]['Enums']["platform_role"] }; Returns: undefined
