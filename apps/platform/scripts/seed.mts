@@ -300,6 +300,9 @@ async function upsertTenant(tenant: (typeof tenants)[number]): Promise<string> {
         name: tenant.name,
         country: tenant.country,
         locale: tenant.locale,
+        // Back to the demo's starting point: the browser tests read distances
+        // in km, and someone trying the settings may have left it on miles.
+        distance_unit: "km",
       })
       .eq("id", found.id);
     if (updateError) throw updateError;
