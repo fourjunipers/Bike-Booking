@@ -51,6 +51,11 @@ jobs:
         with:
           version: 2.121.0
       - run: npm ci
+      # Before the database starts: its system packages come from Ubuntu's
+      # servers, which the runner has failed to reach once Docker is up.
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/platform
       - name: Start Supabase (applies all migrations and supabase/seed.sql)
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
       - name: Write apps/platform/.env.local for the local stack
@@ -65,9 +70,6 @@ jobs:
         run: npm run test:db -w @mango/platform
       - name: Demo seed
         run: npm run seed -w @mango/platform
-      - name: Install Playwright's Chromium
-        run: npx playwright install --with-deps chromium
-        working-directory: apps/platform
       - name: Playwright (phone and desktop)
         run: npm run test:e2e -w @mango/platform
       - uses: actions/upload-artifact@v4
