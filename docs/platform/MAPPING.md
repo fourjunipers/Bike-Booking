@@ -115,7 +115,7 @@ A legacy row is a shop's listing of one catalog entry with a quantity. On the pl
 | `licence_required` | `models.licence_class` | 1a |
 | `deposit_methods` and every other column | `models.inclusions_override` (JSON; only the overridden fields) | 2 |
 
-`units` has no legacy source beyond the count above. New in 1a: `tenant_id`, `model_id`, `location_id`, `plate`, `plate_pending`, `frame_number`, `engine_number`, `colour`, `first_registered`, `current_odometer_km`, `status` (active, maintenance, retired, sold, borrowed), `active_from`, `active_to`, `qr_token`, `notes`. Purchase and sale details live in `unit_financials` (owner and manager only). Keys, GPS, renewals and service data arrive in Phase 1b.
+`units` has no legacy source beyond the count above. New in 1a: `tenant_id`, `model_id`, `location_id`, `plate`, `plate_pending`, `frame_number`, `engine_number`, `colour`, `model_year`, `current_odometer_km`, `status` (active, maintenance, retired, sold), `qr_token`, `notes`. (`first_registered`, the `borrowed` status and its `active_from` / `active_to` window were removed on 11 Nov 2026, owner decision.) Purchase and sale details live in `unit_financials` (owner and manager only). Tax and insurance renewals (`unit_renewals`, costs in `unit_renewal_costs`) and each shop's model-year bands (`model_year_bands`) were added on 11 Nov 2026; none has a legacy source. Keys, GPS and service data arrive in Phase 1b.
 
 ## 5. `bike_model_downtime` → `unit_blocks`
 
