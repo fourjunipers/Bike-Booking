@@ -148,12 +148,12 @@ describe("managers", () => {
   it("can edit shop settings", async () => {
     const { data, error } = await t.members.manager.db
       .from("tenants")
-      .update({ name: "Renamed by manager", timezone: "Europe/Berlin" })
+      .update({ name: "Renamed by manager", distance_unit: "mi" })
       .eq("id", t.id)
-      .select("name, timezone");
+      .select("name, distance_unit");
     expect(error).toBeNull();
     expect(data).toEqual([
-      { name: "Renamed by manager", timezone: "Europe/Berlin" },
+      { name: "Renamed by manager", distance_unit: "mi" },
     ]);
   });
 });
@@ -192,10 +192,11 @@ describe("tenant rows", () => {
 
   it("reject unknown time zones and malformed codes", async () => {
     const service = serviceClient();
+    // Time zones belong to locations since Phase 1a.
     const zone = await service
-      .from("tenants")
+      .from("locations")
       .update({ timezone: "Mars/Olympus" })
-      .eq("id", t.id);
+      .eq("id", t.locationId);
     expect(zone.error?.message).toBe("Unknown time zone: Mars/Olympus");
     const currency = await service
       .from("tenants")

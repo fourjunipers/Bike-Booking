@@ -350,5 +350,7 @@ revoke all on function platform.remove_member(uuid) from public, anon;
 grant execute on function platform.tenant_members(uuid) to authenticated, service_role;
 grant execute on function platform.set_member_role(uuid, platform.platform_role) to authenticated, service_role;
 grant execute on function platform.remove_member(uuid) to authenticated, service_role;
+revoke all on function platform.platform_rls_report() from public, anon, authenticated;
+revoke all on function platform.platform_open_policies() from public, anon, authenticated;
 grant execute on function platform.platform_rls_report() to service_role;
 grant execute on function platform.platform_open_policies() to service_role;

@@ -3,7 +3,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mango/db/database.types";
 import type { Role } from "@/lib/roles";
 
-export type Db = SupabaseClient<Database>;
+/** Clients point at the `platform` schema, like the app (`.schema("public")` for the catalog). */
+export type Db = SupabaseClient<Database, "platform">;
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -14,14 +15,17 @@ if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url ?? "")) {
   throw new Error("DB tests only run against local Supabase (127.0.0.1)");
 }
 
-const options = { auth: { persistSession: false, autoRefreshToken: false } };
+const options = {
+  auth: { persistSession: false, autoRefreshToken: false },
+  db: { schema: "platform" as const },
+};
 
 export function serviceClient(): Db {
-  return createClient<Database>(url, serviceKey, options);
+  return createClient<Database, "platform">(url, serviceKey, options);
 }
 
 export function anonClient(): Db {
-  return createClient<Database>(url, anonKey, options);
+  return createClient<Database, "platform">(url, anonKey, options);
 }
 
 // One throwaway password per test run; the users are deleted afterwards.
@@ -53,26 +57,41 @@ export async function createUser(label: string): Promise<TestUser> {
 export type TestTenant = {
   id: string;
   slug: string;
+  currency: string;
+  /** The default location every tenant is created with. */
+  locationId: string;
   members: Record<Role, TestUser & { membershipId: string }>;
 };
 
-/** A tenant with one user in every role. */
-export async function createTenant(label: string): Promise<TestTenant> {
+/** A tenant (with its default location) and one user in every role. */
+export async function createTenant(
+  label: string,
+  shop: { country: string; currency: string; locale: string; timezone: string } = {
+    country: "VN",
+    currency: "VND",
+    locale: "vi-VN",
+    timezone: "Asia/Ho_Chi_Minh",
+  },
+): Promise<TestTenant> {
   const service = serviceClient();
   const slug = `${label}-${randomUUID().slice(0, 8)}`;
-  const { data: tenant, error } = await service
-    .from("tenants")
-    .insert({
-      name: `Test ${label}`,
-      slug,
-      country: "VN",
-      currency: "VND",
-      timezone: "Asia/Ho_Chi_Minh",
-      locale: "vi-VN",
-    })
-    .select("id")
-    .single();
+  const { data: tenantId, error } = await service.rpc("create_tenant", {
+    p_name: `Test ${label}`,
+    p_slug: slug,
+    p_country: shop.country,
+    p_currency: shop.currency,
+    p_locale: shop.locale,
+    p_timezone: shop.timezone,
+  });
   if (error) throw error;
+  const tenant = { id: tenantId };
+  const { data: location, error: locationError } = await service
+    .from("locations")
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .eq("is_default", true)
+    .single();
+  if (locationError) throw locationError;
 
   const roles: Role[] = ["owner", "manager", "staff", "mechanic", "driver"];
   const members = {} as TestTenant["members"];
@@ -86,7 +105,13 @@ export async function createTenant(label: string): Promise<TestTenant> {
     if (memberError) throw memberError;
     members[role] = { ...user, membershipId: membership.id };
   }
-  return { id: tenant.id, slug, members };
+  return {
+    id: tenant.id,
+    slug,
+    currency: shop.currency,
+    locationId: location.id,
+    members,
+  };
 }
 
 /** Removes a tenant (memberships cascade) and its users. */
@@ -102,3 +127,34 @@ export async function deleteTenant(tenant: TestTenant | undefined) {
 export async function deleteUser(user: TestUser | undefined) {
   if (user) await serviceClient().auth.admin.deleteUser(user.id);
 }
+
+/** An approved catalog entry to hang test models on; removed with removeCatalogEntry. */
+export async function createCatalogEntry(label: string): Promise<string> {
+  const { data, error } = await serviceClient()
+    .schema("public")
+    .from("bike_catalog")
+    .insert({
+      make: "Testmake",
+      model: `${label} ${randomUUID().slice(0, 8)}`,
+      type: "city_scooter",
+      transmission: "automatic",
+      cc: 125,
+      status: "approved",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function removeCatalogEntry(id: string | undefined) {
+  if (id)
+    await serviceClient().schema("public").from("bike_catalog").delete().eq("id", id);
+}
+
+/** "[from, to)" as Postgres reads a time range; no `to` = open-ended. */
+export function period(from: Date, to?: Date): string {
+  return `[${from.toISOString()},${to ? to.toISOString() : ""})`;
+}
+
+export const hours = (n: number) => new Date(Date.now() + n * 3_600_000);
