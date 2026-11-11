@@ -21,7 +21,8 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   ...(remote && {
     workers: 2,
-    timeout: 60_000,
+    // The longest click-throughs make 40+ requests at about 1.5 s each.
+    timeout: 150_000,
     // Also covers waits like "left the login page" after signing in.
     expect: { timeout: 15_000 },
   }),
