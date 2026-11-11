@@ -134,10 +134,10 @@ export default async function UnitPage({
     [tUnit("make"), model?.catalog?.make ?? null],
     [tUnit("model"), model?.name ?? null],
     [tUnit("modelYear"), unit.model_year ? String(unit.model_year) : null],
-    [tUnit("location"), location?.name ?? null],
     [tUnit("colour"), unit.colour],
     [tUnit("frameNumber"), unit.frame_number],
     [tUnit("engineNumber"), unit.engine_number],
+    [tUnit("location"), location?.name ?? null],
     [tUnit("notes"), unit.notes],
   ];
 
@@ -205,6 +205,9 @@ export default async function UnitPage({
                   engine_number: text(unit.engine_number),
                   colour: text(unit.colour),
                   model_year: unit.model_year ? String(unit.model_year) : "",
+                  odometer: String(
+                    fromKm(unit.current_odometer_km, tenant.distanceUnit),
+                  ),
                   notes: text(unit.notes),
                 }}
               />
@@ -245,26 +248,29 @@ export default async function UnitPage({
             )}
           </Panel>
 
-          <Panel title={tUnit("odometerNow")}>
-            {work && !gone ? (
-              <OdometerForm
-                slug={slug}
-                id={unit.id}
-                distanceUnit={tenant.distanceUnit}
-                odometer={String(
-                  fromKm(unit.current_odometer_km, tenant.distanceUnit),
-                )}
-              />
-            ) : (
-              <p className="font-medium">
-                {formatDistance(
-                  unit.current_odometer_km,
-                  tenant.distanceUnit,
-                  locale,
-                )}
-              </p>
-            )}
-          </Panel>
+          {/* Owners and managers have the odometer in Details, above. */}
+          {!manage && (
+            <Panel title={tUnit("odometerNow")}>
+              {work && !gone ? (
+                <OdometerForm
+                  slug={slug}
+                  id={unit.id}
+                  distanceUnit={tenant.distanceUnit}
+                  odometer={String(
+                    fromKm(unit.current_odometer_km, tenant.distanceUnit),
+                  )}
+                />
+              ) : (
+                <p className="font-medium">
+                  {formatDistance(
+                    unit.current_odometer_km,
+                    tenant.distanceUnit,
+                    locale,
+                  )}
+                </p>
+              )}
+            </Panel>
+          )}
 
           <Panel
             title={t("downtime.title")}
@@ -456,6 +462,15 @@ export default async function UnitPage({
                   "border-highlight-border ring-2 ring-ring",
               )}
             >
+              {unit.status !== "sold" &&
+                (money?.sold_at || money?.sale_price != null) && (
+                  <p
+                    role="note"
+                    className="mb-4 rounded-md border border-highlight-border bg-highlight p-3 text-sm text-highlight-foreground"
+                  >
+                    {t("money.notSoldNote")}
+                  </p>
+                )}
               <FinancialsForm
                 slug={slug}
                 id={unit.id}

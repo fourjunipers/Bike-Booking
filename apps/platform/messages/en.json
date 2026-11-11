@@ -245,7 +245,8 @@
     "invalidYear": "Enter a year, such as 2024.",
     "bandOverlap": "These years overlap another band of this model.",
     "invalidReminderDays": "Enter up to 10 whole numbers from 1 to 365, separated by commas.",
-    "invalidDigestDay": "Choose a day from 1 to 28."
+    "invalidDigestDay": "Choose a day from 1 to 28.",
+    "catalogExists": "This make and model is already in the list for those years. Pick it from the dropdowns instead."
   },
   "Fleet": {
     "title": "Fleet",
@@ -382,7 +383,8 @@
       "yourModels": "Your models",
       "fromCatalog": "From the catalog",
       "statusIntro": "One status per bike. Scheduled downtime is separate, below.",
-      "odometerLowerConfirm": "Are you sure? This is lower than the current reading ({current} {unit})."
+      "odometerLowerConfirm": "Are you sure? This is lower than the current reading ({current} {unit}).",
+      "odometerHelp": "A lower reading asks you to confirm."
     },
     "downtime": {
       "title": "Downtime",
@@ -414,7 +416,8 @@
       "soldAt": "Sale date",
       "salePrice": "Sale price ({currency})",
       "soldTo": "Sold to",
-      "afterSold": "Marked as sold. Fill in the sale date, price and buyer here, then save."
+      "afterSold": "Marked as sold. Fill in the sale date, price and buyer here, then save.",
+      "notSoldNote": "This bike has sale details but its status isn't Sold. Set the status to Sold above to take it out of the fleet."
     },
     "sticker": {
       "title": "QR sticker",
@@ -478,7 +481,14 @@
         "plate": "Plate",
         "odometer": "Odometer",
         "purchaseDate": "Purchase date"
-      }
+      },
+      "show": "Show",
+      "scope": {
+        "current": "Current fleet",
+        "past": "Sold and retired",
+        "all": "Everything"
+      },
+      "pastLink": "{count} sold or retired"
     },
     "bands": {
       "title": "Model-year bands",

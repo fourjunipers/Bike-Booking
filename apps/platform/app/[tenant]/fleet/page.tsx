@@ -24,6 +24,7 @@ import {
   fleetViewCookie,
   groupModes,
   parseView,
+  scopes,
   sortModes,
   viewQuery,
   type FleetGroup,
@@ -161,7 +162,22 @@ export default async function FleetPage({
       <RememberView slug={slug} query={viewQuery(view)} />
       <PageHeader
         title={t("title")}
-        intro={t("intro", { units: result.total, models: fleet.length })}
+        intro={
+          <>
+            {t("intro", { units: result.current, models: fleet.length })}
+            {result.past > 0 && view.scope === "current" && (
+              <>
+                {" "}
+                <Link
+                  href={`${base}?scope=past`}
+                  className="font-medium underline"
+                >
+                  {t("view.pastLink", { count: result.past })}
+                </Link>
+              </>
+            )}
+          </>
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             {result.total > 0 && (
@@ -216,7 +232,17 @@ export default async function FleetPage({
             <span className="max-sm:sr-only">{tCommon("search")}</span>
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Field id="scope" label={t("view.show")}>
+            <select
+              id="scope"
+              name="scope"
+              defaultValue={view.scope}
+              className={inputClass}
+            >
+              {options(scopes, (scope) => t(`view.scope.${scope}`))}
+            </select>
+          </Field>
           <Field id="group" label={t("view.groupBy")}>
             <select
               id="group"
@@ -224,7 +250,13 @@ export default async function FleetPage({
               defaultValue={view.group}
               className={inputClass}
             >
-              {options(groupModes, (mode) => t(`view.group.${mode}`))}
+              {options(
+                // Grouping by location is for shops with more than one.
+                groupModes.filter(
+                  (mode) => mode !== "location" || locations.length > 1,
+                ),
+                (mode) => t(`view.group.${mode}`),
+              )}
             </select>
           </Field>
           <Field id="sort" label={t("view.sortBy")}>
@@ -268,21 +300,23 @@ export default async function FleetPage({
                 {options(unitStatuses, (status) => t(`status.${status}`))}
               </select>
             </Field>
-            <Field id="location" label={t("unit.location")}>
-              <select
-                id="location"
-                name="location"
-                defaultValue={view.location}
-                className={inputClass}
-              >
-                <option value="">{t("view.any")}</option>
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            {locations.length > 1 && (
+              <Field id="location" label={t("unit.location")}>
+                <select
+                  id="location"
+                  name="location"
+                  defaultValue={view.location}
+                  className={inputClass}
+                >
+                  <option value="">{t("view.any")}</option>
+                  {locations.map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field id="transmission" label={t("catalogRequest.transmission")}>
               <select
                 id="transmission"

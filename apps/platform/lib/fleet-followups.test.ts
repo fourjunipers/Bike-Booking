@@ -433,7 +433,8 @@ describe("fleet view", () => {
   const view = (options: Partial<FleetViewOptions> = {}) =>
     buildFleetView(
       { units, models, bands, locations },
-      { ...defaultView, ...options },
+      // These look at every bike; the default (current fleet) has its own test.
+      { ...defaultView, scope: "all", ...options },
     );
 
   it("groups by model, then the shop's year bands, newest first", () => {
@@ -595,6 +596,46 @@ describe("fleet view", () => {
     expect(parseView({ group: "colour", sort: "price" })).toEqual(defaultView);
     expect(activeFilterCount(parsed)).toBe(5);
     expect(activeFilterCount(defaultView)).toBe(0);
+  });
+
+  it("shows the current fleet by default: sold and retired bikes are kept but out of the way", () => {
+    const data = {
+      units: [
+        ...units,
+        unit("nmax", { status: "retired" }),
+        unit("pcx", { status: "sold", model_year: 2025 }),
+      ],
+      models,
+      bands,
+      locations,
+    };
+    const current = buildFleetView(data, defaultView);
+    // 12 bikes: 3 sold or retired, 9 in the working fleet.
+    expect([
+      current.shown,
+      current.total,
+      current.current,
+      current.past,
+    ]).toEqual([9, 9, 9, 3]);
+    expect(
+      current.sections
+        .flatMap((s) => s.groups.flatMap((g) => g.units))
+        .some((u) => u.status === "sold" || u.status === "retired"),
+    ).toBe(false);
+    const past = buildFleetView(data, { ...defaultView, scope: "past" });
+    expect([past.shown, past.total]).toEqual([3, 3]);
+    expect(buildFleetView(data, { ...defaultView, scope: "all" }).shown).toBe(
+      12,
+    );
+    // Asking for Sold by name finds them without changing the scope.
+    expect(buildFleetView(data, { ...defaultView, status: "sold" }).shown).toBe(
+      2,
+    );
+    expect(parseView({ scope: "past" }).scope).toBe("past");
+    expect(parseView({ scope: "junk" }).scope).toBe("current");
+    expect(viewQuery({ ...defaultView, scope: "past" })).toBe("scope=past");
+    // The scope is not a filter: it does not count as one.
+    expect(activeFilterCount(parseView({ scope: "all" }))).toBe(0);
   });
 
   it("stays fast with 150 bikes in 5 models", () => {

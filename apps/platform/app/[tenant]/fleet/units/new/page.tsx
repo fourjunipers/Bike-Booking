@@ -70,6 +70,7 @@ export default async function NewUnitPage({
             engine_number: "",
             colour: "",
             model_year: "",
+            odometer: "0",
             notes: "",
           }}
         />

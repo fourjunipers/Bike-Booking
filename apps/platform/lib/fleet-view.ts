@@ -68,12 +68,24 @@ export type FleetFilters = {
   year: number | null;
 };
 
+/**
+ * Which bikes the list is about. "current" is the working fleet: sold and
+ * retired bikes are kept, with all their history, but stay out of the way
+ * until asked for ("past"), or shown together with the rest ("all").
+ */
+export const scopes = ["current", "past", "all"] as const;
+export type Scope = (typeof scopes)[number];
+
+const leftFleet = (status: string) => status === "sold" || status === "retired";
+
 export type FleetViewOptions = FleetFilters & {
   group: GroupMode;
   sort: SortMode;
+  scope: Scope;
 };
 
 export const defaultView: FleetViewOptions = {
+  scope: "current",
   group: "model",
   sort: "makeModel",
   q: "",
@@ -123,7 +135,11 @@ export type FleetSection = {
 export type FleetView = {
   /** Bikes that pass the filters. */
   shown: number;
+  /** Bikes in the chosen scope, before any filter. */
   total: number;
+  /** Bikes in the working fleet, and those sold or retired, whatever is shown. */
+  current: number;
+  past: number;
   sections: FleetSection[];
 };
 
@@ -141,7 +157,9 @@ export function parseView(
 ): FleetViewOptions {
   const group = text(query.group) as GroupMode;
   const sort = text(query.sort) as SortMode;
+  const scope = text(query.scope) as Scope;
   return {
+    scope: scopes.includes(scope) ? scope : defaultView.scope,
     group: groupModes.includes(group) ? group : defaultView.group,
     sort: sortModes.includes(sort) ? sort : defaultView.sort,
     q: text(query.q).slice(0, 60),
@@ -233,8 +251,16 @@ export function buildFleetView(
   const models = new Map(data.models.map((m) => [m.id, m]));
   const locations = new Map(data.locations.map((l) => [l.id, l.name]));
 
+  const past = data.units.filter((unit) => leftFleet(unit.status)).length;
+  // Asking for a status by name (say, Sold) overrides the scope.
+  const inScope = (unit: ViewUnit) =>
+    view.status !== "" ||
+    view.scope === "all" ||
+    leftFleet(unit.status) === (view.scope === "past");
+
   const units = data.units.filter((unit) => {
     const model = models.get(unit.model_id);
+    if (!inScope(unit)) return false;
     if (!matchesText(unit, view.q)) return false;
     if (view.make && model?.make !== view.make) return false;
     if (view.model && unit.model_id !== view.model) return false;
@@ -346,7 +372,7 @@ export function buildFleetView(
     });
     // With no filters on, a model that has no bikes yet is still listed, so
     // it can be opened and given some.
-    if (activeFilterCount(view) === 0) {
+    if (activeFilterCount(view) === 0 && view.scope !== "past") {
       for (const model of data.models) {
         if (byModel.has(model.id)) continue;
         sections.push({
@@ -401,7 +427,9 @@ export function buildFleetView(
 
   return {
     shown: units.length,
-    total: data.units.length,
+    total: data.units.filter(inScope).length,
+    current: data.units.length - past,
+    past,
     sections: sections.filter((s) => s.groups.length > 0),
   };
 }

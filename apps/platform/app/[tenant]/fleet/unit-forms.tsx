@@ -38,13 +38,15 @@ export type UnitFormValues = {
   engine_number: string;
   colour: string;
   model_year: string;
+  /** In the shop's distance unit. */
+  odometer: string;
   notes: string;
 };
 
 /**
  * A bike's details: owners and managers. The model is chosen make first, then
- * model. Status and odometer have their own controls on the bike page; a new
- * bike takes its first odometer reading here.
+ * model. The odometer sits here too (a lower reading asks to confirm); the
+ * location is the last field. Status has its own control on the bike page.
  */
 export function UnitForm({
   slug,
@@ -66,6 +68,18 @@ export function UnitForm({
     <ActionForm
       action={saveUnit}
       hidden={{ slug, ...(values.id ? { id: values.id } : {}) }}
+      confirmIf={(data) => {
+        if (!values.id) return undefined;
+        const typed = Number(
+          String(data.get("odometer") ?? "").replace(/[\s,]/g, ""),
+        );
+        return Number.isFinite(typed) && typed < Number(values.odometer)
+          ? t("odometerLowerConfirm", {
+              current: values.odometer,
+              unit: distanceUnit,
+            })
+          : undefined;
+      }}
     >
       <div className="grid gap-5 md:grid-cols-2">
         <MakeModelPicker
@@ -92,12 +106,13 @@ export function UnitForm({
           maxLength={4}
           defaultValue={values.model_year}
         />
-        <SelectInput
-          name="location_id"
-          label={t("location")}
+        <TextInput
+          name="odometer"
+          label={t("odometer", { unit: distanceUnit })}
+          help={values.id ? t("odometerHelp") : undefined}
+          inputMode="decimal"
           required
-          defaultValue={values.location_id}
-          options={locations}
+          defaultValue={values.odometer}
         />
         <div className="space-y-2">
           <TextInput
@@ -130,14 +145,13 @@ export function UnitForm({
           maxLength={40}
           defaultValue={values.engine_number}
         />
-        {!values.id && (
-          <TextInput
-            name="odometer"
-            label={t("initialOdometer", { unit: distanceUnit })}
-            inputMode="decimal"
-            defaultValue="0"
-          />
-        )}
+        <SelectInput
+          name="location_id"
+          label={t("location")}
+          required
+          defaultValue={values.location_id}
+          options={locations}
+        />
       </div>
       <TextArea
         name="notes"

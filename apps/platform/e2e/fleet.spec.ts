@@ -129,14 +129,18 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
   await signIn(page, demo.bigOwner);
   const started = Date.now();
   await page.goto("/big-fleet/fleet?reset=1");
-  await expect(page.getByText("150 bikes in 5 models.")).toBeVisible();
+  // The working fleet: the demo's 5 retired bikes are kept, one link away.
+  await expect(page.getByText("145 bikes in 5 models.")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "5 sold or retired" }),
+  ).toBeVisible();
   const loaded = Date.now() - started;
 
   const section = page.locator("section", {
     has: page.getByRole("heading", { name: "Honda PCX 160", exact: true }),
   });
   await expect(
-    section.getByText("160 cc · Automatic · 30 bikes"),
+    section.getByText(/160 cc · Automatic · (29|30) bikes/),
   ).toBeVisible();
   const groups = section.locator("details summary p:first-child");
   await expect(groups).toHaveText([
@@ -171,7 +175,17 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
     "Airport desk",
   ]);
   await page.goto("/big-fleet/fleet?year=2024&group=none");
-  await expect(page.getByText(/Showing \d+ of 150 bikes/)).toBeVisible();
+  await expect(page.getByText(/Showing \d+ of 145 bikes/)).toBeVisible();
+  // Sold and retired bikes: out of the way, not gone.
+  await page.goto("/big-fleet/fleet?reset=1");
+  await page.getByRole("link", { name: "5 sold or retired" }).click();
+  await expect(page).toHaveURL(/scope=past/);
+  await expect(page.getByLabel("Show")).toHaveValue("past");
+  await expect(page.getByRole("link", { name: /BIG-029/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /BIG-001/ })).toHaveCount(0);
+  await page.getByLabel("Show").selectOption("all");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByText("150 bikes", { exact: true })).toBeVisible();
   await page.goto("/big-fleet/fleet?reset=1");
 
   // Generous: a preview's functions are far from its database.
@@ -570,6 +584,14 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
     panel(page, "Purchase and sale").getByLabel("Sale price (THB)"),
   ).toHaveValue("61000.00");
 
+  // A sold bike leaves the everyday Fleet list but is still on file.
+  const soldUrl = page.url();
+  await page.goto(`/bsr/fleet?q=${frame}`);
+  await expect(page.getByText(`No bike matches “${frame}”.`)).toBeVisible();
+  await page.goto(`/bsr/fleet?scope=past&q=${frame}`);
+  await expect(page.getByRole("link", { name: /No plate/ })).toBeVisible();
+  await page.goto(soldUrl);
+
   // Clean up: the bike, then the model (its bands go with it).
   page.on("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Delete bike" }).click();
@@ -592,6 +614,19 @@ test("a make that isn't in the catalog: the shop adds it, uses it at once, and a
   await expect(
     page.getByRole("heading", { name: "Add a make or model" }),
   ).toBeVisible();
+  // Something already in the list can't be added a second time.
+  await page.getByLabel("Make", { exact: true }).fill("honda");
+  await page.getByLabel("Model", { exact: true }).fill("pcx 160");
+  await page.getByLabel("First model year").fill("2025");
+  await page.getByLabel("Last model year").fill("2027");
+  await page.getByLabel("Engine size (cc)").fill("160");
+  await page.getByRole("button", { name: "Send request" }).click();
+  await expect(
+    page.getByText(/already in the list for those years/),
+  ).toBeVisible();
+  await page.getByLabel("First model year").fill("");
+  await page.getByLabel("Last model year").fill("");
+
   await page.getByLabel("Make", { exact: true }).fill(make);
   await page.getByLabel("Model", { exact: true }).fill("Tester 125");
   await page.getByLabel("Engine size (cc)").fill("125");

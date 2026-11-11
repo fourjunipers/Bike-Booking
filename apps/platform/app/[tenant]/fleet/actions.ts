@@ -265,8 +265,9 @@ export async function saveUnit(
       },
     };
   }
-  const odometer = id ? null : distance(formData, tenant.distanceUnit);
-  if (odometer === "invalid")
+  // The odometer is part of the details form (a new bike may leave it blank).
+  const odometer = distance(formData, tenant.distanceUnit);
+  if (odometer === "invalid" || (id && odometer === null))
     return { errors: { odometer: "invalidDistance" } };
 
   const modelId = await resolveModel(supabase, tenant.id, raw.model_choice);
@@ -290,7 +291,11 @@ export async function saveUnit(
 
   const { data, error } = await supabase
     .from("units")
-    .update({ ...parsed.data, model_id: modelId })
+    .update({
+      ...parsed.data,
+      model_id: modelId,
+      current_odometer_km: odometer ?? 0,
+    })
     .eq("tenant_id", tenant.id)
     .eq("id", id)
     .select("id");
@@ -700,6 +705,22 @@ export async function requestCatalogEntry(
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const entry = parsed.data;
+
+  // Already in the list (approved, or this shop's own request) for those
+  // years: pick it from the dropdowns, don't add it twice. An entry with no
+  // years covers every year.
+  const same = (a: string, b: string) =>
+    a.trim().toLowerCase() === b.trim().toLowerCase();
+  const from = entry.year_from ?? -Infinity;
+  const to = entry.year_to ?? entry.year_from ?? Infinity;
+  const duplicate = (await getCatalog()).some(
+    (c) =>
+      same(c.make, entry.make) &&
+      same(c.model, entry.model) &&
+      (c.year_from ?? -Infinity) <= to &&
+      (c.year_to ?? c.year_from ?? Infinity) >= from,
+  );
+  if (duplicate) return { errors: { model: "catalogExists" } };
 
   const { data: id, error } = await supabase.rpc("request_catalog_entry", {
     p_tenant_id: tenant.id,
