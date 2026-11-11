@@ -9,7 +9,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
-| Database | 35 migrations in `supabase/migrations` (27 + 3 platform on `main`, 5 more on the Phase 1a branch). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 35 |
+| Database | 36 migrations in `supabase/migrations` (27 + 3 platform on `main`, 6 more on the Phase 1a branch). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 36 and the demo seed |
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
@@ -19,7 +19,7 @@ Mapping first: `docs/platform/MAPPING.md` (legacy marketplace tables → tenants
 
 **Built**
 - **`platform` schema** (owner decision). Platform tables left `public`; `tenants` and `memberships` moved with their functions. Signed-out visitors have no access to the schema. The app's database client (`@mango/db/platform-server`) points at `platform` only and reads the shared catalog with `.schema("public")`. Nothing is granted by default; every function revokes public execute and checks its caller.
-- **Migrations** `20261110000100`–`500` (all `_platform_`): schema move and set-form RLS helpers (`my_tenant_ids`, `my_role`), `platform_admins`; `audit_events` with a row trigger and a helper; `locations`, `location_hours`, `location_closures`, `create_tenant()`; the catalog link; `models`, `units`, `unit_financials`, `unit_blocks`, `import_fleet()`.
+- **Migrations** `20261110000100`–`500` and `20261111000100` (all `_platform_`): schema move and set-form RLS helpers (`my_tenant_ids`, `my_role`), `platform_admins`; `audit_events` with a row trigger and a helper; `locations`, `location_hours`, `location_closures`, `create_tenant()`; the catalog link; `models`, `units`, `unit_financials`, `unit_blocks`, `import_fleet()`.
 - **Locations.** Time zone, address, map pin, contacts, hours, closures and (empty until 3M) market sit on the location. `tenants.timezone` is gone. A tenant can only be created together with its default location (`create_tenant`, checked when the transaction ends); the default can't be deleted or unset. Only an owner changes a time zone, with a confirm.
 - **Catalog.** `public.bike_catalog` stays the one catalog. Added: `vehicle_type` (new `public.vehicle_types`: motorbike, car with a spec schema), `specs`, `requested_by_tenant_id`. A shop can request an entry and use its own pending request; a platform admin approves at `/admin/catalog`. **Platform admin is defined in one place: `platform.platform_admins`.**
 - **Models and units.** Several models per catalog entry, each with its own name. Units: plate (free-form, unique per shop, any letter case) or a "plate pending" flag, frame and engine numbers, colour, odometer in km, status, borrowed window, QR token.
@@ -37,27 +37,28 @@ Mapping first: `docs/platform/MAPPING.md` (legacy marketplace tables → tenants
 
 **Tests** (all passing locally, 11 Nov 2026)
 - Unit: 76 in the platform (CSV, import checks, money, distance, times across daylight-saving changes, form rules), 144 marketplace, 86 core.
-- Database: 72 (`npm run test:db -w @mango/platform`). The isolation test now needs a fixture row per tenant in every tenant table (it fails if one is missing, or if a new table has no payload), and tries cross-tenant read, insert, update, delete and "move my row into your shop" as every role and as an outsider, then compares every row of both tenants before and after. Parent keys are tested with the service role. Every function gets a cross-tenant call. No policy may be `using (true)`.
-- Playwright: 42 (21 at 375 px, 21 at 1280 px).
+- Database: 74 (`npm run test:db -w @mango/platform`). The isolation test now needs a fixture row per tenant in every tenant table (it fails if one is missing, or if a new table has no payload), and tries cross-tenant read, insert, update, delete and "move my row into your shop" as every role and as an outsider, then compares every row of both tenants before and after. Parent keys are tested with the service role. Every function gets a cross-tenant call. No policy may be `using (true)`.
+- Playwright: 42 (21 at 375 px, 21 at 1280 px), passing locally, in CI and against the PR #8 deploy preview on staging.
 - The hardened test found one real gap while it was being written: `platform_rls_report` and `platform_open_policies` were callable by any signed-in user. Fixed before the migrations were pushed anywhere.
+- **No platform table is readable without RLS** (owner's question, 11 Nov 2026). Checked in the database on local and staging: all 11 tables in the schema have RLS on with at least one policy, signed-out visitors have no access to the schema, and a new table gets no automatic grants (the schema's default privileges name the service role only). The check found leftover grants on `tenants` and `memberships` from their Phase 0 creation in `public` (signed-out `select`; `truncate`, `references`, `trigger`). They couldn't be used, and migration `20261111000100` removes them. Two tests now hold this on every run (`platform_exposure_report`, `platform_schema_access`), including for tables without a `tenant_id` and with no views allowed until one has its own test.
 
 **Server response time per page** (median of 5, signed in as the BSR owner, 20 bikes; `TIMINGS=1 npx playwright test timings --project=desktop`)
 
 | Page | Local production build | Deploy preview (US East → Singapore) |
 | --- | --- | --- |
-| Dashboard | 53 ms | pending |
-| Maintenance | 51 ms | pending |
-| Maintenance search | 56 ms | pending |
-| Fleet | 60 ms | pending |
-| Model | 57 ms | pending |
-| Bike | 65 ms | pending |
-| Add bike | 48 ms | pending |
-| Import CSV | 42 ms | pending |
-| QR stickers (all 20) | 65 ms | pending |
-| Locations | 44 ms | pending |
-| Location | 61 ms | pending |
-| Shop settings | 46 ms | pending |
-| Team | 39 ms | pending |
+| Dashboard | 53 ms | 1.2 s |
+| Maintenance | 51 ms | 1.4 s |
+| Maintenance search | 56 ms | 1.5 s |
+| Fleet | 60 ms | 1.3 s |
+| Model | 57 ms | 1.5 s |
+| Bike | 65 ms | 1.6 s |
+| Add bike | 48 ms | 1.2 s |
+| Import CSV | 42 ms | 1.3 s |
+| QR stickers (all 20) | 65 ms | 1.7 s |
+| Locations | 44 ms | 1.5 s |
+| Location | 61 ms | 1.7 s |
+| Shop settings | 46 ms | 1.0 s |
+| Team | 39 ms | 0.9 s |
 
 **Acceptance checks not truly tested**
 - **Scanning a printed sticker with a phone camera.** Tested: the code's link opens the bike for its shop and "not found" for anyone else. Not tested: that a real camera reads the printed code at sticker size. Needs a phone and a printout.
@@ -67,11 +68,11 @@ Mapping first: `docs/platform/MAPPING.md` (legacy marketplace tables → tenants
 - **Two people blocking the same bike at once**: tested with four parallel requests on a local database (one wins). Not tested under load or against the hosted database.
 - **Time-zone change warning**: the confirm dialog is not driven by a test (no test changes BSR's zone, because other tests read it). The owner-only rule itself is tested in the database.
 - **Thai text**: key-for-key parity with English is tested; the wording has not been read by a Thai speaker.
-- **Staging and the deploy preview**: see below.
 
 **Staging (11 Nov 2026)**
-- The five migrations are on `mango-works-staging` (`supabase db push --db-url`, dry run first; live untouched).
-- **Owner step:** add `platform` to API › Exposed schemas on staging. Until then the staging seed and the deploy preview can't read the schema. **Live needs the same setting when this merges.**
+- All six Phase 1a migrations are on `mango-works-staging` (`supabase db push --db-url`, dry run first; live untouched), `platform` is in its Exposed schemas (owner), and the demo seed has run there (11 catalog entries added, 20 demo bikes).
+- **Live needs `platform` added to API › Exposed schemas when this merges.**
+- Preview pages take 0.9-1.7 s on the server against 40-65 ms locally: the functions run in US East and each query crosses to Singapore. Pages make 3-6 queries (membership, fleet, catalog, locations, blocks, money), mostly in parallel. The move to Singapore functions is already planned before Phase 4.
 - Because `tenants` moved schema on staging, the Phase 0 build on the platform site's production URL stops working against staging until this branch is merged.
 
 **Deferred / known issues**
@@ -155,7 +156,7 @@ Mapping first: `docs/platform/MAPPING.md` (legacy marketplace tables → tenants
 
 ## Next
 
-1. Owner: add `platform` to API › Exposed schemas on staging (then the staging seed and the Playwright run against the deploy preview), review the Phase 1a PR, and add the same setting on live when it merges.
+1. Owner: try the Phase 1a click-through on the deploy preview (phone and desktop), review PR #8, and add `platform` to API › Exposed schemas on live when it merges.
 2. Owner: register Google and LINE sign-in for staging (not tested end to end yet).
 3. Owner: archive `mango-works-platform` (the old repo) if not done yet.
 4. Then Phase 2 (pricing + availability), 3 (orders + calendar), 3M (marketplace switch), 1b (fleet care).
