@@ -391,7 +391,7 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
     problems.getByText("A bike in your fleet already has this plate."),
   ).toBeVisible();
   await expect(
-    problems.getByText(/This make isn't in the catalog/),
+    problems.getByText(/isn't in the list, so it will be one of your own/),
   ).toBeVisible();
   // The pasted rows are still there to fix.
   await expect(page.getByLabel("Or paste the rows here")).toHaveValue(/Hodna/);
@@ -601,39 +601,44 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
 });
 
-test("a make that isn't in the catalog: the shop adds it, uses it at once, and an admin reviews it", async ({
+test("my own make and model: added with no approval, no duplicates, then matched or sent to Moto Mangos", async ({
   page,
   browser,
 }) => {
   await signIn(page, demo.bsrOwner);
   const make = `E2emake${Date.now().toString(36)}`;
   await page.goto("/bsr/fleet/units/new");
-  await page
-    .getByRole("link", { name: "Not in the list? Add a make or model" })
-    .click();
+  // The dropdowns are the main path; "add my own" is the link under them.
+  await page.getByRole("link", { name: "Not in the list? Add my own" }).click();
   await expect(
-    page.getByRole("heading", { name: "Add a make or model" }),
+    page.getByRole("heading", { name: "Add my own make or model" }),
   ).toBeVisible();
-  // Something already in the list can't be added a second time.
-  await page.getByLabel("Make", { exact: true }).fill("honda");
-  await page.getByLabel("Model", { exact: true }).fill("pcx 160");
-  await page.getByLabel("First model year").fill("2025");
-  await page.getByLabel("Last model year").fill("2027");
-  await page.getByLabel("Engine size (cc)").fill("160");
-  await page.getByRole("button", { name: "Send request" }).click();
-  await expect(
-    page.getByText(/already in the list for those years/),
-  ).toBeVisible();
-  await page.getByLabel("First model year").fill("");
-  await page.getByLabel("Last model year").fill("");
 
+  // Something already in the list is pointed at, not added again.
+  await page.getByLabel("Make", { exact: true }).fill("honda");
+  await page.getByLabel("Model", { exact: true }).fill("pcx  160");
+  await page.getByLabel("Engine size (cc)").fill("160");
+  await page.getByLabel("Transmission").selectOption("automatic");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(
+    page.getByText("This make and model is already in the list."),
+  ).toBeVisible();
+  await expect(page.getByText("Did you mean:")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /^Honda PCX 160/ }).first(),
+  ).toBeVisible();
+
+  // A motorbike needs its engine size and transmission.
   await page.getByLabel("Make", { exact: true }).fill(make);
   await page.getByLabel("Model", { exact: true }).fill("Tester 125");
+  await page.getByLabel("Engine size (cc)").fill("");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByText("Required.").first()).toBeVisible();
   await page.getByLabel("Engine size (cc)").fill("125");
-  await page.getByRole("button", { name: "Send request" }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
 
-  // Back on "Add a bike" with the new make and model chosen.
-  await expect(page).toHaveURL(/\/fleet\/units\/new\?catalog=/);
+  // Saved at once: back on "Add a bike" with it chosen.
+  await expect(page).toHaveURL(/\/fleet\/units\/new\?model=/);
   await expect(page.getByLabel("Make", { exact: true })).toHaveValue(make);
   const plate = freshPlate();
   await page.getByLabel("Plate", { exact: true }).fill(plate);
@@ -641,28 +646,94 @@ test("a make that isn't in the catalog: the shop adds it, uses it at once, and a
   await expect(
     page.getByRole("heading", { name: plate, level: 1 }),
   ).toBeVisible();
-  // The shop's model was created from it.
-  const model = page.getByRole("link", { name: `${make} Tester 125` });
-  await expect(model).toBeVisible();
+  const bikeUrl = page.url();
 
+  // The same make and model again, in other letters and spacing: refused.
+  await page.goto("/bsr/fleet/own-model");
+  await page.getByLabel("Make", { exact: true }).fill(make.toUpperCase());
+  await page.getByLabel("Model", { exact: true }).fill("tester125");
+  await page.getByLabel("Engine size (cc)").fill("125");
+  await page.getByLabel("Transmission").selectOption("automatic");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(
+    page.getByText("You already have this make and model."),
+  ).toBeVisible();
+
+  // Any vehicle: a car needs no engine size. Close to a preset in name, so
+  // its model page offers the match.
+  const carModel = `Forza 350 ${Date.now().toString(36)}`;
+  await page.getByLabel("Make", { exact: true }).fill("Honda");
+  await page.getByLabel("Model", { exact: true }).fill(carModel);
+  await page.getByLabel("Vehicle type").selectOption("car");
+  await page.getByLabel("Engine size (cc)").fill("");
+  await page.getByLabel("Transmission").selectOption("");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: `Honda ${carModel}`, level: 1 }),
+  ).toBeVisible();
+  const mangos = panel(page, "Moto Mangos");
+  await expect(
+    mangos.getByText("Moto Mangos lists motorbikes only, for now."),
+  ).toBeVisible();
+  // As a motorbike, it gets "Did you mean" and can take the preset.
+  await page.getByLabel("Vehicle type").selectOption("motorbike");
+  await page.getByLabel("Engine size (cc)").fill("330");
+  await page.getByLabel("Transmission").selectOption("automatic");
+  await page.getByRole("button", { name: "Save" }).first().click();
+  await expect(mangos.getByText("Did you mean:")).toBeVisible();
+  await mangos.getByRole("button", { name: "Use Honda Forza 350" }).click();
+  await expect(
+    mangos.getByText("On the Moto Mangos list as Honda Forza 350."),
+  ).toBeVisible();
   page.on("dialog", (dialog) => void dialog.accept());
-  await page.getByRole("button", { name: "Delete bike" }).click();
-  await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
-  await page.goto(`/bsr/fleet?reset=1`);
-  await page
-    .getByRole("link", { name: `${make} Tester 125`, exact: true })
-    .click();
   await page.getByRole("button", { name: "Delete model" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
 
-  // The platform admin sees the request and rejects it (cleaning up).
+  // The first one matches nothing: it is sent to Moto Mangos.
+  await page.goto(bikeUrl);
+  await page.getByRole("link", { name: `${make} Tester 125` }).click();
+  await expect(page).toHaveURL(/\/fleet\/models\/[0-9a-f-]{36}$/);
+  const modelUrl = page.url();
+  await expect(
+    mangos.getByText("This is your own make and model."),
+  ).toBeVisible();
+  await expect(mangos.getByText("Did you mean:")).toHaveCount(0);
+  // Not listable until it is on their list.
+  await expect(mangos.getByLabel("List this model on Moto Mangos")).toHaveCount(
+    0,
+  );
+  await mangos.getByRole("button", { name: "Send to Moto Mangos" }).click();
+  await expect(mangos.getByText(/Sent to Moto Mangos\./)).toBeVisible();
+
+  // The only place the approval list appears: the platform admin's. Here
+  // the admin decides it is really an existing entry and merges it.
   const admin = await (await browser.newContext()).newPage();
   await signIn(admin, demo.admin, "/admin/catalog");
   const request = admin.locator("li", { hasText: `${make} Tester 125` });
   await expect(request).toBeVisible();
-  await request.getByRole("button", { name: "Reject" }).click();
+  await request
+    .getByLabel("It is the same bike as")
+    .selectOption({ label: "Honda Forza 350" });
+  await request.getByRole("button", { name: "Merge" }).click();
   await expect(request).toHaveCount(0);
   await admin.context().close();
+
+  // The shop's model now sits on that preset and can be listed.
+  await page.goto(modelUrl);
+  await expect(
+    mangos.getByText("On the Moto Mangos list as Honda Forza 350."),
+  ).toBeVisible();
+  await mangos.getByLabel("List this model on Moto Mangos").check();
+  await mangos.getByRole("button", { name: "Save" }).click();
+  await expect(mangos.getByText("Saved")).toBeVisible();
+
+  // Clean up: the bike, then the model.
+  await page.goto(bikeUrl);
+  await page.getByRole("button", { name: "Delete bike" }).click();
+  await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
+  await page.goto(modelUrl);
+  await page.getByRole("button", { name: "Delete model" }).click();
+  await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
 });
 
 test("print stickers: tick bikes or select all for the filter; the code opens the bike only for its shop", async ({

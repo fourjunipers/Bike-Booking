@@ -90,10 +90,12 @@ A legacy row is a shop's listing of one catalog entry with a quantity. On the pl
 | --- | --- | --- | --- |
 | `id` | `models.id` | 1a | Same UUID (the marketplace's `listingId`) |
 | `shop_id` | `models.tenant_id` | 1a | |
-| `catalog_id` | `models.catalog_id` | 1a | Required. A shop may have several models on one catalog entry, each with its own display name |
+| `catalog_id` | `models.catalog_id` | 1a | Optional since 11 Nov 2026: a model is on a preset (an approved catalog entry) or is the shop's own. Every legacy listing has one, so every mapped model is on a preset. A shop may have several models on one entry, each with its own display name |
+| (from the catalog entry) | `models.make`, `model`, `vehicle_type`, `cc`, `transmission` | 1a | Copied from the catalog entry by the database when the model is linked |
+| `visible` (with the shop live) | `models.marketplace_listed` | 1a | The shop's per-model switch for Moto Mangos; only a model on an approved entry can have it on. Read by the marketplace from 3M |
 | (none) | `models.name` | 1a | Display name, unique within the shop. At 3M: the catalog entry's make, model and years |
 | `photos` | `models.photos` | 1a | Same storage paths |
-| `visible` | `models.bookable_online` | 1a | |
+| `visible` | `models.bookable_online` | 1a | The shop's own booking page (Phase 8). The Moto Mangos switch is the row above |
 | `qty` | Count of the model's `units` rows | 1a | No quantity column. At 3M, `qty` units are created per model at the default location, status active, with no plate and `plate_pending` set; the shop fills in plates afterwards |
 | `instant_qty`, `request_qty` | `models.instant_units`, `request_units` | 1a | Walk-in-only = active units − instant − request. Checked on save (can't exceed active units) |
 | `ready_today_count` | `models.ready_now` | 1a | |
