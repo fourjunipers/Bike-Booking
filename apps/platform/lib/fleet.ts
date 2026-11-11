@@ -1,21 +1,28 @@
 import { z } from "zod";
-import { isIsoDate } from "./fleet-import";
 import { isTimeZone } from "./tenant-settings";
 
 /**
  * Form rules for the fleet and location screens (SPEC › Fleet). Each schema
  * takes the raw form fields and returns the row to save. The database checks
  * everything again; these give the form its field-by-field messages.
- * Error messages are keys of the "Fleet.errors" messages.
+ * Error messages are keys of the "FormErrors" messages.
  */
 
-export const unitStatuses = [
-  "active",
-  "maintenance",
-  "borrowed",
-  "retired",
-  "sold",
-] as const;
+/** A real calendar date written YYYY-MM-DD. */
+export function isIsoDate(text: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!m) return false;
+  const date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return date.getUTCMonth() === +m[2] - 1 && date.getUTCDate() === +m[3];
+}
+
+/**
+ * A bike has one status. Scheduled downtime is separate (unit_blocks).
+ * - active: in the fleet and rentable.
+ * - maintenance: in the fleet, not rentable until set back to active.
+ * - retired, sold: out of the fleet for good; history is kept.
+ */
+export const unitStatuses = ["active", "maintenance", "retired", "sold"] as const;
 export type UnitStatus = (typeof unitStatuses)[number];
 
 /** Statuses staff and mechanics may switch between (units_guard in the database). */
@@ -24,6 +31,11 @@ export const workStatuses = ["active", "maintenance"] as const;
 /** A unit that has left the fleet: no new blocks, hidden from availability. */
 export function hasLeftFleet(status: string): boolean {
   return status === "sold" || status === "retired";
+}
+
+/** Whether a bike in this status counts as rentable stock. */
+export function isRentable(status: string): boolean {
+  return status === "active";
 }
 
 /** A field left blank, or not on the form at all, is "no value". */
@@ -40,14 +52,14 @@ const optionalDate = z.preprocess(
   z.string().trim().refine(isIsoDate, "invalidDate").nullable(),
 );
 
-const optionalInt = (min: number, max: number) =>
+const optionalInt = (min: number, max: number, message = "invalidNumber") =>
   z.preprocess(
     blankToNull,
     z.coerce
-      .number("invalidNumber")
-      .int("invalidNumber")
-      .min(min, "invalidNumber")
-      .max(max, "invalidNumber")
+      .number(message)
+      .int(message)
+      .min(min, message)
+      .max(max, message)
       .nullable(),
   );
 
@@ -63,6 +75,12 @@ const count = z.preprocess(
 const checkbox = z.preprocess((v) => v === "on" || v === "true", z.boolean());
 
 const uuid = z.uuid("required");
+
+const year = z.coerce
+  .number("invalidYear")
+  .int("invalidYear")
+  .min(1950, "invalidYear")
+  .max(2100, "invalidYear");
 
 /** International phone format: + and 7 to 15 digits. Spaces and dashes are dropped. */
 const optionalPhone = z.preprocess(
@@ -94,19 +112,16 @@ export const modelSchema = z
   .strict();
 export type ModelInput = z.infer<typeof modelSchema>;
 
+/** A bike's details. Its status and odometer have their own controls. */
 export const unitSchema = z
   .object({
-    model_id: uuid,
     location_id: uuid,
     plate: optionalText(30),
     plate_pending: checkbox,
     frame_number: optionalText(40),
     engine_number: optionalText(40),
     colour: optionalText(40),
-    first_registered: optionalDate,
-    status: z.enum(unitStatuses, "required"),
-    active_from: optionalDate,
-    active_to: optionalDate,
+    model_year: optionalInt(1950, 2100, "invalidYear"),
     notes: optionalText(2000),
   })
   .strict()
@@ -117,12 +132,6 @@ export const unitSchema = z
         path: ["plate"],
         message: "plateOrPending",
       });
-    if (unit.active_from && unit.active_to && unit.active_to < unit.active_from)
-      ctx.addIssue({
-        code: "custom",
-        path: ["active_to"],
-        message: "endBeforeStart",
-      });
   })
   // A unit with a plate isn't waiting for one.
   .transform((unit) => ({
@@ -130,6 +139,30 @@ export const unitSchema = z
     plate_pending: unit.plate ? false : unit.plate_pending,
   }));
 export type UnitInput = z.infer<typeof unitSchema>;
+
+/**
+ * The model chosen for a bike: one of the shop's models, or a catalog entry
+ * the shop has no model for yet (a model is created from it on save).
+ */
+export function parseModelChoice(
+  value: unknown,
+): { kind: "model" | "catalog"; id: string } | null {
+  const m = /^(model|catalog):([0-9a-f-]{36})$/.exec(String(value ?? ""));
+  return m ? { kind: m[1] as "model" | "catalog", id: m[2] } : null;
+}
+
+/** One of a model's year bands, e.g. 2020 to 2023. */
+export const yearBandSchema = z
+  .object({ year_from: year, year_to: year })
+  .strict()
+  .superRefine((band, ctx) => {
+    if (band.year_to < band.year_from)
+      ctx.addIssue({
+        code: "custom",
+        path: ["year_to"],
+        message: "endBeforeStart",
+      });
+  });
 
 export const locationSchema = z
   .object({
@@ -160,11 +193,7 @@ const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "invalidTime");
 
 /** One weekday's hours; closed days are simply left out. */
 export const hoursSchema = z
-  .object({
-    weekday: z.number().int().min(0).max(6),
-    open: clock,
-    close: clock,
-  })
+  .object({ weekday: z.number().int().min(0).max(6), open: clock, close: clock })
   .refine((h) => h.close > h.open, {
     path: ["close"],
     message: "endBeforeStart",
@@ -202,8 +231,8 @@ export const catalogRequestSchema = z
   .object({
     make: z.string().trim().min(1, "required").max(40, "tooLong"),
     model: z.string().trim().min(1, "required").max(60, "tooLong"),
-    year_from: optionalInt(1950, 2100),
-    year_to: optionalInt(1950, 2100),
+    year_from: optionalInt(1950, 2100, "invalidYear"),
+    year_to: optionalInt(1950, 2100, "invalidYear"),
     type: z.enum(bikeTypes, "required"),
     transmission: z.enum(transmissions, "required"),
     cc: z.coerce
@@ -219,6 +248,33 @@ export const catalogRequestSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["year_to"],
+        message: "endBeforeStart",
+      });
+  });
+
+/** Tax and insurance records (SPEC › Fleet › Tax and insurance log). */
+export const renewalKinds = [
+  "road_tax",
+  "compulsory_insurance",
+  "voluntary_insurance",
+  "inspection",
+] as const;
+export type RenewalKind = (typeof renewalKinds)[number];
+
+export const renewalSchema = z
+  .object({
+    kind: z.enum(renewalKinds, "required"),
+    provider: optionalText(200),
+    reference_no: optionalText(100),
+    starts_at: optionalDate,
+    expires_at: z.string().trim().refine(isIsoDate, "invalidDate"),
+  })
+  .strict()
+  .superRefine((r, ctx) => {
+    if (r.starts_at && r.expires_at < r.starts_at)
+      ctx.addIssue({
+        code: "custom",
+        path: ["expires_at"],
         message: "endBeforeStart",
       });
   });
@@ -242,6 +298,7 @@ export function dbErrorKey(
 ): string {
   if (!error) return "saveFailed";
   const message = error.message ?? "";
+  if (message.includes("model_year_bands_no_overlap")) return "bandOverlap";
   // The availability lock: two blocks of one unit overlap.
   if (error.code === "23P01") return "blockOverlap";
   if (message.includes("units_plate_idx")) return "plateExists";
@@ -254,7 +311,6 @@ export function dbErrorKey(
     "unit_not_in_fleet",
     "more_units_than_active",
     "catalog_entry_not_usable",
-    "odometer_lower_needs_manager",
     "only_owner_or_manager",
     "currency_locked",
   ])

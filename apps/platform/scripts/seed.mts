@@ -2,7 +2,9 @@
  * Demo data for the platform: two shops in different countries, one user per
  * role, one user who works in both shops, a platform admin, and (Phase 1a)
  * BSR's location details plus 20 demo bikes read from scripts/demo/bsr-fleet.csv
- * through the same CSV reader and checks the import screen uses.
+ * through the same CSV reader and checks the import screen uses, BSR tax and
+ * insurance records in every state, and a third shop with 150 bikes in 5
+ * models for trying the fleet list at size.
  *
  *   npm run seed -w @mango/platform            local Supabase
  *   npm run seed:staging -w @mango/platform    mango-works-staging
@@ -76,6 +78,15 @@ const tenants = [
     timezone: "Asia/Ho_Chi_Minh",
     locale: "vi-VN",
   },
+  // 150 bikes in 5 models, for trying the fleet list at size.
+  {
+    slug: "big-fleet",
+    name: "Big Fleet Demo",
+    country: "US",
+    currency: "USD",
+    timezone: "America/New_York",
+    locale: "en-US",
+  },
 ];
 
 const users: { email: string; name: string; roles: Record<string, Role> }[] = [
@@ -118,6 +129,11 @@ const users: { email: string; name: string; roles: Record<string, Role> }[] = [
     email: "both@demo.test",
     name: "Alex (works in both)",
     roles: { bsr: "manager", "saigon-scooters": "staff" },
+  },
+  {
+    email: "owner@big.demo.test",
+    name: "Dana (owner)",
+    roles: { "big-fleet": "owner" },
   },
   // Mango Works staff: approves catalog requests at /admin/catalog.
   { email: "admin@mangoworks.demo.test", name: "Mango (admin)", roles: {} },
@@ -351,8 +367,17 @@ async function seedBsrLocation(tenantId: string): Promise<string> {
   return location.id;
 }
 
+type CatalogRow = {
+  id: string;
+  slug: string;
+  make: string;
+  model: string;
+  year_from: number | null;
+  year_to: number | null;
+};
+
 /** Makes sure the catalog entries exist, and returns every approved entry. */
-async function seedCatalog() {
+async function seedCatalog(): Promise<CatalogRow[]> {
   const { data: existing, error } = await pub
     .from("bike_catalog")
     .select("slug")
@@ -378,7 +403,7 @@ async function seedCatalog() {
   );
   const { data: approved, error: listError } = await pub
     .from("bike_catalog")
-    .select("id, slug")
+    .select("id, slug, make, model, year_from, year_to")
     .eq("status", "approved");
   if (listError) throw listError;
   return approved;
@@ -388,10 +413,10 @@ async function seedCatalog() {
 async function seedBsrFleet(
   tenantId: string,
   locationId: string,
-  approved: { id: string; slug: string }[],
+  approved: CatalogRow[],
 ) {
   const [{ data: models }, { data: units }] = await Promise.all([
-    db.from("models").select("id, name").eq("tenant_id", tenantId),
+    db.from("models").select("id, name, catalog_id").eq("tenant_id", tenantId),
     db.from("units").select("plate, frame_number").eq("tenant_id", tenantId),
   ]);
   const table = parseCsv(
@@ -450,6 +475,165 @@ async function seedBsrFleet(
   );
 }
 
+/** A date `days` from today, as YYYY-MM-DD. */
+const dayFromNow = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Tax and insurance records that show every state on the day the seed runs:
+ * insurance expiring in 30 days (the spec's acceptance check), one in 5 days,
+ * road tax that expired 3 days ago, and some comfortably in the future.
+ * Added once: skipped when the shop already has any.
+ */
+async function seedBsrRenewals(tenantId: string) {
+  const { count } = await db
+    .from("unit_renewals")
+    .select("*", { count: "exact", head: true })
+    .eq("tenant_id", tenantId);
+  if (count) {
+    console.log(`  renewals  ${count} already there`);
+    return;
+  }
+  const { data: units, error } = await db
+    .from("units")
+    .select("id, plate")
+    .eq("tenant_id", tenantId)
+    .in("plate", ["DEMO-001", "DEMO-002", "DEMO-003", "DEMO-004"]);
+  if (error) throw error;
+  const id = (plate: string) => units.find((u) => u.plate === plate)?.id;
+  const records: [string, string, number, number][] = [
+    // plate, kind, expires in days, cost in baht
+    ["DEMO-001", "compulsory_insurance", 30, 645],
+    ["DEMO-001", "road_tax", 200, 100],
+    ["DEMO-002", "road_tax", -3, 100],
+    ["DEMO-002", "compulsory_insurance", 120, 645],
+    ["DEMO-003", "compulsory_insurance", 5, 645],
+    ["DEMO-003", "road_tax", 300, 100],
+    ["DEMO-004", "compulsory_insurance", 250, 645],
+    ["DEMO-004", "road_tax", 250, 100],
+  ];
+  let added = 0;
+  for (const [plate, kind, days, cost] of records) {
+    const unitId = id(plate);
+    if (!unitId) continue;
+    const { data, error: renewalError } = await db
+      .from("unit_renewals")
+      .insert({
+        tenant_id: tenantId,
+        unit_id: unitId,
+        kind,
+        provider: "Demo provider (not a real policy)",
+        reference_no: `DEMO-${plate.slice(-3)}-${kind === "road_tax" ? "T" : "I"}`,
+        starts_at: dayFromNow(days - 365),
+        expires_at: dayFromNow(days),
+      })
+      .select("id")
+      .single();
+    if (renewalError) throw renewalError;
+    const { error: costError } = await db.from("unit_renewal_costs").insert({
+      tenant_id: tenantId,
+      renewal_id: data.id,
+      currency: "THB",
+      cost: cost * 100,
+    });
+    if (costError) throw costError;
+    added++;
+  }
+  console.log(`  renewals  ${added} demo tax and insurance records`);
+}
+
+/**
+ * A big demo shop for trying the fleet list at size: 150 bikes in 5 models,
+ * model years 2014 to 2026 with three year bands per model, two locations and
+ * a mix of statuses. Fake BIG- plates. Added once.
+ */
+async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
+  const { count } = await db
+    .from("units")
+    .select("*", { count: "exact", head: true })
+    .eq("tenant_id", tenantId);
+  if ((count ?? 0) >= 150) {
+    console.log(`  big fleet  ${count} bikes already there`);
+    return;
+  }
+  if (count) fail("the big demo shop is half-seeded; delete its bikes and run again");
+
+  const { data: main, error } = await db
+    .from("locations")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("is_default", true)
+    .single();
+  if (error) throw error;
+  const { data: airport, error: airportError } = await db
+    .from("locations")
+    .upsert(
+      { tenant_id: tenantId, name: "Airport desk", timezone: "America/New_York" },
+      { onConflict: "tenant_id,id" },
+    )
+    .select("id")
+    .single();
+  if (airportError) throw airportError;
+
+  const slugs = [
+    "honda-pcx-160-2026",
+    "honda-click-160-2023-2025",
+    "honda-scoopy-2025-2026",
+    "yamaha-nmax-2026",
+    "yamaha-aerox-155-2024-2026",
+  ];
+  const colours = ["White", "Black", "Red", "Blue", "Grey"];
+  const models: { id: string; name: string }[] = [];
+  for (const slug of slugs) {
+    const entry = approved.find((c) => c.slug === slug);
+    if (!entry) fail(`catalog entry ${slug} is missing`);
+    const { data, error: modelError } = await db
+      .from("models")
+      .insert({
+        tenant_id: tenantId,
+        catalog_id: entry.id,
+        name: `${entry.make} ${entry.model}`,
+      })
+      .select("id, name")
+      .single();
+    if (modelError) throw modelError;
+    models.push(data);
+    const { error: bandError } = await db.from("model_year_bands").insert(
+      [
+        [2014, 2019],
+        [2020, 2023],
+        [2024, 2026],
+      ].map(([year_from, year_to]) => ({
+        tenant_id: tenantId,
+        model_id: data.id,
+        year_from,
+        year_to,
+      })),
+    );
+    if (bandError) throw bandError;
+  }
+
+  const rows = Array.from({ length: 150 }, (_, i) => {
+    const n = i + 1;
+    return {
+      tenant_id: tenantId,
+      model_id: models[i % 5].id,
+      location_id: n % 4 === 0 ? airport.id : main.id,
+      plate: `BIG-${String(n).padStart(3, "0")}`,
+      frame_number: `BIGFRAME${String(n).padStart(4, "0")}`,
+      colour: colours[n % colours.length],
+      // A few with no model year, to show the "unknown year" band.
+      model_year: n % 17 === 0 ? null : 2014 + (n % 13),
+      current_odometer_km: n * 311,
+      status: n % 29 === 0 ? "retired" : n % 11 === 0 ? "maintenance" : "active",
+    };
+  });
+  const { error: unitError } = await db.from("units").insert(rows);
+  if (unitError) throw unitError;
+  console.log("  big fleet  150 demo bikes in 5 models (fake BIG- plates)");
+}
+
+
 async function main() {
   console.log(`Seeding ${staging ? "STAGING" : "local"}: ${url}`);
 
@@ -507,6 +691,8 @@ async function main() {
   const locationId = await seedBsrLocation(bsr);
   const approved = await seedCatalog();
   await seedBsrFleet(bsr, locationId, approved);
+  await seedBsrRenewals(bsr);
+  await seedBigFleet(tenantIds.get("big-fleet")!, approved);
 
   console.log("Done. Every demo user's password is DEMO_PASSWORD.");
 }

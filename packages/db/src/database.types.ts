@@ -123,6 +123,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"model_year_bands": {
+                  Row: {
+                    "created_at": string,"id": string,"model_id": string,"tenant_id": string,"year_from": number,"year_to": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"model_id": string,"tenant_id": string,"year_from": number,"year_to": number
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"model_id"?: string,"tenant_id"?: string,"year_from"?: number,"year_to"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "model_year_bands_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "model_year_bands_tenant_id_model_id_fkey"
+      columns: ["tenant_id","model_id"]
+isOneToOne: false
+      referencedRelation: "models"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
                 },"models": {
                   Row: {
                     "bookable_online": boolean,"buffer_after_minutes": number | null,"buffer_before_minutes": number | null,"catalog_id": string,"created_at": string,"deposit": number | null,"deposit_currency": string | null,"description": string | null,"id": string,"instant_units": number,"licence_class": string | null,"min_age": number | null,"name": string,"photos": (string)[],"ready_now": number,"ready_updated_at": string | null,"request_units": number,"tenant_id": string,"updated_at": string
@@ -149,6 +175,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"notification_outbox": {
+                  Row: {
+                    "created_at": string,"dedupe_key": string,"id": number,"kind": string,"payload": NonNullable<Json>,"sent_at": string | null,"status": string,"tenant_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"dedupe_key": string,"id"?: never,"kind": string,"payload": NonNullable<Json>,"sent_at"?: string | null,"status"?: string,"tenant_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"dedupe_key"?: string,"id"?: never,"kind"?: string,"payload"?: NonNullable<Json>,"sent_at"?: string | null,"status"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notification_outbox_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"platform_admins": {
                   Row: {
                     "created_at": string,"note": string | null,"user_id": string
@@ -165,14 +211,14 @@ isOneToOne: false
                   ]
                 },"tenants": {
                   Row: {
-                    "country": string,"created_at": string,"currency": string,"distance_unit": string,"id": string,"locale": string,"name": string,"slug": string,"updated_at": string
+                    "country": string,"created_at": string,"currency": string,"distance_unit": string,"id": string,"locale": string,"name": string,"renewal_digest_day": number | null,"renewal_reminder_days": (number)[],"slug": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "country": string,"created_at"?: string,"currency": string,"distance_unit"?: string,"id"?: string,"locale": string,"name": string,"slug": string,"updated_at"?: string
+                    "country": string,"created_at"?: string,"currency": string,"distance_unit"?: string,"id"?: string,"locale": string,"name": string,"renewal_digest_day"?: number | null,"renewal_reminder_days"?: (number)[],"slug": string,"updated_at"?: string
                   }
                   Update: {
-                    "country"?: string,"created_at"?: string,"currency"?: string,"distance_unit"?: string,"id"?: string,"locale"?: string,"name"?: string,"slug"?: string,"updated_at"?: string
+                    "country"?: string,"created_at"?: string,"currency"?: string,"distance_unit"?: string,"id"?: string,"locale"?: string,"name"?: string,"renewal_digest_day"?: number | null,"renewal_reminder_days"?: (number)[],"slug"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -235,16 +281,74 @@ isOneToOne: false
       referencedColumns: ["tenant_id","id"]
     }
                   ]
-                },"units": {
+                },"unit_renewal_costs": {
                   Row: {
-                    "active_from": string | null,"active_to": string | null,"colour": string | null,"created_at": string,"current_odometer_km": number,"engine_number": string | null,"first_registered": string | null,"frame_number": string | null,"id": string,"location_id": string,"model_id": string,"notes": string | null,"plate": string | null,"plate_pending": boolean,"qr_token": string,"status": string,"tenant_id": string,"updated_at": string
+                    "cost": number,"currency": string,"renewal_id": string,"tenant_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active_from"?: string | null,"active_to"?: string | null,"colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"first_registered"?: string | null,"frame_number"?: string | null,"id"?: string,"location_id": string,"model_id": string,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"qr_token"?: string,"status"?: string,"tenant_id": string,"updated_at"?: string
+                    "cost": number,"currency": string,"renewal_id": string,"tenant_id": string
                   }
                   Update: {
-                    "active_from"?: string | null,"active_to"?: string | null,"colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"first_registered"?: string | null,"frame_number"?: string | null,"id"?: string,"location_id"?: string,"model_id"?: string,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"qr_token"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
+                    "cost"?: number,"currency"?: string,"renewal_id"?: string,"tenant_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "unit_renewal_costs_tenant_id_currency_fkey"
+      columns: ["tenant_id","currency"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id","currency"]
+    },{
+      foreignKeyName: "unit_renewal_costs_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "unit_renewal_costs_tenant_id_renewal_id_fkey"
+      columns: ["tenant_id","renewal_id"]
+isOneToOne: false
+      referencedRelation: "unit_renewals"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"unit_renewals": {
+                  Row: {
+                    "created_at": string,"expires_at": string,"id": string,"kind": string,"provider": string | null,"recorded_by": string | null,"reference_no": string | null,"starts_at": string | null,"tenant_id": string,"unit_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"provider"?: string | null,"recorded_by"?: string | null,"reference_no"?: string | null,"starts_at"?: string | null,"tenant_id": string,"unit_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"provider"?: string | null,"recorded_by"?: string | null,"reference_no"?: string | null,"starts_at"?: string | null,"tenant_id"?: string,"unit_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "unit_renewals_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "unit_renewals_tenant_id_unit_id_fkey"
+      columns: ["tenant_id","unit_id"]
+isOneToOne: false
+      referencedRelation: "units"
+      referencedColumns: ["tenant_id","id"]
+    }
+                  ]
+                },"units": {
+                  Row: {
+                    "colour": string | null,"created_at": string,"current_odometer_km": number,"engine_number": string | null,"frame_number": string | null,"id": string,"location_id": string,"model_id": string,"model_year": number | null,"notes": string | null,"plate": string | null,"plate_pending": boolean,"qr_token": string,"status": string,"tenant_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"frame_number"?: string | null,"id"?: string,"location_id": string,"model_id": string,"model_year"?: number | null,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"qr_token"?: string,"status"?: string,"tenant_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"frame_number"?: string | null,"id"?: string,"location_id"?: string,"model_id"?: string,"model_year"?: number | null,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"qr_token"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -301,6 +405,9 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: {
               "anon_usage": boolean,"default_grantees": (string)[]
             }[]
+                           },
+"queue_renewal_notifications":
+{ Args: { "p_now"?: string }; Returns: number
                            },
 "remove_member":
 { Args: { "p_membership_id": string }; Returns: undefined

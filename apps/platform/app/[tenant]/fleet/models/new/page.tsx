@@ -5,6 +5,7 @@ import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
 import { catalogName, getCatalog } from "@/lib/fleet-data";
+import { catalogOptions } from "@/lib/model-options";
 import { canManageFleet } from "@/lib/roles";
 import { ModelForm } from "../../model-form";
 
@@ -38,13 +39,7 @@ export default async function NewModelPage({
           slug={slug}
           currency={membership.tenant.currency}
           requestHref={`/${slug}/fleet/catalog-request`}
-          catalogOptions={catalog.map((c) => ({
-            value: c.id,
-            label:
-              c.status === "requested"
-                ? `${catalogName(c)} (${t("pendingRequest")})`
-                : catalogName(c),
-          }))}
+          catalogOptions={catalogOptions(catalog, t("pendingRequest"))}
           values={{
             name: chosen ? catalogName(chosen) : "",
             catalog_id: chosen?.id ?? "",

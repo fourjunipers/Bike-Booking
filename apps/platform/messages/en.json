@@ -95,7 +95,8 @@
       "failedCharges": "Failed card charges",
       "unpaid": "Unpaid past deadline"
     },
-    "shopTime": "Shop time: {time} ({zone})"
+    "shopTime": "Shop time: {time} ({zone})",
+    "noRenewals": "Nothing due."
   },
   "Orders": {
     "title": "Orders",
@@ -126,7 +127,6 @@
     "title": "Maintenance",
     "searchLabel": "Find a bike",
     "searchPlaceholder": "Plate number",
-    "scan": "Scan QR",
     "due": "Due and overdue across the fleet",
     "noMatch": "No bike matches “{query}”.",
     "searchHelp": "Type a plate or frame number, or scan a bike's QR sticker with your phone camera.",
@@ -173,7 +173,17 @@
     "km": "Kilometres (km)",
     "mi": "Miles (mi)",
     "currencyLockedHelp": "Locked: prices have been saved in this currency.",
-    "timezoneMoved": "Time zone, address, opening hours and closures are set per location. <link>Open locations</link>"
+    "timezoneMoved": "Time zone, address, opening hours and closures are set per location. <link>Open locations</link>",
+    "reminders": {
+      "title": "Tax and insurance reminders",
+      "intro": "When a bike's road tax or insurance is due for renewal. The largest number also decides when it first shows on the dashboard.",
+      "days": "Days before expiry",
+      "daysHelp": "Up to 10 numbers, separated by commas. For example 45, 30, 14, 7. Leave blank for no reminders.",
+      "digest": "Monthly digest",
+      "digestHelp": "One list of everything expiring that month.",
+      "digestOff": "Off",
+      "digestDay": "On day {day} of the month"
+    }
   },
   "Me": {
     "title": "You and this device",
@@ -226,13 +236,16 @@
     "unit_not_in_fleet": "This bike has been sold or retired, so it can't be blocked.",
     "more_units_than_active": "Instant plus Request units, and Ready now, can't be more than the model's active bikes.",
     "catalog_entry_not_usable": "Choose a catalog entry from the list.",
-    "odometer_lower_needs_manager": "That reading is lower than the last one. Ask a manager to correct it.",
     "only_owner_or_manager": "Only an owner or manager can change that.",
     "currency_locked": "The currency can't change once prices have been saved in it.",
     "timezoneOwnerOnly": "Only an owner can change a location's time zone.",
     "keepDefaultLocation": "A shop keeps its main location.",
     "notAllowed": "You can't make that change.",
-    "saveFailed": "Couldn't save. Please try again."
+    "saveFailed": "Couldn't save. Please try again.",
+    "invalidYear": "Enter a year, such as 2024.",
+    "bandOverlap": "These years overlap another band of this model.",
+    "invalidReminderDays": "Enter up to 10 whole numbers from 1 to 365, separated by commas.",
+    "invalidDigestDay": "Choose a day from 1 to 28."
   },
   "Fleet": {
     "title": "Fleet",
@@ -247,7 +260,7 @@
       "title": "Import bikes from CSV",
       "intro": "One row per bike. The whole file is checked first: if any row has a problem, nothing is saved.",
       "columns": "Columns",
-      "columnsHelp": "Only “model” is required. A new model also needs “catalog” (the entry's code from the list below). Leave “plate” blank for a bike without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
+      "columnsHelp": "“make” and “model” are required and must match the catalog (list below). Where a model has several generations, “model_year” picks the right one. “name” is optional: your own name for the model. Leave “plate” blank for a bike without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
       "template": "Download a template",
       "file": "CSV file",
       "paste": "Or paste the rows here",
@@ -260,33 +273,36 @@
       "column": "Column",
       "problem": "Problem",
       "value": "Value",
-      "catalogCodes": "Catalog codes",
+      "catalogCodes": "Makes and models in the catalog",
       "errors": {
         "tooLarge": "That file is too big (limit 1 MB).",
         "noFile": "Choose a file or paste the rows.",
         "empty": "The file is empty.",
         "unclosedQuote": "A quote opened on this line is never closed.",
         "duplicateHeader": "This column appears twice.",
-        "missingModelColumn": "The file needs a “model” column.",
         "unknownColumn": "This column isn't one of the import columns.",
         "noRows": "The file has a header but no bikes.",
         "tooManyRows": "A file can hold at most 1,000 bikes.",
         "required": "Required.",
         "tooLong": "Too long.",
-        "catalogNeeded": "This is a new model, so it needs a catalog code.",
-        "catalogUnknown": "No catalog entry has this code.",
-        "catalogMismatch": "This model has a different catalog code on an earlier line.",
         "plateDuplicateInFile": "This plate appears on an earlier line.",
         "plateExists": "A bike in your fleet already has this plate.",
         "invalidDate": "Not a date in YYYY-MM-DD form.",
         "invalidNumber": "Not a number.",
         "invalidMoney": "Not an amount in your currency.",
         "locationUnknown": "No location has this name.",
-        "saveFailed": "The file passed the checks but couldn't be saved. Nothing was imported."
+        "saveFailed": "The file passed the checks but couldn't be saved. Nothing was imported.",
+        "missingColumns": "The file needs this column.",
+        "makeUnknown": "This make isn't in the catalog. Add it first (link below the catalog list).",
+        "modelUnknown": "This make has no such model in the catalog. Add it first.",
+        "modelNeedsYear": "This model has several generations. Give a model year that one of them covers.",
+        "modelNeedsName": "You have several models on this catalog entry. Say which in the “name” column.",
+        "nameOtherModel": "This name belongs to a different make or model.",
+        "invalidYear": "Not a year, such as 2024."
       },
-      "showCodes": "Show {count, plural, one {# code} other {# codes}}"
+      "showCodes": "{count, plural, one {Show # entry} other {Show # entries}}",
+      "years": "years"
     },
-    "stickers": "QR stickers",
     "noUnits": "No bikes of this model yet.",
     "unitCount": "{count, plural, one {# bike} other {# bikes}}",
     "platePending": "Plate pending",
@@ -294,7 +310,6 @@
     "status": {
       "active": "Active",
       "maintenance": "Maintenance",
-      "borrowed": "Borrowed",
       "retired": "Retired",
       "sold": "Sold"
     },
@@ -317,9 +332,9 @@
       "editTitle": "Model",
       "name": "Name",
       "nameHelp": "Your own name for it. Several models can share one catalog entry.",
-      "catalog": "Catalog entry",
+      "catalog": "Model",
       "catalogHelp": "Sets the engine size and transmission renters search by.",
-      "catalogMissing": "Not in the list? Request a new entry",
+      "catalogMissing": "Not in the list? Add a make or model",
       "pendingRequest": "your request, awaiting approval",
       "description": "Description",
       "bookableOnline": "Can be booked online",
@@ -338,7 +353,8 @@
       "units": "Bikes of this model",
       "delete": "Delete model",
       "deleteConfirm": "Delete this model? This can't be undone.",
-      "photosLater": "Photos are added with the online booking page."
+      "photosLater": "Photos are added with the online booking page.",
+      "make": "Make"
     },
     "unit": {
       "newTitle": "Add a bike",
@@ -351,19 +367,22 @@
       "frameNumber": "Frame (chassis) number",
       "engineNumber": "Engine number",
       "colour": "Colour",
-      "firstRegistered": "First registered",
       "status": "Status",
-      "activeFrom": "Borrowed from",
-      "activeTo": "Borrowed until",
       "notes": "Notes",
       "odometer": "Odometer ({unit})",
       "odometerNow": "Odometer",
-      "work": "Odometer and status",
-      "workHelp": "A reading lower than the last one needs a manager.",
       "initialOdometer": "Odometer now ({unit})",
       "delete": "Delete bike",
       "deleteConfirm": "Delete this bike? This can't be undone.",
-      "readOnly": "You can view this bike but not change it."
+      "readOnly": "You can view this bike but not change it.",
+      "make": "Make",
+      "modelYear": "Model year",
+      "modelYearHelp": "Used to group the fleet list by year band.",
+      "makeOrModelMissing": "Not in the list? Add a make or model",
+      "yourModels": "Your models",
+      "fromCatalog": "From the catalog",
+      "statusIntro": "One status per bike. Scheduled downtime is separate, below.",
+      "odometerLowerConfirm": "Are you sure? This is lower than the current reading ({current} {unit})."
     },
     "downtime": {
       "title": "Downtime",
@@ -395,22 +414,22 @@
       "soldAt": "Sale date",
       "salePrice": "Sale price ({currency})",
       "soldTo": "Sold to",
-      "sellTitle": "Mark as sold",
-      "sellHelp": "Removes the bike from availability. Its future blocks must be moved or ended first.",
-      "sell": "Mark as sold",
-      "sellConfirm": "Mark this bike as sold?"
+      "afterSold": "Marked as sold. Fill in the sale date, price and buyer here, then save."
     },
     "sticker": {
       "title": "QR sticker",
       "help": "Scan it with a phone camera to open this bike. It only works for people signed in to your shop.",
       "print": "Print this sticker",
-      "sheetTitle": "QR stickers",
-      "sheetIntro": "{count, plural, one {# sticker} other {# stickers}}. Print on label paper or plain paper and cut.",
-      "printAll": "Print"
+      "sheetTitle": "Print stickers",
+      "sheetIntro": "Tick the bikes to print. Only the ticked stickers appear on paper.",
+      "printAll": "Print",
+      "selectAll": "{count, plural, one {Select the # bike listed} other {Select all # listed}}",
+      "selected": "{count} selected",
+      "sortRecent": "Most recently added"
     },
     "catalogRequest": {
-      "title": "Request a catalog entry",
-      "intro": "Mango Works checks each new entry. You can use it for your own models straight away.",
+      "title": "Add a make or model",
+      "intro": "For a bike that isn't in the catalog. You can use it straight away; Mango Works then checks it before other shops see it.",
       "make": "Make",
       "model": "Model",
       "yearFrom": "First model year",
@@ -419,9 +438,90 @@
       "transmission": "Transmission",
       "cc": "Engine size (cc)",
       "note": "Note for the reviewer",
-      "submit": "Send request"
+      "submit": "Send request",
+      "makeHelp": "Pick an existing make, or type a new one."
     },
-    "importCsv": "Import CSV"
+    "importCsv": "Import CSV",
+    "printStickers": "Print stickers",
+    "allBikes": "All bikes",
+    "statusCount": "{count} {status}",
+    "statusHelp": {
+      "active": "Can be rented.",
+      "maintenance": "Can't be rented until it is set back to Active. For planned dates, add downtime instead.",
+      "retired": "Out of the fleet for good. Can't be rented; its history is kept.",
+      "sold": "Sold. Can't be rented. After saving, fill in the sale details at the bottom of this page."
+    },
+    "view": {
+      "groupBy": "Group by",
+      "sortBy": "Sort by",
+      "filters": "{count, plural, =0 {Filters} other {Filters (#)}}",
+      "any": "Any",
+      "ccMin": "Engine size from (cc)",
+      "ccMax": "Engine size to (cc)",
+      "apply": "Apply",
+      "reset": "Reset view",
+      "showing": "Showing {shown} of {total} bikes",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "noneMatch": "No bikes match these filters.",
+      "group": {
+        "model": "Model",
+        "make": "Make",
+        "location": "Location",
+        "status": "Status",
+        "none": "None"
+      },
+      "sort": {
+        "makeModel": "Make and model",
+        "cc": "Engine size",
+        "count": "Bike count",
+        "plate": "Plate",
+        "odometer": "Odometer",
+        "purchaseDate": "Purchase date"
+      }
+    },
+    "bands": {
+      "title": "Model-year bands",
+      "intro": "How the Fleet list splits this model by model year. With none, it shows one group for all years.",
+      "none": "No bands yet: one group for all years.",
+      "range": "{from}–{to}",
+      "unknown": "Unknown year",
+      "other": "Other years",
+      "all": "All years",
+      "add": "Add band",
+      "from": "From year",
+      "to": "To year"
+    },
+    "renewals": {
+      "title": "Tax and insurance",
+      "intro": "The dates come from the latest record of each kind.",
+      "none": "No record",
+      "expires": {
+        "road_tax": "Road tax expires",
+        "compulsory_insurance": "Insurance expires",
+        "voluntary_insurance": "Voluntary insurance expires",
+        "inspection": "Inspection expires"
+      },
+      "kind": {
+        "road_tax": "Road tax",
+        "compulsory_insurance": "Insurance (compulsory)",
+        "voluntary_insurance": "Insurance (voluntary)",
+        "inspection": "Inspection"
+      },
+      "dueIn": "{days, plural, =0 {Expires today} one {Expires in # day} other {Expires in # days}}",
+      "expiredAgo": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
+      "history": "{count, plural, one {# record} other {All # records}}",
+      "addTitle": "Add or renew",
+      "add": "Add record",
+      "kindLabel": "Kind",
+      "provider": "Provider",
+      "reference": "Policy or receipt number",
+      "cost": "Cost ({currency})",
+      "start": "Start date",
+      "expiry": "Expiry date",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this record?"
+    }
   },
   "Locations": {
     "title": "Locations",

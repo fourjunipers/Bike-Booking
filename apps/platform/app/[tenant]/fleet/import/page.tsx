@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Panel } from "@/components/action-form";
 import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
-import { catalogName, getCatalog } from "@/lib/fleet-data";
+import { getCatalog } from "@/lib/fleet-data";
 import { importColumns, importTemplate } from "@/lib/fleet-import";
 import { canManageFleet } from "@/lib/roles";
 import { ImportForm } from "./import-form";
@@ -62,16 +63,42 @@ export default async function ImportPage({
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">
                 {t("showCodes", { count: catalog.length })}
               </summary>
-              <ul className="space-y-2 text-sm">
-                {catalog.map((entry) => (
-                  <li key={entry.id}>
-                    <span className="font-mono break-all">{entry.slug}</span>
-                    <span className="block text-muted-foreground">
-                      {catalogName(entry)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs text-muted-foreground uppercase">
+                  <tr>
+                    <th scope="col" className="py-1 pr-3 font-medium">
+                      make
+                    </th>
+                    <th scope="col" className="py-1 pr-3 font-medium">
+                      model
+                    </th>
+                    <th scope="col" className="py-1 font-medium">
+                      {t("years")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {catalog.map((entry) => (
+                    <tr key={entry.id}>
+                      <td className="py-1 pr-3">{entry.make}</td>
+                      <td className="py-1 pr-3">{entry.model}</td>
+                      <td className="py-1 text-muted-foreground">
+                        {entry.year_from
+                          ? entry.year_to && entry.year_to !== entry.year_from
+                            ? `${entry.year_from}–${entry.year_to}`
+                            : entry.year_from
+                          : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Link
+                href={`/${slug}/fleet/catalog-request`}
+                className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
+              >
+                {tFleet("unit.makeOrModelMissing")}
+              </Link>
             </details>
           </Panel>
         </div>

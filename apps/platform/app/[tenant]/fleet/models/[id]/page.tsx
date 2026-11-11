@@ -9,12 +9,23 @@ import { UnitRow } from "@/components/fleet/unit-bits";
 import { PageHeader } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
 import { requireArea } from "@/lib/access";
-import { catalogName, getCatalog, getFleet, getModel } from "@/lib/fleet-data";
+import {
+  getCatalog,
+  getFleet,
+  getLocations,
+  getModel,
+  getYearBands,
+} from "@/lib/fleet-data";
+import { catalogOptions } from "@/lib/model-options";
 import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { deleteModel } from "../../actions";
-import { ModelForm } from "../../model-form";
+import {
+  DeleteYearBandButton,
+  ModelForm,
+  YearBandForm,
+} from "../../model-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Fleet.model");
@@ -30,14 +41,20 @@ export default async function ModelPage({
   const { tenant: slug, id } = await params;
   const { membership } = await requireArea(slug, "fleet");
   const { tenant, role } = membership;
-  const [t, tFleet, locale, model, fleet, catalog] = await Promise.all([
-    getTranslations("Fleet.model"),
-    getTranslations("Fleet"),
-    getLocale(),
-    getModel(tenant.id, id),
-    getFleet(tenant.id),
-    getCatalog(),
-  ]);
+  const [t, tFleet, tCommon, locale, model, fleet, catalog, allBands, locations] =
+    await Promise.all([
+      getTranslations("Fleet.model"),
+      getTranslations("Fleet"),
+      getTranslations("Common"),
+      getLocale(),
+      getModel(tenant.id, id),
+      getFleet(tenant.id),
+      getCatalog(),
+      getYearBands(tenant.id),
+      getLocations(tenant.id),
+    ]);
+  const bands = allBands.filter((band) => band.model_id === id);
+  const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   if (!model) notFound();
   const manage = canManageFleet(role);
   const units = fleet.find((m) => m.id === id)?.units ?? [];
@@ -68,13 +85,7 @@ export default async function ModelPage({
               slug={slug}
               currency={tenant.currency}
               requestHref={`${base}/catalog-request`}
-              catalogOptions={catalog.map((c) => ({
-                value: c.id,
-                label:
-                  c.status === "requested"
-                    ? `${catalogName(c)} (${t("pendingRequest")})`
-                    : catalogName(c),
-              }))}
+              catalogOptions={catalogOptions(catalog, t("pendingRequest"))}
               values={{
                 id: model.id,
                 name: model.name,
@@ -131,11 +142,51 @@ export default async function ModelPage({
                     href={`${base}/units/${unit.id}`}
                     distanceUnit={tenant.distanceUnit}
                     locale={locale}
+                    detail={
+                      [unit.model_year, locationNames.get(unit.location_id)]
+                        .filter(Boolean)
+                        .join(" · ") || undefined
+                    }
                   />
                 ))}
               </ul>
             )}
           </section>
+          <Panel title={tFleet("bands.title")} intro={tFleet("bands.intro")}>
+            {bands.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {tFleet("bands.none")}
+              </p>
+            ) : (
+              <ul className="divide-y rounded-md border">
+                {bands.map((band) => (
+                  <li
+                    key={band.id}
+                    className="flex items-center justify-between gap-3 p-3"
+                  >
+                    <span className="font-medium">
+                      {tFleet("bands.range", {
+                        from: band.year_from,
+                        to: band.year_to,
+                      })}
+                    </span>
+                    {manage && (
+                      <DeleteYearBandButton
+                        slug={slug}
+                        band={band.id}
+                        label={tCommon("delete")}
+                      />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {manage && (
+              <div className="mt-5 border-t pt-5">
+                <YearBandForm slug={slug} id={model.id} />
+              </div>
+            )}
+          </Panel>
           {manage && units.length === 0 && (
             <ActionForm
               action={deleteModel}

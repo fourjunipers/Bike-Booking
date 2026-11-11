@@ -3,8 +3,8 @@
 import { useTranslations } from "next-intl";
 import {
   createContext,
-  useActionState,
   startTransition,
+  useActionState,
   useContext,
   useId,
   type ComponentProps,
@@ -30,6 +30,11 @@ const FormContext = createContext<{
   pending: boolean;
 }>({ error: () => undefined, pending: false });
 
+/** The error message for a field of the surrounding ActionForm, if any. */
+export function useFieldError(name: string): string | undefined {
+  return useContext(FormContext).error(name);
+}
+
 /**
  * A form bound to a server action: shows each field's error under it, a
  * "Saved" note, and a submit button that says it's working. Native inputs
@@ -41,6 +46,7 @@ export function ActionForm({
   submitLabel,
   pendingLabel,
   confirm,
+  confirmIf,
   destructive,
   className,
   children,
@@ -50,8 +56,10 @@ export function ActionForm({
   hidden?: Record<string, string>;
   submitLabel?: string;
   pendingLabel?: string;
-  /** Ask before submitting (deletes, sales). */
+  /** Always ask before submitting (deletes). */
   confirm?: string;
+  /** Ask only when this returns a question for what was typed. */
+  confirmIf?: (data: FormData) => string | undefined;
   destructive?: boolean;
   className?: string;
   children?: ReactNode;
@@ -77,14 +85,16 @@ export function ActionForm({
         className={cn("space-y-5", className)}
         onSubmit={(event) => {
           // Submitted by hand rather than left to the browser, so the fields
-          // keep what was typed when the server sends back an error. (Without
-          // JavaScript the plain form action above still works.)
+          // keep what was typed when the server sends back an error, and a
+          // dropdown keeps the value just saved. (Without JavaScript the
+          // plain form action above still works.)
           event.preventDefault();
-          if (confirm && !window.confirm(confirm)) return;
           const data = new FormData(
             event.currentTarget,
             (event.nativeEvent as SubmitEvent).submitter,
           );
+          const question = confirm ?? confirmIf?.(data);
+          if (question && !window.confirm(question)) return;
           startTransition(() => formAction(data));
         }}
       >
@@ -132,8 +142,7 @@ export function TextInput({
   className,
   ...props
 }: Labelled & Omit<ComponentProps<"input">, "name" | "id">) {
-  const { error } = useContext(FormContext);
-  const message = error(name);
+  const message = useFieldError(name);
   return (
     <Field id={name} label={label} help={help} error={message}>
       <input
@@ -155,8 +164,7 @@ export function TextArea({
   help,
   ...props
 }: Labelled & Omit<ComponentProps<"textarea">, "name" | "id">) {
-  const { error } = useContext(FormContext);
-  const message = error(name);
+  const message = useFieldError(name);
   return (
     <Field id={name} label={label} help={help} error={message}>
       <textarea
@@ -180,8 +188,7 @@ export function SelectInput({
 }: Labelled & {
   options: { value: string; label: string }[];
 } & Omit<ComponentProps<"select">, "name" | "id">) {
-  const { error } = useContext(FormContext);
-  const message = error(name);
+  const message = useFieldError(name);
   return (
     <Field id={name} label={label} help={help} error={message}>
       <select
@@ -209,8 +216,7 @@ export function CheckboxInput({
   help,
   ...props
 }: Labelled & Omit<ComponentProps<"input">, "name" | "id" | "type">) {
-  const { error } = useContext(FormContext);
-  const message = error(name);
+  const message = useFieldError(name);
   return (
     <div className="space-y-1">
       <label
@@ -236,26 +242,82 @@ export function CheckboxInput({
   );
 }
 
+/** One choice from a short list, each with a line saying what it means. */
+export function RadioList({
+  name,
+  legend,
+  options,
+  defaultValue,
+}: {
+  name: string;
+  legend: string;
+  options: { value: string; label: string; help: string; disabled?: boolean }[];
+  defaultValue: string;
+}) {
+  const message = useFieldError(name);
+  return (
+    <fieldset className="space-y-2">
+      <legend className="sr-only">{legend}</legend>
+      {options.map((option) => (
+        <label
+          key={option.value}
+          className={cn(
+            "flex min-h-11 cursor-pointer items-start gap-3 rounded-md border p-3 has-checked:border-primary has-checked:bg-highlight",
+            option.disabled && "cursor-not-allowed opacity-60",
+          )}
+        >
+          <input
+            type="radio"
+            name={name}
+            value={option.value}
+            defaultChecked={option.value === defaultValue}
+            disabled={option.disabled}
+            className="mt-0.5 size-5 accent-primary"
+          />
+          <span>
+            <span className="block font-medium">{option.label}</span>
+            <span className="block text-sm text-muted-foreground">
+              {option.help}
+            </span>
+          </span>
+        </label>
+      ))}
+      {message && (
+        <p role="alert" className="text-sm text-destructive">
+          {message}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
 /** A white panel with a heading, for one group of fields or one list. */
 export function Panel({
+  id,
   title,
   intro,
   children,
   className,
 }: {
+  /** An anchor to link or scroll to, e.g. "purchase-sale". */
+  id?: string;
   title?: string;
   intro?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
-  const id = useId();
+  const headingId = useId();
   return (
     <section
-      aria-labelledby={title ? id : undefined}
-      className={cn("rounded-lg border bg-card p-4 sm:p-5", className)}
+      id={id}
+      aria-labelledby={title ? headingId : undefined}
+      className={cn(
+        "scroll-mt-20 rounded-lg border bg-card p-4 sm:p-5",
+        className,
+      )}
     >
       {title && (
-        <h2 id={id} className="text-lg font-semibold">
+        <h2 id={headingId} className="text-lg font-semibold">
           {title}
         </h2>
       )}

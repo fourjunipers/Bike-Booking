@@ -128,6 +128,11 @@ export function placeItem(
     return { tab: "tomorrow", section };
   if (compareDates(item.date, upcomingRange(today).to) <= 0)
     return { tab: "upcoming", section };
+  // A renewal is on the dashboard from the shop's first reminder day (45 days
+  // before expiry by default), which is further out than the 7 days of
+  // Upcoming. Callers pass only renewals inside that window; they are listed
+  // under Upcoming with their date.
+  if (item.kind === "renewal") return { tab: "upcoming", section };
   return null;
 }
 

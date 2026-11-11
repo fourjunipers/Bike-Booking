@@ -1,6 +1,10 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@mango/db/platform-server";
+import type { RenewalKind } from "./fleet";
+import { catalogName } from "./fleet-import";
+
+export { catalogName };
 
 /**
  * Reads for the fleet and location screens. Everything runs as the signed-in
@@ -40,17 +44,6 @@ export const getCatalog = cache(async (): Promise<CatalogEntry[]> => {
   return data;
 });
 
-/** "Honda PCX 160 (2026)" / "Honda CB500X (2019–2021)". */
-export function catalogName(entry: CatalogEntry): string {
-  const years =
-    entry.year_from && entry.year_to && entry.year_to !== entry.year_from
-      ? ` (${entry.year_from}–${entry.year_to})`
-      : entry.year_from
-        ? ` (${entry.year_from})`
-        : "";
-  return `${entry.make} ${entry.model}${years}`;
-}
-
 export const getLocations = cache(async (tenantId: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -66,9 +59,9 @@ export const getLocations = cache(async (tenantId: string) => {
 });
 
 const unitColumns =
-  "id, model_id, location_id, plate, plate_pending, frame_number, engine_number, colour, first_registered, current_odometer_km, status, active_from, active_to, qr_token, notes";
+  "id, model_id, location_id, plate, plate_pending, frame_number, engine_number, colour, model_year, current_odometer_km, status, qr_token, notes, created_at";
 
-/** Every model with its units, by model name then plate. */
+/** Every model with its catalog entry and its units, by model name then plate. */
 export const getFleet = cache(async (tenantId: string) => {
   const supabase = await createClient();
   const [models, units, catalog] = await Promise.all([
@@ -96,6 +89,29 @@ export const getFleet = cache(async (tenantId: string) => {
 
 export type FleetModel = Awaited<ReturnType<typeof getFleet>>[number];
 export type FleetUnit = FleetModel["units"][number];
+
+/** The shop's model-year bands, for every model. */
+export const getYearBands = cache(async (tenantId: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("model_year_bands")
+    .select("id, model_id, year_from, year_to")
+    .eq("tenant_id", tenantId)
+    .order("year_from", { ascending: false });
+  if (error) throw error;
+  return data;
+});
+
+/** Purchase dates by unit, for sorting. Empty for roles that may not see money (RLS). */
+export async function getPurchaseDates(tenantId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("unit_financials")
+    .select("unit_id, purchase_date")
+    .eq("tenant_id", tenantId);
+  if (error) throw error;
+  return new Map(data.map((row) => [row.unit_id, row.purchase_date]));
+}
 
 export async function getModel(tenantId: string, id: string) {
   const supabase = await createClient();
@@ -157,6 +173,72 @@ export async function getUnitFinancials(tenantId: string, unitId: string) {
     .eq("tenant_id", tenantId)
     .eq("unit_id", unitId)
     .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+const renewalColumns =
+  "id, unit_id, kind, provider, reference_no, starts_at, expires_at";
+
+export type RenewalRow = {
+  id: string;
+  unit_id: string;
+  kind: RenewalKind;
+  provider: string | null;
+  reference_no: string | null;
+  starts_at: string | null;
+  expires_at: string;
+};
+
+/** One bike's tax and insurance records, latest expiry first. */
+export async function getUnitRenewals(tenantId: string, unitId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("unit_renewals")
+    .select(renewalColumns)
+    .eq("tenant_id", tenantId)
+    .eq("unit_id", unitId)
+    .order("expires_at", { ascending: false });
+  if (error) throw error;
+  return data as RenewalRow[];
+}
+
+/** What each renewal cost, by renewal id. Empty for roles that may not see money (RLS). */
+export async function getRenewalCosts(tenantId: string, renewalIds: string[]) {
+  if (renewalIds.length === 0) return new Map<string, number>();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("unit_renewal_costs")
+    .select("renewal_id, cost")
+    .eq("tenant_id", tenantId)
+    .in("renewal_id", renewalIds);
+  if (error) throw error;
+  return new Map(data.map((row) => [row.renewal_id, row.cost]));
+}
+
+/**
+ * Every renewal in the shop. The caller keeps the current one per bike and
+ * kind and applies the shop's reminder days (lib/renewals).
+ */
+export async function getFleetRenewals(tenantId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("unit_renewals")
+    .select(renewalColumns)
+    .eq("tenant_id", tenantId)
+    .order("expires_at", { ascending: false });
+  if (error) throw error;
+  return data as RenewalRow[];
+}
+
+/** The shop's reminder setting. */
+export async function getReminderSettings(tenantId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("renewal_reminder_days, renewal_digest_day")
+    .eq("id", tenantId)
+    .single();
   if (error) throw error;
   return data;
 }

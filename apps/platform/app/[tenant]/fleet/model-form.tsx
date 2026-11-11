@@ -5,11 +5,18 @@ import { useTranslations } from "next-intl";
 import {
   ActionForm,
   CheckboxInput,
-  SelectInput,
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import { saveModel } from "./actions";
+import {
+  MakeModelPicker,
+  type ModelOption,
+} from "@/components/fleet/make-model-picker";
+import {
+  addYearBand,
+  deleteYearBand,
+  saveModel,
+} from "./actions";
 
 export type ModelFormValues = {
   id?: string;
@@ -38,7 +45,7 @@ export function ModelForm({
   slug: string;
   currency: string;
   values: ModelFormValues;
-  catalogOptions: { value: string; label: string }[];
+  catalogOptions: ModelOption[];
   requestHref: string;
 }) {
   const t = useTranslations("Fleet.model");
@@ -48,6 +55,25 @@ export function ModelForm({
       hidden={{ slug, ...(values.id ? { id: values.id } : {}) }}
       className="max-w-3xl"
     >
+      <div className="grid gap-5 md:grid-cols-2">
+        <MakeModelPicker
+          modelName="catalog_id"
+          makeLabel={t("make")}
+          modelLabel={t("catalog")}
+          help={t("catalogHelp")}
+          models={catalogOptions}
+          defaultModel={values.catalog_id}
+          required
+          footer={
+            <Link
+              href={requestHref}
+              className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
+            >
+              {t("catalogMissing")}
+            </Link>
+          }
+        />
+      </div>
       <TextInput
         name="name"
         label={t("name")}
@@ -56,22 +82,6 @@ export function ModelForm({
         maxLength={120}
         defaultValue={values.name}
       />
-      <div>
-        <SelectInput
-          name="catalog_id"
-          label={t("catalog")}
-          help={t("catalogHelp")}
-          required
-          defaultValue={values.catalog_id}
-          options={[{ value: "", label: "—" }, ...catalogOptions]}
-        />
-        <Link
-          href={requestHref}
-          className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
-        >
-          {t("catalogMissing")}
-        </Link>
-      </div>
       <TextArea
         name="description"
         label={t("description")}
@@ -145,5 +155,50 @@ export function ModelForm({
       )}
       <p className="text-sm text-muted-foreground">{t("photosLater")}</p>
     </ActionForm>
+  );
+}
+
+/** Add one year band to a model, e.g. 2020 to 2023. */
+export function YearBandForm({ slug, id }: { slug: string; id: string }) {
+  const t = useTranslations("Fleet.bands");
+  return (
+    <ActionForm action={addYearBand} hidden={{ slug, id }} submitLabel={t("add")}>
+      <div className="grid grid-cols-2 gap-3">
+        <TextInput
+          name="year_from"
+          label={t("from")}
+          inputMode="numeric"
+          maxLength={4}
+          required
+        />
+        <TextInput
+          name="year_to"
+          label={t("to")}
+          inputMode="numeric"
+          maxLength={4}
+          required
+        />
+      </div>
+    </ActionForm>
+  );
+}
+
+export function DeleteYearBandButton({
+  slug,
+  band,
+  label,
+}: {
+  slug: string;
+  band: string;
+  label: string;
+}) {
+  return (
+    <ActionForm
+      action={deleteYearBand}
+      hidden={{ slug, band }}
+      submitLabel={label}
+      destructive
+      className="space-y-1"
+    />
   );
 }

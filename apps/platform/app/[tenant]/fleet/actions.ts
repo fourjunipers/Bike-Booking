@@ -10,12 +10,20 @@ import {
   catalogRequestSchema,
   dbErrorKey,
   fieldErrors,
+  isIsoDate,
   modelSchema,
+  parseModelChoice,
+  renewalSchema,
   unitSchema,
-  workStatuses,
+  unitStatuses,
+  yearBandSchema,
 } from "@/lib/fleet";
 import { getCatalog, getLocations } from "@/lib/fleet-data";
-import { isIsoDate, planImport, type ImportError } from "@/lib/fleet-import";
+import {
+  catalogName,
+  planImport,
+  type ImportError,
+} from "@/lib/fleet-import";
 import { parseMoney } from "@/lib/money";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
@@ -47,6 +55,7 @@ async function context(formData: FormData) {
 function refresh(slug: string) {
   revalidatePath(`/${slug}/fleet`, "layout");
   revalidatePath(`/${slug}/maintenance`);
+  revalidatePath(`/${slug}/dashboard`);
 }
 
 /** Blank is fine; otherwise an amount in the shop's currency. */
@@ -145,7 +154,92 @@ export async function deleteModel(
   redirect(`/${slug}/fleet`);
 }
 
+/** One of a model's year bands, for grouping the fleet list. */
+export async function addYearBand(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canManageFleet(role)) return notAllowed;
+  const parsed = yearBandSchema.safeParse({
+    year_from: field(formData, "year_from"),
+    year_to: field(formData, "year_to"),
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const { error } = await supabase.from("model_year_bands").insert({
+    ...parsed.data,
+    tenant_id: tenant.id,
+    model_id: field(formData, "id"),
+  });
+  if (error) {
+    const key = dbErrorKey(error);
+    return { errors: key === "bandOverlap" ? { year_to: key } : { form: key } };
+  }
+  refresh(slug);
+  return { ok: true };
+}
+
+export async function deleteYearBand(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canManageFleet(role)) return notAllowed;
+  const { data, error } = await supabase
+    .from("model_year_bands")
+    .delete()
+    .eq("tenant_id", tenant.id)
+    .eq("id", field(formData, "band"))
+    .select("id");
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
+  refresh(slug);
+  return { ok: true };
+}
+
 // Units ----------------------------------------------------------------------------
+
+/**
+ * The shop's model for what was picked in the make and model dropdowns: one
+ * of its models, or a catalog entry, for which a model is created (named from
+ * the catalog) the first time a bike of it is added.
+ */
+async function resolveModel(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  choice: unknown,
+): Promise<string | null> {
+  const picked = parseModelChoice(choice);
+  if (!picked) return null;
+  if (picked.kind === "model") return picked.id;
+
+  const { data: existing } = await supabase
+    .from("models")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("catalog_id", picked.id)
+    .order("created_at")
+    .limit(1);
+  if (existing?.[0]) return existing[0].id;
+
+  const entry = (await getCatalog()).find((c) => c.id === picked.id);
+  if (!entry) return null;
+  const { data: names } = await supabase
+    .from("models")
+    .select("name")
+    .eq("tenant_id", tenantId);
+  const taken = new Set((names ?? []).map((m) => m.name.trim().toLowerCase()));
+  let name = catalogName(entry);
+  for (let n = 2; taken.has(name.toLowerCase()); n++)
+    name = `${catalogName(entry)} (${n})`;
+  const { data: created } = await supabase
+    .from("models")
+    .insert({ tenant_id: tenantId, catalog_id: entry.id, name })
+    .select("id")
+    .single();
+  return created?.id ?? null;
+}
 
 export async function saveUnit(
   _prev: FormState,
@@ -157,30 +251,37 @@ export async function saveUnit(
 
   const raw = Object.fromEntries(formData);
   const parsed = unitSchema.safeParse({
-    model_id: raw.model_id,
     location_id: raw.location_id,
     plate: raw.plate,
     plate_pending: raw.plate_pending,
     frame_number: raw.frame_number,
     engine_number: raw.engine_number,
     colour: raw.colour,
-    first_registered: raw.first_registered,
-    status: raw.status ?? "active",
-    active_from: raw.active_from,
-    active_to: raw.active_to,
+    model_year: raw.model_year,
     notes: raw.notes,
   });
-  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const choice = parseModelChoice(raw.model_choice);
+  if (!parsed.success || !choice) {
+    return {
+      errors: {
+        ...(parsed.success ? {} : fieldErrors(parsed.error)),
+        ...(choice ? {} : { model_choice: "required" }),
+      },
+    };
+  }
+  const odometer = id ? null : distance(formData, tenant.distanceUnit);
+  if (odometer === "invalid") return { errors: { odometer: "invalidDistance" } };
+
+  const modelId = await resolveModel(supabase, tenant.id, raw.model_choice);
+  if (!modelId) return { errors: { model_choice: "catalog_entry_not_usable" } };
 
   if (!id) {
-    const odometer = distance(formData, tenant.distanceUnit);
-    if (odometer === "invalid")
-      return { errors: { odometer: "invalidDistance" } };
     const { data, error } = await supabase
       .from("units")
       .insert({
         ...parsed.data,
         tenant_id: tenant.id,
+        model_id: modelId,
         current_odometer_km: odometer ?? 0,
       })
       .select("id")
@@ -192,7 +293,7 @@ export async function saveUnit(
 
   const { data, error } = await supabase
     .from("units")
-    .update(parsed.data)
+    .update({ ...parsed.data, model_id: modelId })
     .eq("tenant_id", tenant.id)
     .eq("id", id)
     .select("id");
@@ -205,7 +306,6 @@ export async function saveUnit(
 function unitError(error: Parameters<typeof dbErrorKey>[0]): FormState {
   const key = dbErrorKey(error);
   if (key === "plateExists") return { errors: { plate: key } };
-  if (key === "unit_has_future_blocks") return { errors: { status: key } };
   return { errors: { form: key } };
 }
 
@@ -220,8 +320,12 @@ function distance(
   return toKm(Number(text), unit);
 }
 
-/** Odometer and active/maintenance: what staff and mechanics may change. */
-export async function updateUnitWork(
+/**
+ * The odometer: owners, managers, staff and mechanics. A lower reading is
+ * allowed (the form asks to confirm first); the audit trail records who
+ * changed it, from what, to what.
+ */
+export async function updateOdometer(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
@@ -231,26 +335,47 @@ export async function updateUnitWork(
   const odometer = distance(formData, tenant.distanceUnit);
   if (odometer === "invalid" || odometer === null)
     return { errors: { odometer: "invalidDistance" } };
-  const status = field(formData, "status");
-  const change: { current_odometer_km: number; status?: string } = {
-    current_odometer_km: odometer,
-  };
-  if ((workStatuses as readonly string[]).includes(status))
-    change.status = status;
 
   const { data, error } = await supabase
     .from("units")
-    .update(change)
+    .update({ current_odometer_km: odometer })
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");
-  if (error || data.length !== 1) {
-    const key = dbErrorKey(error);
-    return key === "odometer_lower_needs_manager"
-      ? { errors: { odometer: key } }
-      : { errors: { form: key } };
-  }
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
+  return { ok: true };
+}
+
+/**
+ * The bike's one status. Staff and mechanics switch between active and
+ * maintenance; owners and managers also retire or sell. Selling or retiring
+ * is refused while the bike has a block that ends in the future. After
+ * "sold", the user lands on the purchase and sale section to fill it in.
+ */
+export async function setUnitStatus(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canWorkOnUnits(role)) return notAllowed;
+  const id = field(formData, "id");
+  const status = field(formData, "status");
+  if (!(unitStatuses as readonly string[]).includes(status))
+    return { errors: { status: "required" } };
+
+  const { data, error } = await supabase
+    .from("units")
+    .update({ status })
+    .eq("tenant_id", tenant.id)
+    .eq("id", id)
+    .select("id");
+  if (error || data.length !== 1)
+    return { errors: { status: dbErrorKey(error) } };
+  refresh(slug);
+  if (status === "sold" && field(formData, "was") !== "sold")
+    redirect(`/${slug}/fleet/units/${id}?sold=1#purchase-sale`);
   return { ok: true };
 }
 
@@ -280,6 +405,7 @@ function optionalDate(formData: FormData, name: string) {
   return isIsoDate(text) ? text : ("invalid" as const);
 }
 
+/** The one place purchase and sale details are saved. It never changes the status. */
 export async function saveFinancials(
   _prev: FormState,
   formData: FormData,
@@ -302,24 +428,9 @@ export async function saveFinancials(
   if (soldTo.length > 200) errors.sold_to = "tooLong";
   if (Object.keys(errors).length > 0) return { errors };
 
-  const unitId = field(formData, "id");
-  const selling = field(formData, "intent") === "sell";
-  if (selling) {
-    // The refusable step first: the database won't sell a unit that still
-    // has a block ending in the future.
-    const { data, error } = await supabase
-      .from("units")
-      .update({ status: "sold" })
-      .eq("tenant_id", tenant.id)
-      .eq("id", unitId)
-      .select("id");
-    if (error || data.length !== 1)
-      return { errors: { form: dbErrorKey(error) } };
-  }
-
   const { error } = await supabase.from("unit_financials").upsert({
     tenant_id: tenant.id,
-    unit_id: unitId,
+    unit_id: field(formData, "id"),
     currency: tenant.currency,
     purchase_date: purchaseDate as string | null,
     purchase_price: purchasePrice as number | null,
@@ -329,6 +440,79 @@ export async function saveFinancials(
     sold_to: soldTo || null,
   });
   if (error) return { errors: { form: dbErrorKey(error) } };
+  refresh(slug);
+  return { ok: true };
+}
+
+// Tax and insurance ------------------------------------------------------------------
+
+/** Adds a renewal record. The cost is saved only for owners and managers. */
+export async function addRenewal(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canWorkOnUnits(role)) return notAllowed;
+
+  const raw = Object.fromEntries(formData);
+  const parsed = renewalSchema.safeParse({
+    kind: raw.kind,
+    provider: raw.provider,
+    reference_no: raw.reference_no,
+    starts_at: raw.starts_at,
+    expires_at: raw.expires_at,
+  });
+  const cost = canManageFleet(role)
+    ? money(formData, "cost", tenant.currency)
+    : null;
+  if (!parsed.success || cost === "invalid") {
+    return {
+      errors: {
+        ...(parsed.success ? {} : fieldErrors(parsed.error)),
+        ...(cost === "invalid" ? { cost: "invalidMoney" } : {}),
+      },
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("unit_renewals")
+    .insert({
+      ...parsed.data,
+      tenant_id: tenant.id,
+      unit_id: field(formData, "id"),
+    })
+    .select("id")
+    .single();
+  if (error) return { errors: { form: dbErrorKey(error) } };
+  if (cost !== null) {
+    const { error: costError } = await supabase
+      .from("unit_renewal_costs")
+      .insert({
+        tenant_id: tenant.id,
+        renewal_id: data.id,
+        currency: tenant.currency,
+        cost,
+      });
+    if (costError) return { errors: { cost: dbErrorKey(costError) } };
+  }
+  refresh(slug);
+  return { ok: true };
+}
+
+export async function deleteRenewal(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canManageFleet(role)) return notAllowed;
+  const { data, error } = await supabase
+    .from("unit_renewals")
+    .delete()
+    .eq("tenant_id", tenant.id)
+    .eq("id", field(formData, "renewal"))
+    .select("id");
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   return { ok: true };
 }
@@ -461,7 +645,10 @@ export async function importFleet(
   const [locations, catalog, models, units] = await Promise.all([
     getLocations(tenant.id),
     getCatalog(),
-    supabase.from("models").select("id, name").eq("tenant_id", tenant.id),
+    supabase
+      .from("models")
+      .select("id, name, catalog_id")
+      .eq("tenant_id", tenant.id),
     supabase.from("units").select("plate").eq("tenant_id", tenant.id),
   ]);
   const plan = planImport(table, {
@@ -490,8 +677,12 @@ export async function importFleet(
   return { done: data as { models: number; units: number } };
 }
 
-// Catalog request ----------------------------------------------------------------------
+// A make or model that isn't in the catalog -----------------------------------------------
 
+/**
+ * Adds the shop's own make or model. It becomes a catalog request: the shop
+ * can use it at once, and a platform admin approves it for every shop.
+ */
 export async function requestCatalogEntry(
   _prev: FormState,
   formData: FormData,
@@ -527,5 +718,10 @@ export async function requestCatalogEntry(
   });
   if (error) return { errors: { form: dbErrorKey(error) } };
   revalidatePath(`/${slug}/fleet`, "layout");
-  redirect(`/${slug}/fleet/models/new?catalog=${id}`);
+  // Back to where the make or model was needed, with it chosen.
+  redirect(
+    field(formData, "then") === "bike"
+      ? `/${slug}/fleet/units/new?catalog=${id}`
+      : `/${slug}/fleet/models/new?catalog=${id}`,
+  );
 }

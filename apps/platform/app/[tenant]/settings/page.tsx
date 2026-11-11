@@ -4,6 +4,9 @@ import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
 import { settingsOptions } from "@/lib/tenant-settings";
 import { createClient } from "@mango/db/platform-server";
+import { Panel } from "@/components/action-form";
+import { getReminderSettings } from "@/lib/fleet-data";
+import { RemindersForm } from "./reminders-form";
 import { SettingsForm } from "./settings-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,6 +27,7 @@ export default async function SettingsPage({
     getLocale(),
     supabase.rpc("currency_locked", { p_tenant_id: tenant.id }),
   ]);
+  const reminders = await getReminderSettings(tenant.id);
 
   return (
     <>
@@ -41,6 +45,17 @@ export default async function SettingsPage({
         currencyLocked={currencyLocked === true}
         locationsHref={`/${slug}/locations`}
       />
+      <Panel
+        title={t("reminders.title")}
+        intro={t("reminders.intro")}
+        className="mt-6 max-w-3xl"
+      >
+        <RemindersForm
+          slug={slug}
+          days={reminders.renewal_reminder_days}
+          digestDay={reminders.renewal_digest_day}
+        />
+      </Panel>
     </>
   );
 }

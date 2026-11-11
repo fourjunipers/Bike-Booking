@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 import { Field, inputClass } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import type { TenantSettings } from "@/lib/tenant-settings";
@@ -57,6 +57,14 @@ export function SettingsForm({
     <form
       action={action}
       className="max-w-3xl space-y-5 rounded-lg border bg-card p-5"
+      onSubmit={(event) => {
+        // Submitted by hand. Left to the browser, React resets the form when
+        // the save finishes, and a dropdown then shows the value the page
+        // first loaded with, not the one just saved (bug, 11 Nov 2026).
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        startTransition(() => action(data));
+      }}
     >
       <input type="hidden" name="slug" value={slug} />
       <Field id="name" label={t("name")} error={error("name")}>

@@ -2,15 +2,15 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ChevronRight } from "lucide-react";
 import { formatDistance, type DistanceUnit } from "@/lib/distance";
-import type { FleetUnit } from "@/lib/fleet-data";
 import { cn } from "@/lib/utils";
+
+export { matchesText as matchesUnit } from "@/lib/fleet-view";
 
 const statusClass: Record<string, string> = {
   active:
     "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
   maintenance:
     "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  borrowed: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200",
   retired: "bg-muted text-muted-foreground",
   sold: "bg-muted text-muted-foreground",
 };
@@ -30,7 +30,16 @@ export async function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/** One bike in a list: plate, colour, status and odometer; the whole row opens it. */
+/** What a row needs to know about a bike. */
+export type RowUnit = {
+  plate: string | null;
+  plate_pending: boolean;
+  colour: string | null;
+  current_odometer_km: number;
+  status: string;
+};
+
+/** One bike in a list: plate, odometer, status and where it is; the whole row opens it. */
 export async function UnitRow({
   unit,
   href,
@@ -38,11 +47,11 @@ export async function UnitRow({
   locale,
   detail,
 }: {
-  unit: FleetUnit;
+  unit: RowUnit;
   href: string;
   distanceUnit: DistanceUnit;
   locale: string;
-  /** Extra text under the plate, e.g. the model name in search results. */
+  /** Extra text under the plate: model, model year, location. */
   detail?: string;
 }) {
   const t = await getTranslations("Fleet");
@@ -63,9 +72,9 @@ export async function UnitRow({
           </p>
           <p className="truncate text-sm text-muted-foreground">
             {[
+              formatDistance(unit.current_odometer_km, distanceUnit, locale),
               detail,
               unit.colour,
-              formatDistance(unit.current_odometer_km, distanceUnit, locale),
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -78,14 +87,5 @@ export async function UnitRow({
         />
       </Link>
     </li>
-  );
-}
-
-/** Lower-cased text match on plate and frame number. */
-export function matchesUnit(unit: FleetUnit, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return [unit.plate, unit.frame_number, unit.engine_number].some((value) =>
-    value?.toLowerCase().includes(q),
   );
 }

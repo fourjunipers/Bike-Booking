@@ -28,7 +28,11 @@ import {
 } from "./helpers";
 
 type Row = Record<string, unknown>;
-type Fixture = TestTenant & { modelId: string; unitId: string };
+type Fixture = TestTenant & {
+  modelId: string;
+  unitId: string;
+  renewalId: string;
+};
 
 let a: Fixture;
 let b: Fixture;
@@ -105,8 +109,49 @@ async function addFixtures(tenant: TestTenant): Promise<Fixture> {
       period: period(hours(1), hours(2)),
     }),
   );
+  ok(
+    await service.from("model_year_bands").insert({
+      tenant_id: tenant.id,
+      model_id: model.id,
+      year_from: 2020,
+      year_to: 2023,
+    }),
+  );
+  const renewal = ok(
+    await service
+      .from("unit_renewals")
+      .insert({
+        tenant_id: tenant.id,
+        unit_id: unit.id,
+        kind: "road_tax",
+        expires_at: "2027-01-31",
+      })
+      .select("id")
+      .single(),
+  )!;
+  ok(
+    await service.from("unit_renewal_costs").insert({
+      tenant_id: tenant.id,
+      renewal_id: renewal.id,
+      currency: tenant.currency,
+      cost: 1000,
+    }),
+  );
+  ok(
+    await service.from("notification_outbox").insert({
+      tenant_id: tenant.id,
+      kind: "renewal_digest",
+      dedupe_key: "fixture",
+      payload: { month: "2027-01", items: [] },
+    }),
+  );
   // audit_events: written by the triggers on the rows above.
-  return { ...tenant, modelId: model.id, unitId: unit.id };
+  return {
+    ...tenant,
+    modelId: model.id,
+    unitId: unit.id,
+    renewalId: renewal.id,
+  };
 }
 
 /** A new, valid row for `t` in each table: what an attacker would try to add. */
@@ -160,6 +205,30 @@ const payloads: Record<string, (t: Fixture, userId: string) => Row> = {
     kind: "downtime",
     period: period(hours(50), hours(51)),
   }),
+  model_year_bands: (t) => ({
+    tenant_id: t.id,
+    model_id: t.modelId,
+    year_from: 2000,
+    year_to: 2005,
+  }),
+  unit_renewals: (t) => ({
+    tenant_id: t.id,
+    unit_id: t.unitId,
+    kind: "compulsory_insurance",
+    expires_at: "2027-06-30",
+  }),
+  unit_renewal_costs: (t) => ({
+    tenant_id: t.id,
+    renewal_id: t.renewalId,
+    currency: t.currency,
+    cost: 1,
+  }),
+  notification_outbox: (t) => ({
+    tenant_id: t.id,
+    kind: "renewal_digest",
+    dedupe_key: "forged",
+    payload: {},
+  }),
   audit_events: (t) => ({
     tenant_id: t.id,
     entity: "units",
@@ -179,6 +248,10 @@ const changes: Record<string, Row> = {
   units: { notes: "Hijacked" },
   unit_financials: { sold_to: "Hijacked" },
   unit_blocks: { note: "Hijacked" },
+  model_year_bands: { year_to: 2099 },
+  unit_renewals: { provider: "Hijacked" },
+  unit_renewal_costs: { cost: 999 },
+  notification_outbox: { status: "cancelled" },
   audit_events: { action: "hijacked" },
 };
 
@@ -232,10 +305,14 @@ describe("every tenant table", () => {
       "location_hours",
       "locations",
       "memberships",
+      "model_year_bands",
       "models",
+      "notification_outbox",
       "tenants",
       "unit_blocks",
       "unit_financials",
+      "unit_renewal_costs",
+      "unit_renewals",
       "units",
     ]);
   });
