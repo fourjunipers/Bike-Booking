@@ -832,17 +832,110 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     expect(unknown.error?.code).toBe("23503");
   });
 
-  it("a motorbike of its own still needs engine size and transmission", async () => {
+  it("required specs: transmission for motorbikes and cars, engine size for motorbikes only", async () => {
     const insert = (extra: object) =>
       shop.members.owner.db.from("models").insert(own(extra));
-    expect((await insert({ cc: null })).error?.message).toContain(
-      "models_motorbike_specs_check",
+    const refused = async (extra: object, what: string) => {
+      const { error } = await insert(extra);
+      expect(error?.code, what).toBe("23514");
+      expect(error?.message, what).toContain("models_required_specs_check");
+    };
+    const accepted = async (extra: object, what: string) =>
+      expect((await insert(extra)).error, what).toBeNull();
+
+    // A motorbike without an engine size, a transmission, or either.
+    await refused({ cc: null }, "motorbike, no cc");
+    await refused({ transmission: null }, "motorbike, no transmission");
+    await refused({ cc: null, transmission: null }, "motorbike, neither");
+    // A car without a transmission is refused; without an engine size it is
+    // accepted (an electric car has none).
+    await refused(
+      { vehicle_type: "car", transmission: null },
+      "car, no transmission",
     );
-    expect((await insert({ transmission: null })).error?.message).toContain(
-      "models_motorbike_specs_check",
+    await refused(
+      { vehicle_type: "car", cc: null, transmission: null },
+      "car, neither",
     );
+    await accepted({ vehicle_type: "car", cc: null }, "car, no cc");
+    // A boat, an ATV or "other" with neither is accepted.
+    for (const vehicle_type of ["boat", "atv", "other"])
+      await accepted(
+        { vehicle_type, cc: null, transmission: null },
+        `${vehicle_type}, neither`,
+      );
+    // The service role is held to it too: it's a rule, not a permission.
+    const asService = await service
+      .from("models")
+      .insert(own({ vehicle_type: "car", transmission: null }));
+    expect(asService.error?.message).toContain("models_required_specs_check");
+    // Changing a saved boat into a car needs the transmission then.
+    const { data: boat } = await service
+      .from("models")
+      .insert(own({ vehicle_type: "boat", cc: null, transmission: null }))
+      .select("id")
+      .single();
+    const toCar = await shop.members.manager.db
+      .from("models")
+      .update({ vehicle_type: "car" })
+      .eq("id", boat!.id);
+    expect(toCar.error?.message).toContain("models_required_specs_check");
     expect((await insert({ make: null })).error?.code).toBe("23502");
     expect((await insert({ vehicle_type: null })).error?.code).toBe("23502");
+  });
+
+  it("every catalog review leaves an audit record under the shop that sent it", async () => {
+    const add = async () => {
+      const { data } = await service
+        .from("models")
+        .insert(own())
+        .select("id")
+        .single();
+      const sent = await shop.members.owner.db.rpc("submit_model_to_catalog", {
+        p_model_id: data!.id,
+        p_type: "city_scooter",
+      });
+      extraCatalog.push(sent.data!);
+      return sent.data!;
+    };
+    const [rejected, approved, merged] = [
+      await add(),
+      await add(),
+      await add(),
+    ];
+    await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: rejected,
+      p_approve: false,
+      p_notes: "Test entry",
+    });
+    await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: approved,
+      p_approve: true,
+    });
+    await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: merged,
+      p_approve: false,
+      p_merge_into: catalogId,
+    });
+    const { data } = await shop.members.owner.db
+      .from("audit_events")
+      .select("entity_id, action, actor, before, after")
+      .eq("entity", "bike_catalog")
+      .in("entity_id", [rejected, approved, merged])
+      .in("action", ["reject", "approve", "merge"])
+      .order("id");
+    expect(data?.map((e) => [e.entity_id, e.action, e.actor])).toEqual([
+      [rejected, "reject", admin.id],
+      [approved, "approve", admin.id],
+      [merged, "merge", admin.id],
+    ]);
+    expect(data?.[0]).toMatchObject({
+      before: { status: "requested" },
+      after: { make: "Kymco", notes: "Test entry" },
+    });
+    expect((data?.[2].after as { merged_into: string }).merged_into).toMatch(
+      /^testmake-/,
+    );
   });
 
   it("blocks a duplicate make and model within a shop, ignoring case and spacing", async () => {

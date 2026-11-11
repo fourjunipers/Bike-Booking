@@ -59,7 +59,7 @@ export function OwnModelFields({
       <TextInput
         name="cc"
         label={t("cc")}
-        help={t("specsHelp")}
+        help={t("ccHelp")}
         inputMode="numeric"
         maxLength={5}
         defaultValue={values?.cc}
@@ -67,6 +67,7 @@ export function OwnModelFields({
       <SelectInput
         name="transmission"
         label={t("transmission")}
+        help={t("transmissionHelp")}
         defaultValue={values?.transmission ?? ""}
         options={[
           { value: "", label: "—" },

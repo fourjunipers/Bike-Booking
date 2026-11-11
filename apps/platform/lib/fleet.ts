@@ -248,10 +248,21 @@ export const vehicleTypes = [
 export type VehicleType = (typeof vehicleTypes)[number];
 
 /**
- * A shop's own make and model: anything it rents, with no approval. Vehicle
- * type is always asked. Engine size and transmission are required for
- * motorbikes, because Moto Mangos search filters by them.
+ * Which specs a vehicle must have (owner, 11 Nov 2026). The database holds
+ * the same rule (models_required_specs_check).
+ *   vehicle type   always
+ *   transmission   motorbikes and cars (an electric car is "automatic")
+ *   engine size    motorbikes only
+ * ATVs, boats and "other" need neither.
  */
+export function needsEngineSize(vehicleType: string): boolean {
+  return vehicleType === "motorbike";
+}
+export function needsTransmission(vehicleType: string): boolean {
+  return vehicleType === "motorbike" || vehicleType === "car";
+}
+
+/** A shop's own make and model: anything it rents, with no approval. */
 export const ownModelSchema = z
   .object({
     make: z.string().trim().min(1, "required").max(40, "tooLong"),
@@ -265,10 +276,9 @@ export const ownModelSchema = z
   })
   .strict()
   .superRefine((m, ctx) => {
-    if (m.vehicle_type !== "motorbike") return;
-    if (m.cc === null)
+    if (needsEngineSize(m.vehicle_type) && m.cc === null)
       ctx.addIssue({ code: "custom", path: ["cc"], message: "required" });
-    if (m.transmission === null)
+    if (needsTransmission(m.vehicle_type) && m.transmission === null)
       ctx.addIssue({
         code: "custom",
         path: ["transmission"],
@@ -347,7 +357,7 @@ export function dbErrorKey(
   if (message.includes("units_plate_idx")) return "plateExists";
   if (message.includes("models_name_idx")) return "nameExists";
   if (message.includes("models_own_make_model_idx")) return "ownModelExists";
-  if (message.includes("models_motorbike_specs_check")) return "motorbikeSpecs";
+  if (message.includes("models_required_specs_check")) return "requiredSpecs";
   if (message.includes("locations_name_idx")) return "nameExists";
   // A row other rows still point at (a model with units, a unit with blocks).
   if (error.code === "23503") return "inUse";

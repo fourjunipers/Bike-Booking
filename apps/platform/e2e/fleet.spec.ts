@@ -385,14 +385,17 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
     );
   await page.getByRole("button", { name: "Check and import" }).click();
   await expect(
-    page.getByText("4 problems found. Nothing was imported."),
+    page.getByText("5 problems found. Nothing was imported."),
   ).toBeVisible();
   const problems = page.getByRole("table").first();
   await expect(
     problems.getByText("A bike in your fleet already has this plate."),
   ).toBeVisible();
   await expect(
-    problems.getByText(/isn't in the list, so it will be one of your own/),
+    // Once for the engine size, once for the transmission.
+    problems
+      .getByText(/isn't in the list, so it will be one of your own/)
+      .first(),
   ).toBeVisible();
   // The pasted rows are still there to fix.
   await expect(page.getByLabel("Or paste the rows here")).toHaveValue(/Hodna/);
@@ -660,14 +663,43 @@ test("my own make and model: added with no approval, no duplicates, then matched
     page.getByText("You already have this make and model."),
   ).toBeVisible();
 
-  // Any vehicle: a car needs no engine size. Close to a preset in name, so
-  // its model page offers the match.
+  // Any vehicle. A boat needs neither engine size nor transmission.
+  const boatModel = `Boat ${Date.now().toString(36)}`;
+  await page.getByLabel("Make", { exact: true }).fill("Yamaha");
+  await page.getByLabel("Model", { exact: true }).fill(boatModel);
+  await page.getByLabel("Vehicle type").selectOption("boat");
+  await page.getByLabel("Engine size (cc)").fill("");
+  await page.getByLabel("Transmission").selectOption("");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: `Yamaha ${boatModel}`, level: 1 }),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "Delete model" }).click();
+  await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
+
+  // A car needs a transmission (an electric car is "Automatic") but no
+  // engine size. Close to a preset in name, so its model page offers the match.
+  await page.goto("/bsr/fleet/own-model");
+  await expect(
+    page.getByText(
+      "Required for motorbikes and cars. For an electric car, choose Automatic.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Required for motorbikes.", { exact: true }),
+  ).toBeVisible();
   const carModel = `Forza 350 ${Date.now().toString(36)}`;
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByLabel("Model", { exact: true }).fill(carModel);
   await page.getByLabel("Vehicle type").selectOption("car");
   await page.getByLabel("Engine size (cc)").fill("");
   await page.getByLabel("Transmission").selectOption("");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  // Refused for the transmission only; the engine size isn't asked for.
+  await expect(page.getByText("Required.")).toHaveCount(1);
+  await expect(page).toHaveURL(/\/fleet\/own-model/);
+  await page.getByLabel("Transmission").selectOption("automatic");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: `Honda ${carModel}`, level: 1 }),

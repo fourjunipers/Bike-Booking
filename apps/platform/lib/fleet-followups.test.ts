@@ -11,6 +11,8 @@ import { buildBoard, placeItem } from "./dashboard";
 import {
   isIsoDate,
   isRentable,
+  needsEngineSize,
+  needsTransmission,
   ownModelSchema,
   parseModelChoice,
   renewalSchema,
@@ -353,7 +355,9 @@ describe("fleet import: make, then model, from the catalog", () => {
         // Not in the list, so they would be the shop's own: a motorbike
         // needs its engine size and transmission.
         "3:cc:ownNeedsSpecs",
+        "3:transmission:ownNeedsSpecs",
         "4:cc:ownNeedsSpecs",
+        "4:transmission:ownNeedsSpecs",
         "5:plate:plateExists",
         "6:plate:plateDuplicateInFile",
         "7:model_year:invalidYear",
@@ -385,7 +389,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         "make,model,plate,vehicle_type,cc,transmission",
         "Kymco,Like 125,K-1,,125,automatic",
         "kymco,like125,K-2,,,",
-        "Toyota,Yaris,K-3,car,,",
+        "Toyota,Yaris,K-3,car,,automatic",
         "Honda,Wave 100,K-4,,,",
         "HONDA,wave100,K-5,,,",
         "Yamaha,242X,K-6,Boat,,",
@@ -411,7 +415,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         model: "Yaris",
         vehicle_type: "car",
         cc: null,
-        transmission: null,
+        transmission: "automatic",
       },
       {
         id: "new-3",
@@ -442,6 +446,24 @@ describe("fleet import: make, then model, from the catalog", () => {
     expect(codes("make,model,cc\nKymco,Like,125")).toEqual([
       "2:transmission:ownNeedsSpecs",
     ]);
+    // The rule by vehicle type (owner, 11 Nov 2026).
+    const specs = (type: string, cc: string, gear: string) =>
+      codes(
+        `make,model,vehicle_type,cc,transmission\nKymco,Rule ${type},${type},${cc},${gear}`,
+      );
+    // A motorbike needs both.
+    expect(specs("motorbike", "", "")).toEqual([
+      "2:cc:ownNeedsSpecs",
+      "2:transmission:ownNeedsSpecs",
+    ]);
+    expect(specs("motorbike", "", "manual")).toEqual(["2:cc:ownNeedsSpecs"]);
+    // A car needs a transmission, not an engine size (an EV is "automatic").
+    expect(specs("car", "", "")).toEqual(["2:transmission:ownNeedsSpecs"]);
+    expect(specs("car", "1500", "")).toEqual(["2:transmission:ownNeedsSpecs"]);
+    expect(specs("car", "", "automatic")).toEqual([]);
+    // ATVs, boats and "other" need neither.
+    for (const type of ["atv", "boat", "other"])
+      expect(specs(type, "", ""), type).toEqual([]);
   });
 
   it("ships a template that imports cleanly", () => {
@@ -536,15 +558,35 @@ describe("the shop's own models and the presets", () => {
       "vehicle_type:required",
     ]);
     expect(messages({ make: " " })).toEqual(["make:required"]);
-    // A boat needs neither.
+    // A motorbike without either is refused, naming both.
+    expect(messages({ cc: "", transmission: "" })).toEqual([
+      "cc:required",
+      "transmission:required",
+    ]);
+    // A car without a transmission is refused; without an engine size it is fine.
+    expect(messages({ vehicle_type: "car", transmission: "" })).toEqual([
+      "transmission:required",
+    ]);
     expect(
-      ownModelSchema.parse({
-        ...base,
-        vehicle_type: "boat",
-        cc: "",
-        transmission: "",
-      }),
-    ).toMatchObject({ vehicle_type: "boat", cc: null, transmission: null });
+      ownModelSchema.parse({ ...base, vehicle_type: "car", cc: "" }),
+    ).toMatchObject({
+      vehicle_type: "car",
+      cc: null,
+      transmission: "automatic",
+    });
+    // A boat, an ATV or "other" with neither is accepted.
+    for (const vehicle_type of ["boat", "atv", "other"])
+      expect(
+        ownModelSchema.parse({
+          ...base,
+          vehicle_type,
+          cc: "",
+          transmission: "",
+        }),
+        vehicle_type,
+      ).toMatchObject({ vehicle_type, cc: null, transmission: null });
+    expect(needsEngineSize("motorbike") && !needsEngineSize("car")).toBe(true);
+    expect(needsTransmission("car") && !needsTransmission("atv")).toBe(true);
     expect(vehicleTypes).toEqual(["motorbike", "car", "atv", "boat", "other"]);
   });
 

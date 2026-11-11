@@ -1,7 +1,13 @@
 import { normName } from "./catalog-match";
 import type { CsvTable } from "./csv";
 import { toKm, type DistanceUnit } from "./distance";
-import { isIsoDate, transmissions, vehicleTypes } from "./fleet";
+import {
+  isIsoDate,
+  needsEngineSize,
+  needsTransmission,
+  transmissions,
+  vehicleTypes,
+} from "./fleet";
 import { parseMoney } from "./money";
 
 /**
@@ -16,8 +22,8 @@ import { parseMoney } from "./money";
  *   the one whose years include it.
  * - If it doesn't, it is one of the shop's own: an existing own model with
  *   that make and model (ignoring case and spacing), or a new one, for which
- *   the row gives the vehicle type, and for motorbikes the engine size and
- *   transmission.
+ *   the row gives the vehicle type, the transmission for a motorbike or a
+ *   car, and the engine size for a motorbike.
  * The optional "name" column is the shop's own name for the model.
  */
 
@@ -319,8 +325,10 @@ export function planImport(
             !(transmissions as readonly string[]).includes(gearText)
           )
             fail("transmission", "invalidTransmission");
-          if (typeText === "motorbike" && (!ccText || !gearText))
-            fail(!ccText ? "cc" : "transmission", "ownNeedsSpecs");
+          // Each missing spec is reported under its own column.
+          if (needsEngineSize(typeText) && !ccText) fail("cc", "ownNeedsSpecs");
+          if (needsTransmission(typeText) && !gearText)
+            fail("transmission", "ownNeedsSpecs");
           if (errors.length === before)
             modelId = addModel({
               id: context.newId(),
