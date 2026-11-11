@@ -31,10 +31,7 @@ export default async function CatalogRequestPage({
 
   return (
     <>
-      <BackLink
-        href={`/${slug}/fleet/models/new`}
-        label={tModel("newTitle")}
-      />
+      <BackLink href={`/${slug}/fleet/models/new`} label={tModel("newTitle")} />
       <PageHeader title={t("title")} intro={t("intro")} />
       <Panel className="max-w-3xl">
         <CatalogRequestForm slug={slug} />

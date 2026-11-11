@@ -17,8 +17,13 @@ const freshPlate = () =>
 
 async function openBike(page: Page, plate: string) {
   await page.goto(`/bsr/fleet?q=${encodeURIComponent(plate)}`);
-  await page.getByRole("link", { name: new RegExp(plate) }).first().click();
-  await expect(page.getByRole("heading", { name: plate, level: 1 })).toBeVisible();
+  await page
+    .getByRole("link", { name: new RegExp(plate) })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: plate, level: 1 }),
+  ).toBeVisible();
 }
 
 test("the owner sees the 20 demo bikes and can search them", async ({
@@ -32,10 +37,14 @@ test("the owner sees the 20 demo bikes and can search them", async ({
   } else {
     await mainNav(page, false).getByRole("link", { name: "Fleet" }).click();
   }
-  await expect(page.getByRole("heading", { name: "Fleet", level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Fleet", level: 1 }),
+  ).toBeVisible();
   await expect(page.getByText(/\d+ bikes in \d+ models\./)).toBeVisible();
   for (const plate of ["DEMO-001", "DEMO-010", "DEMO-019"]) {
-    await expect(page.getByRole("link", { name: new RegExp(plate) })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: new RegExp(plate) }),
+    ).toBeVisible();
   }
   // The 20th demo bike has no plate yet.
   await expect(page.getByText("Plate pending").first()).toBeVisible();
@@ -53,10 +62,15 @@ test("the owner sees the 20 demo bikes and can search them", async ({
   await expect(page.getByRole("link", { name: /DEMO-001/ })).toHaveCount(0);
 
   await page.goto("/bsr/fleet?q=no-such-plate");
-  await expect(page.getByText("No bike matches “no-such-plate”.")).toBeVisible();
+  await expect(
+    page.getByText("No bike matches “no-such-plate”."),
+  ).toBeVisible();
 });
 
-test("purchase prices are for owners and managers only", async ({ page, browser }) => {
+test("purchase prices are for owners and managers only", async ({
+  page,
+  browser,
+}) => {
   await signIn(page, demo.bsrOwner);
   await openBike(page, "DEMO-001");
   await expect(
@@ -75,14 +89,20 @@ test("purchase prices are for owners and managers only", async ({ page, browser 
     const other = await context.newPage();
     await signIn(other, email);
     await other.goto(url);
-    await expect(other.getByRole("heading", { name: "DEMO-001" })).toBeVisible();
+    await expect(
+      other.getByRole("heading", { name: "DEMO-001" }),
+    ).toBeVisible();
     await expect(other.getByText("Purchase and sale")).toHaveCount(0);
     await expect(other.getByText("Mark as sold")).toHaveCount(0);
     await expect(other.getByText("94000")).toHaveCount(0);
-    await expect(other.getByRole("button", { name: "Delete bike" })).toHaveCount(0);
+    await expect(
+      other.getByRole("button", { name: "Delete bike" }),
+    ).toHaveCount(0);
     // Everyone sees the frame number and the sticker.
     await expect(other.getByText("DEMOFRAME0001")).toBeVisible();
-    await expect(other.getByRole("heading", { name: "QR sticker" })).toBeVisible();
+    await expect(
+      other.getByRole("heading", { name: "QR sticker" }),
+    ).toBeVisible();
     await context.close();
   }
 });
@@ -97,9 +117,13 @@ test("a driver reads a bike but can't change it", async ({ page }) => {
     page.getByText("You can view this bike but not change it."),
   ).toBeVisible();
   await expect(page.getByLabel(/^Odometer \(/)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Add downtime" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Add downtime" })).toHaveCount(
+    0,
+  );
   await page.goto("/bsr/fleet/import");
-  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Page not found" }),
+  ).toBeVisible();
 });
 
 test("a mechanic finds a bike, updates the odometer, and adds and ends downtime; an overlap is refused clearly", async ({
@@ -112,7 +136,9 @@ test("a mechanic finds a bike, updates the odometer, and adds and ends downtime;
   await page.getByLabel("Plate number").fill(plate.toLowerCase());
   await page.getByLabel("Plate number").press("Enter");
   await page.getByRole("link", { name: new RegExp(plate) }).click();
-  await expect(page.getByRole("heading", { name: plate, level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: plate, level: 1 }),
+  ).toBeVisible();
 
   // Left over from a run that was cut short.
   const leftover = page.getByRole("button", { name: /^(Remove|End now)$/ });
@@ -134,7 +160,9 @@ test("a mechanic finds a bike, updates the odometer, and adds and ends downtime;
   await odometer.fill(String(Math.max(0, reading - 5)));
   await save.click();
   await expect(
-    page.getByText("That reading is lower than the last one. Ask a manager to correct it."),
+    page.getByText(
+      "That reading is lower than the last one. Ask a manager to correct it.",
+    ),
   ).toBeVisible();
 
   // Downtime far in the future, so it never meets real data.
@@ -146,7 +174,9 @@ test("a mechanic finds a bike, updates the odometer, and adds and ends downtime;
   };
   await add();
   await expect(page.getByText("Downtime: E2E tyre change")).toBeVisible();
-  await expect(page.getByText(/10 Mar 2031.*12 Mar 2031|Mar 10, 2031.*Mar 12, 2031/)).toBeVisible();
+  await expect(
+    page.getByText(/10 Mar 2031.*12 Mar 2031|Mar 10, 2031.*Mar 12, 2031/),
+  ).toBeVisible();
 
   await add();
   await expect(
@@ -258,9 +288,13 @@ test("a manager adds a model and a bike without a plate, then removes them", asy
   ).toBeVisible();
   await page.getByLabel("Plate pending (not registered yet)").check();
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByRole("heading", { name: "No plate", level: 1 })).toBeVisible();
   await expect(
-    page.getByText("This bike has no plate yet. Staff are warned before check-out."),
+    page.getByRole("heading", { name: "No plate", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "This bike has no plate yet. Staff are warned before check-out.",
+    ),
   ).toBeVisible();
 
   page.on("dialog", (dialog) => dialog.accept());
@@ -278,7 +312,9 @@ test("QR stickers: a sheet to print, and the code opens the bike only for its sh
 }) => {
   await signIn(page, demo.bsrStaff);
   await page.goto("/bsr/fleet/stickers");
-  await expect(page.getByRole("heading", { name: "QR stickers" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "QR stickers" }),
+  ).toBeVisible();
   const stickers = page.locator(".sticker-sheet li");
   expect(await stickers.count()).toBeGreaterThanOrEqual(20);
   await expect(stickers.first().locator("svg")).toBeVisible();
@@ -319,15 +355,21 @@ test("locations: the owner sets the time zone; a manager can't; staff can't open
   await signIn(page, demo.bsrOwner);
   await page.goto("/bsr/locations");
   await expect(page.getByRole("heading", { name: "Locations" })).toBeVisible();
-  await page.getByRole("link", { name: /BSR Bike Shop.*Main location/ }).click();
+  await page
+    .getByRole("link", { name: /BSR Bike Shop.*Main location/ })
+    .click();
   await expect(page.getByLabel("Time zone")).toHaveValue("Asia/Bangkok");
   await expect(page.getByLabel("Address")).toHaveValue(/Soi Phumichit/);
   await expect(page.getByLabel("Phone")).toHaveValue("+66850550247");
-  await expect(page.getByRole("heading", { name: "Opening hours" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Opening hours" }),
+  ).toBeVisible();
   await expect(page.getByLabel("Opens").first()).toHaveValue(/^1[01]:00$/);
   await expect(page.getByText("Songkran · every year")).toBeVisible();
   // The main location can't be deleted.
-  await expect(page.getByRole("button", { name: "Delete location" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Delete location" }),
+  ).toHaveCount(0);
   const url = page.url();
 
   // A phone number in a national format is refused.
@@ -375,7 +417,9 @@ test("catalog requests are for platform admins, not shop owners", async ({
 }) => {
   await signIn(page, demo.bsrOwner);
   await page.goto("/admin/catalog");
-  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Page not found" }),
+  ).toBeVisible();
 
   const admin = await (await browser.newContext()).newPage();
   await signIn(admin, "admin@mangoworks.demo.test", "/admin/catalog");

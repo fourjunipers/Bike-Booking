@@ -71,9 +71,11 @@ export default async function LocationPage({
 
   // The week starts where the viewer's locale starts it (Monday or Sunday).
   const firstDay =
-    (new Intl.Locale(locale) as Intl.Locale & {
-      getWeekInfo?: () => { firstDay: number };
-    }).getWeekInfo?.().firstDay ?? 1;
+    (
+      new Intl.Locale(locale) as Intl.Locale & {
+        getWeekInfo?: () => { firstDay: number };
+      }
+    ).getWeekInfo?.().firstDay ?? 1;
   const order = Array.from({ length: 7 }, (_, i) => (firstDay + i) % 7);
   const days = order.map((weekday) => {
     const row = hours.data.find((h) => h.weekday === weekday);

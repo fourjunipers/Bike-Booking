@@ -34,7 +34,11 @@ let a: Fixture;
 let b: Fixture;
 let outsider: TestUser;
 let catalogId: string;
-let tables: { table_name: string; rls_enabled: boolean; policy_count: number }[];
+let tables: {
+  table_name: string;
+  rls_enabled: boolean;
+  policy_count: number;
+}[];
 
 /** The table name comes from the database, so the typed client can't know it. */
 const from = (db: Db, table: string) => db.from(table as "units");

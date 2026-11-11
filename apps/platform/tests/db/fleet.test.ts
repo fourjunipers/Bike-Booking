@@ -167,14 +167,20 @@ describe("role limits", () => {
         .update({ plate: "HACKED" })
         .eq("id", id);
       expect(plate.error?.message, role).toBe("only_owner_or_manager");
-      const sold = await db.from("units").update({ status: "sold" }).eq("id", id);
+      const sold = await db
+        .from("units")
+        .update({ status: "sold" })
+        .eq("id", id);
       expect(sold.error?.message, role).toBe("only_owner_or_manager");
     }
   });
 
   it("a manager can correct the odometer down; a driver changes nothing", async () => {
     const id = await addUnit();
-    await service.from("units").update({ current_odometer_km: 500 }).eq("id", id);
+    await service
+      .from("units")
+      .update({ current_odometer_km: 500 })
+      .eq("id", id);
     const driver = await shop.members.driver.db
       .from("units")
       .update({ current_odometer_km: 600 })
@@ -264,10 +270,16 @@ describe("unit blocks: one lock for every kind", () => {
   it("keeps the end out of the range so the next block can start right then", async () => {
     const id = await addUnit();
     const at = (n: number) => new Date(Date.UTC(2030, 0, 1, n));
-    const first = await service.from("unit_blocks").insert(block(id, at(10), at(20)));
-    const next = await service.from("unit_blocks").insert(block(id, at(20), at(22)));
+    const first = await service
+      .from("unit_blocks")
+      .insert(block(id, at(10), at(20)));
+    const next = await service
+      .from("unit_blocks")
+      .insert(block(id, at(20), at(22)));
     expect([first.error, next.error]).toEqual([null, null]);
-    const inside = await service.from("unit_blocks").insert(block(id, at(19), at(21)));
+    const inside = await service
+      .from("unit_blocks")
+      .insert(block(id, at(19), at(21)));
     expect(inside.error?.code).toBe("23P01");
   });
 
@@ -324,7 +336,10 @@ describe("selling or retiring a unit", () => {
         .eq("id", id);
       expect(refused.error?.message, status).toBe("unit_has_future_blocks");
       // The service role is refused too: it's a rule, not a permission.
-      const service2 = await service.from("units").update({ status }).eq("id", id);
+      const service2 = await service
+        .from("units")
+        .update({ status })
+        .eq("id", id);
       expect(service2.error?.message).toBe("unit_has_future_blocks");
 
       await service.from("unit_blocks").delete().eq("id", future!.id);
@@ -351,20 +366,29 @@ describe("selling or retiring a unit", () => {
       .insert(block(id, hours(-1)))
       .select("id")
       .single();
-    const refused = await service.from("units").update({ status: "sold" }).eq("id", id);
+    const refused = await service
+      .from("units")
+      .update({ status: "sold" })
+      .eq("id", id);
     expect(refused.error?.message).toBe("unit_has_future_blocks");
     await service
       .from("unit_blocks")
       .update({ period: period(hours(-1), new Date(Date.now() - 1000)) })
       .eq("id", open!.id);
-    const allowed = await service.from("units").update({ status: "sold" }).eq("id", id);
+    const allowed = await service
+      .from("units")
+      .update({ status: "sold" })
+      .eq("id", id);
     expect(allowed.error).toBeNull();
   });
 
   it("a unit with blocks or a model with units can't be deleted", async () => {
     const id = await addUnit();
     await service.from("unit_blocks").insert(block(id, hours(1), hours(2)));
-    const unit = await shop.members.owner.db.from("units").delete().eq("id", id);
+    const unit = await shop.members.owner.db
+      .from("units")
+      .delete()
+      .eq("id", id);
     expect(unit.error?.code).toBe("23503");
     const model = await shop.members.owner.db
       .from("models")
@@ -435,10 +459,12 @@ describe("units and models", () => {
     await addUnit(shop, model!.id);
     const set = (values: object) =>
       shop.members.owner.db.from("models").update(values).eq("id", model!.id);
-    expect((await set({ instant_units: 1, request_units: 1 })).error).toBeNull();
-    expect((await set({ instant_units: 2, request_units: 1 })).error?.message).toBe(
-      "more_units_than_active",
-    );
+    expect(
+      (await set({ instant_units: 1, request_units: 1 })).error,
+    ).toBeNull();
+    expect(
+      (await set({ instant_units: 2, request_units: 1 })).error?.message,
+    ).toBe("more_units_than_active");
     expect((await set({ ready_now: 3 })).error?.message).toBe(
       "more_units_than_active",
     );
@@ -456,7 +482,9 @@ describe("money", () => {
           .eq("id", fresh.id)
           .select("currency");
       const locked = () =>
-        fresh.members.staff.db.rpc("currency_locked", { p_tenant_id: fresh.id });
+        fresh.members.staff.db.rpc("currency_locked", {
+          p_tenant_id: fresh.id,
+        });
       expect((await change("USD")).data).toEqual([{ currency: "USD" }]);
       expect((await locked()).data).toBe(false);
 
@@ -562,16 +590,17 @@ describe("locations", () => {
 
   it("keeps exactly one default: no second, no deleting or unsetting it", async () => {
     const db = shop.members.owner.db;
-    const second = await db
-      .from("locations")
-      .insert({
-        tenant_id: shop.id,
-        name: "Airport",
-        timezone: "Asia/Bangkok",
-        is_default: true,
-      });
+    const second = await db.from("locations").insert({
+      tenant_id: shop.id,
+      name: "Airport",
+      timezone: "Asia/Bangkok",
+      is_default: true,
+    });
     expect(second.error?.code).toBe("23505");
-    const remove = await db.from("locations").delete().eq("id", shop.locationId);
+    const remove = await db
+      .from("locations")
+      .delete()
+      .eq("id", shop.locationId);
     expect(remove.error?.message).toContain("default location");
     const unset = await db
       .from("locations")
@@ -582,7 +611,11 @@ describe("locations", () => {
     // A second, non-default location is fine and can go again.
     const branch = await db
       .from("locations")
-      .insert({ tenant_id: shop.id, name: "Airport", timezone: "Europe/London" })
+      .insert({
+        tenant_id: shop.id,
+        name: "Airport",
+        timezone: "Europe/London",
+      })
       .select("id")
       .single();
     expect(branch.error).toBeNull();
@@ -637,7 +670,11 @@ describe("catalog link", () => {
     expect(mine.error).toBeNull();
     const theirs = await other.members.owner.db
       .from("models")
-      .insert({ tenant_id: other.id, catalog_id: id!, name: "On their request" });
+      .insert({
+        tenant_id: other.id,
+        catalog_id: id!,
+        name: "On their request",
+      });
     expect(theirs.error?.message).toBe("catalog_entry_not_usable");
 
     // The requesting shop sees it; the other shop and the public don't.
@@ -663,7 +700,9 @@ describe("catalog link", () => {
         p_notes: "ok",
       });
     // A shop owner isn't a platform admin, whatever their marketplace role.
-    expect((await review(shop.members.owner.db, true)).error?.code).toBe("42501");
+    expect((await review(shop.members.owner.db, true)).error?.code).toBe(
+      "42501",
+    );
     expect((await review(admin.db, true)).error).toBeNull();
     // Already reviewed: nothing left to review.
     expect((await review(admin.db, false)).error?.code).toBe("P0002");
@@ -729,7 +768,10 @@ describe("import", () => {
       p_tenant_id: shop.id,
       p_models: [{ id: newModel, catalog_id: catalogId, name: "Imported" }],
       p_units: [
-        unit("IMP-1", { purchase_price: 9_500_000, purchase_date: "2026-01-10" }),
+        unit("IMP-1", {
+          purchase_price: 9_500_000,
+          purchase_date: "2026-01-10",
+        }),
         { ...unit("IMP-2"), model_id: newModel, current_odometer_km: 1200.5 },
         { model_id: newModel, location_id: shop.locationId, plate: null },
       ],
@@ -739,7 +781,9 @@ describe("import", () => {
 
     const { data: units } = await shop.members.owner.db
       .from("units")
-      .select("plate, plate_pending, current_odometer_km, unit_financials(purchase_price, currency)")
+      .select(
+        "plate, plate_pending, current_odometer_km, unit_financials(purchase_price, currency)",
+      )
       .in("plate", ["IMP-1", "IMP-2"])
       .order("plate");
     expect(units).toEqual([
@@ -812,7 +856,11 @@ describe("audit trail", () => {
       .eq("entity_id", id)
       .order("id");
     expect(data).toHaveLength(2);
-    expect(data![0]).toMatchObject({ action: "insert", actor: null, before: null });
+    expect(data![0]).toMatchObject({
+      action: "insert",
+      actor: null,
+      before: null,
+    });
     expect(data![1]).toEqual({
       action: "update",
       actor: shop.members.mechanic.id,
@@ -848,9 +896,15 @@ describe("audit trail", () => {
       action: "forged",
     });
     expect(forged.error?.code).toBe("42501");
-    const edit = await db.from("audit_events").update({ action: "x" }).eq("tenant_id", shop.id);
+    const edit = await db
+      .from("audit_events")
+      .update({ action: "x" })
+      .eq("tenant_id", shop.id);
     expect(edit.error?.code).toBe("42501");
-    const remove = await db.from("audit_events").delete().eq("tenant_id", shop.id);
+    const remove = await db
+      .from("audit_events")
+      .delete()
+      .eq("tenant_id", shop.id);
     expect(remove.error?.code).toBe("42501");
   });
 });

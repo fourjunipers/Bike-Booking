@@ -91,9 +91,7 @@ export default async function MePage({ params }: PageProps<"/[tenant]/me">) {
     ]);
   const theme = parseTheme(cookieStore.get(themeCookie)?.value);
   const tabBar = parseTabBar(cookieStore.get(tabBarCookie)?.value);
-  const areas = adminAreas.filter((a) =>
-    canSeeArea(membership.role, a),
-  );
+  const areas = adminAreas.filter((a) => canSeeArea(membership.role, a));
 
   return (
     <>

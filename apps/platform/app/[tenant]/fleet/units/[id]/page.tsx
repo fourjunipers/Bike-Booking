@@ -207,7 +207,9 @@ export default async function UnitPage({
                   >
                     <div className="min-w-0">
                       <p className="font-medium">
-                        {t(`downtime.kind.${block.kind}` as "downtime.kind.downtime")}
+                        {t(
+                          `downtime.kind.${block.kind}` as "downtime.kind.downtime",
+                        )}
                         {block.note ? `: ${block.note}` : ""}
                       </p>
                       <p className="text-sm text-muted-foreground">

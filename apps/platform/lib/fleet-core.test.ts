@@ -424,19 +424,19 @@ describe("fleet import", () => {
     );
     expect(result.models).toEqual([]);
     expect(result.units).toEqual([]);
-    expect(
-      result.errors.map((e) => `${e.line}:${e.column}:${e.code}`),
-    ).toEqual([
-      "2:model:required",
-      "3:catalog:catalogNeeded",
-      "4:catalog:catalogUnknown",
-      "5:plate:plateExists",
-      "6:plate:plateDuplicateInFile",
-      "7:odometer:invalidNumber",
-      "7:location:locationUnknown",
-      "7:purchase_price:invalidMoney",
-      "7:first_registered:invalidDate",
-    ]);
+    expect(result.errors.map((e) => `${e.line}:${e.column}:${e.code}`)).toEqual(
+      [
+        "2:model:required",
+        "3:catalog:catalogNeeded",
+        "4:catalog:catalogUnknown",
+        "5:plate:plateExists",
+        "6:plate:plateDuplicateInFile",
+        "7:odometer:invalidNumber",
+        "7:location:locationUnknown",
+        "7:purchase_price:invalidMoney",
+        "7:first_registered:invalidDate",
+      ],
+    );
   });
 
   it("refuses one new model name on two catalog entries", () => {

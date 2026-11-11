@@ -114,12 +114,15 @@ export async function saveModel(
     .from("models")
     .update({
       ...row,
-      ...(row.ready_now > 0 ? { ready_updated_at: new Date().toISOString() } : {}),
+      ...(row.ready_now > 0
+        ? { ready_updated_at: new Date().toISOString() }
+        : {}),
     })
     .eq("tenant_id", tenant.id)
     .eq("id", id)
     .select("id");
-  if (error || data.length !== 1) return { errors: { form: dbErrorKey(error) } };
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   return { ok: true };
 }
@@ -136,7 +139,8 @@ export async function deleteModel(
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");
-  if (error || data.length !== 1) return { errors: { form: dbErrorKey(error) } };
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   redirect(`/${slug}/fleet`);
 }
@@ -262,7 +266,8 @@ export async function deleteUnit(
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");
-  if (error || data.length !== 1) return { errors: { form: dbErrorKey(error) } };
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   redirect(`/${slug}/fleet`);
 }
@@ -389,10 +394,7 @@ export async function endDowntime(
     .maybeSingle();
   if (!block) return notAllowed;
   const start = new Date(
-    String(block.period)
-      .replace(/^[[(]/, "")
-      .split(",")[0]
-      .replace(/"/g, ""),
+    String(block.period).replace(/^[[(]/, "").split(",")[0].replace(/"/g, ""),
   );
   const now = new Date();
 
@@ -406,7 +408,8 @@ export async function endDowntime(
     .eq("tenant_id", tenant.id)
     .eq("id", blockId)
     .select("id");
-  if (error || data.length !== 1) return { errors: { form: dbErrorKey(error) } };
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   return { ok: true };
 }
@@ -445,7 +448,11 @@ export async function importFleet(
     if (error instanceof CsvError)
       return {
         problems: [
-          { line: error.line, column: error.detail ?? "", code: error.code as never },
+          {
+            line: error.line,
+            column: error.detail ?? "",
+            code: error.code as never,
+          },
         ],
       };
     throw error;

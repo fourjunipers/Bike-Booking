@@ -7,7 +7,8 @@ registerHooks({
     try {
       return nextResolve(specifier, context);
     } catch (error) {
-      if (specifier.startsWith(".")) return nextResolve(`${specifier}.ts`, context);
+      if (specifier.startsWith("."))
+        return nextResolve(`${specifier}.ts`, context);
       throw error;
     }
   },

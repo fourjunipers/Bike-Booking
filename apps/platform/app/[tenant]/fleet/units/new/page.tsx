@@ -35,10 +35,7 @@ export default async function NewUnitPage({
 
   return (
     <>
-      <BackLink
-        href={`/${slug}/fleet/models/${model.id}`}
-        label={model.name}
-      />
+      <BackLink href={`/${slug}/fleet/models/${model.id}`} label={model.name} />
       <PageHeader title={t("newTitle")} />
       <Panel className="max-w-3xl">
         <UnitForm

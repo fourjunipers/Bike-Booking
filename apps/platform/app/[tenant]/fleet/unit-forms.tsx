@@ -272,7 +272,8 @@ export function FinancialsForm({
 }) {
   const t = useTranslations("Fleet.money");
   const sale = (
-    <div className="grid gap-5 md:grid-cols-3">
+    // The sell panel is a narrow side column, so its fields stack.
+    <div className={sell ? "grid gap-5" : "grid gap-5 md:grid-cols-3"}>
       <TextInput
         name="sold_at"
         label={t("soldAt")}

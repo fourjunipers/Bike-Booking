@@ -152,9 +152,7 @@ describe("managers", () => {
       .eq("id", t.id)
       .select("name, distance_unit");
     expect(error).toBeNull();
-    expect(data).toEqual([
-      { name: "Renamed by manager", distance_unit: "mi" },
-    ]);
+    expect(data).toEqual([{ name: "Renamed by manager", distance_unit: "mi" }]);
   });
 });
 

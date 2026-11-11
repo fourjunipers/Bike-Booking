@@ -160,7 +160,11 @@ const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "invalidTime");
 
 /** One weekday's hours; closed days are simply left out. */
 export const hoursSchema = z
-  .object({ weekday: z.number().int().min(0).max(6), open: clock, close: clock })
+  .object({
+    weekday: z.number().int().min(0).max(6),
+    open: clock,
+    close: clock,
+  })
   .refine((h) => h.close > h.open, {
     path: ["close"],
     message: "endBeforeStart",

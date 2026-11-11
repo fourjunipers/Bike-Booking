@@ -60,7 +60,8 @@ export const getMemberships = cache(async (): Promise<Membership[]> => {
         role: m.role,
         tenant: {
           ...tenant,
-          distanceUnit: distance_unit === "mi" ? ("mi" as const) : ("km" as const),
+          distanceUnit:
+            distance_unit === "mi" ? ("mi" as const) : ("km" as const),
           // Every tenant has a default location (the database enforces it).
           timezone:
             locations.find((l) => l.is_default)?.timezone ??

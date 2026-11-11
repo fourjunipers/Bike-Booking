@@ -66,7 +66,12 @@ export type TestTenant = {
 /** A tenant (with its default location) and one user in every role. */
 export async function createTenant(
   label: string,
-  shop: { country: string; currency: string; locale: string; timezone: string } = {
+  shop: {
+    country: string;
+    currency: string;
+    locale: string;
+    timezone: string;
+  } = {
     country: "VN",
     currency: "VND",
     locale: "vi-VN",
@@ -149,7 +154,11 @@ export async function createCatalogEntry(label: string): Promise<string> {
 
 export async function removeCatalogEntry(id: string | undefined) {
   if (id)
-    await serviceClient().schema("public").from("bike_catalog").delete().eq("id", id);
+    await serviceClient()
+      .schema("public")
+      .from("bike_catalog")
+      .delete()
+      .eq("id", id);
 }
 
 /** "[from, to)" as Postgres reads a time range; no `to` = open-ended. */

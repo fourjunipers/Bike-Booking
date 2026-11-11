@@ -9,12 +9,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import {
-  addClosure,
-  deleteClosure,
-  saveHours,
-  saveLocation,
-} from "./actions";
+import { addClosure, deleteClosure, saveHours, saveLocation } from "./actions";
 
 export type LocationValues = {
   id?: string;

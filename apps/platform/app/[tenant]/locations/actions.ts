@@ -101,7 +101,8 @@ export async function deleteLocation(
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");
-  if (error || data.length !== 1) return { errors: { form: dbErrorKey(error) } };
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   revalidatePath(`/${slug}`, "layout");
   redirect(`/${slug}/locations`);
 }
@@ -121,7 +122,11 @@ export async function saveHours(
     const opens = field(formData, `open_${weekday}`);
     const closes = field(formData, `close_${weekday}`);
     if (!opens && !closes) continue;
-    const parsed = hoursSchema.safeParse({ weekday, open: opens, close: closes });
+    const parsed = hoursSchema.safeParse({
+      weekday,
+      open: opens,
+      close: closes,
+    });
     if (parsed.success) open.push(parsed.data);
     else errors[`close_${weekday}`] = parsed.error.issues[0].message;
   }
@@ -191,7 +196,8 @@ export async function deleteClosure(
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "closure"))
     .select("location_id");
-  if (error || data.length !== 1) return { errors: { form: dbErrorKey(error) } };
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
   revalidatePath(`/${slug}/locations/${data[0].location_id}`);
   return { ok: true };
 }

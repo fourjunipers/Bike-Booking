@@ -6,8 +6,10 @@ import type { FleetUnit } from "@/lib/fleet-data";
 import { cn } from "@/lib/utils";
 
 const statusClass: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  maintenance: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  active:
+    "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+  maintenance:
+    "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
   borrowed: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200",
   retired: "bg-muted text-muted-foreground",
   sold: "bg-muted text-muted-foreground",
