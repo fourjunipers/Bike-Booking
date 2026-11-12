@@ -15,19 +15,37 @@ Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decis
 
 ## Marketplace UI batch (branch `marketplace/ui-refresh`, 12 Nov 2026, not merged)
 
-Done (items 1, 3, 4, 5 of the owner's batch):
+Done (items 1 to 5 of the owner's batch):
 
 - **Moto Mangos look.** Tokens in `app/globals.css` (hex, so `lib/design-tokens.test.ts` checks WCAG contrast): mango primary with **navy text** (white on mango is only 2:1), leaf green accents, navy header and footer, cream background, `--link` (dark mango) for mango-coloured text. Nunito 800 headings (Thai falls back to the system font). Mango badge drawn in `components/brand/logo.tsx` and `app/icon.svg` (the favicon; `favicon.ico` removed); speed-line and leaf accents. The shared header is restyled for admin and vendor too; they show their area name as a pill. Page titles and metadata are not rebranded.
 - **Bike types** are multi-select toggles; none = any type. URL: repeated `type=` (old one-type links still work). Adapter: `SearchQuery.types` (docs/INTEGRATION.md updated); `current-db.ts` passes one type to `search_offers` and filters several in code, so no migration.
 - **Book ahead / Ride today.** "Search bikes" → "Check availability & prices". The home form has two paths: Book ahead (dates) and Ride today (`now=1`, only bikes ready now; no dates). "Get your bike now" text is gone from the customer site and the vendor help text. docs/marketplace/SPEC.md (Home, Filters rows) updated.
 - **24-hour times**: a 00:00–23:30 list in 30-minute steps (`TIME_OPTIONS`), default 10:00 for pickup and return; picking a pickup date sets the return to the next day.
-- New keys in all 10 customer languages; English and Thai await the owner's approval, the other eight are unreviewed machine-quality translations.
+- **Place search (item 2).** The station dropdown is replaced by a place search with suggestions (city, area, landmark, airport; any country), "Use my location", and an optional "Near a train station" list. Google Places API (New) through our own routes (`/api/places/autocomplete`, `/api/places/[placeId]`, `lib/places.ts`) with the server-only `GOOGLE_PLACES_SERVER_KEY`: one session token per search, 3 characters and a 300 ms pause before a request, Place Details asks for `location` only (Essentials SKU; `displayName` would be Pro), chosen places cached per server instance for 6 hours (Google allows 30 days), 60 requests a minute per caller. If Places fails or answers 429, the form shows the station list and "Use my location" instead (`e2e/place-search.spec.ts`).
+- **Station refresh from OpenStreetMap.** Migration `20261112100000_marketplace_station_osm_refresh` adds `osm_id`, `osm_last_seen_at`, `osm_missing_since` to `public.stations` (no new table or function; grants restated; `default-grants.test.ts` passes). Netlify scheduled function `refresh-stations` (03:00 UTC on the 1st) → `POST /api/cron/stations` (Bearer `CRON_SECRET`) → Overpass → merge by OSM id (`lib/stations/osm.ts`, `merge.ts`, `refresh.ts`). Seeded stations link by name within 400 m; a same-name station within 400 m of one we have is an interchange platform and isn't added; vanished stations are switched off, never deleted, and switched back on if they return; stations an admin switched off stay off; nothing is switched off if Overpass returns under half of the linked stations. Dry run on real OpenStreetMap data (12 Nov 2026): 181 of 182 seeded stations linked ("Sena Ruam" not found, left as is), 60 new (mostly SRT commuter and Maeklong line halts).
+- **Seed dates relative to today**: the seeded booking K7Q4ZP now runs from 2 days ago to 12 days on (Bangkok), so `e2e/customer.spec.ts` "dates show the total…" and the two DB tests that use it no longer fall into the past (`tests/db/helpers.ts` → `bangkokDay()`).
+- New keys in all 10 customer languages. English and Thai await the owner's approval; the other eight are unreviewed machine translations, listed in `apps/marketplace/i18n/machine-translated.ts`.
 
 Open:
 
-- **Item 2 (location search)**: plan sent to the owner, not built until they reply.
-- `e2e/customer.spec.ts` "dates show the total…" fails since 12 Nov 2026 on `main` too: it searches 9–12 Nov, which is now in the past. Needs seed dates relative to today.
-- The hidden vendor settings still use `<input type="time">` for opening hours (hidden screens are not built on).
+- **Vendor opening hours still use the old time input** (`<input type="time">` in `app/vendor/settings/forms.tsx`), not the 24-hour list: the vendor screens are hidden and not built on. Mango Works replaces them.
+- **Station refresh not run against real Overpass end to end yet**: on 12 Nov 2026 overpass-api.de answered 502 and the mirror timed out (twice). The write path is tested (`tests/db/stations-refresh.test.ts`) and the merge was dry-run on real data. First real run: after deploy, or by hand with `curl -X POST -H "Authorization: Bearer $CRON_SECRET" <site>/api/cron/stations`.
+- **Scheduled function waits only 25 s** (its limit is 30 s; the route's is 60 s and Overpass often needs 30-40 s). It assumes the route keeps running after the caller stops waiting; check the route's log after the first scheduled run (Netlify → Logs → Functions).
+- **Migration only on local**: not on staging or live. Live gets it only from `main`.
+- **Sort by distance**: the owner asked for results to sort by distance from the chosen place; the spec says Recommended (ranking score, 20% distance) is the default. Kept the spec default pending the owner's answer; "Distance" is one click in Sort.
+- **Page titles** still say Bangkok ("Motorbike rental in Bangkok"); new wording proposed to the owner, not applied.
+- **Google Cloud set-up (owner)**: see the checklist below.
+
+Google Cloud checklist (owner, before setting `GOOGLE_PLACES_SERVER_KEY` in Netlify):
+
+1. APIs enabled: Places API (New) and Maps JavaScript API only.
+2. Server key (`GOOGLE_PLACES_SERVER_KEY`): API restriction = Places API (New) only. Application restriction: none (Netlify has no fixed IP); it never reaches the browser.
+3. Browser key (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, map only): API restriction = Maps JavaScript API; website restriction = the site and deploy-preview domains.
+4. Quotas (Google Maps Platform → Quotas, Places API (New)): per-day caps on Autocomplete and Place Details/Get Place. Google's free-tier sizing is 10,000 ÷ 31 ≈ 322 a day each; raise when traffic grows. Also lower the per-minute caps if offered.
+5. Budget with alerts at e.g. 50%, 90%, 100% of a small monthly amount. Budgets only alert; the daily quotas are what stop spending.
+6. Put the key in Netlify → Site configuration → Environment variables only (scopes: Builds and Functions; the home page is built ahead, so redeploy after setting it). Never in the repo or chat.
+
+
 
 ## Platform migrations on live (12 Nov 2026)
 

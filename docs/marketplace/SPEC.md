@@ -245,7 +245,7 @@ Customers can browse without logging in; login is required at checkout. A rental
 
 | Screen | Contents |
 | --- | --- |
-| Home | Location box (GPS, address, BTS/MRT station from an admin-editable list seeded from OpenStreetMap); two paths: "Book ahead" (date picker, times as a 24-hour list in 30-minute steps) and "Ride today" (Get your bike now: only bikes ready now); bike type toggles (several at once, none = any type, kept in the URL); "Check availability & prices" button; featured shops, area links |
+| Home | Location: a place search with suggestions (city, area, landmark, airport; any country; Google Places, billed per session), "Use my location", and an optional "Near a train station" list (refreshed monthly from OpenStreetMap; admin can switch stations off). If place search fails or hits its limit, the station list and "Use my location" remain; two paths: "Book ahead" (date picker, times as a 24-hour list in 30-minute steps) and "Ride today" (Get your bike now: only bikes ready now); bike type toggles (several at once, none = any type, kept in the URL); "Check availability & prices" button; featured shops, area links |
 | Search results | **Model-first.** List + map toggle. One card per catalog model: stock photo, model, "From ฿X/day" (lowest live price for the chosen dates), "N shops near you" (within 15 km, with a link to show shops further away), promo badge |
 | Filters | Dates, bike types (several at once), transmission, cc range, price range, Ride today (Get your bike now), delivery, passport not held, deals, rating |
 | Sort | Recommended (ranking score, default), price, distance, rating |
