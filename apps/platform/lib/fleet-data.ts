@@ -130,7 +130,7 @@ export async function getModel(tenantId: string, id: string) {
   const { data, error } = await supabase
     .from("models")
     .select(
-      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now",
+      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now, catalog_rejected_at, catalog_reject_reason",
     )
     .eq("tenant_id", tenantId)
     .eq("id", id)

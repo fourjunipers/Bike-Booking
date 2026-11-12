@@ -797,6 +797,27 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await mangos.getByRole("button", { name: "Send to Moto Mangos" }).click();
   await expect(mangos.getByText(/Sent to Moto Mangos\./)).toBeVisible();
 
+  // The admin rejects it with a note, and the shop is told why on its model.
+  const reviewer = await (await browser.newContext()).newPage();
+  await signIn(reviewer, demo.admin, "/admin/catalog");
+  const rejected = reviewer.locator("li", { hasText: `${make} Tester 125` });
+  await expect(
+    rejected.getByText("If you reject, the shop sees this note on its model."),
+  ).toBeVisible();
+  await rejected.getByLabel("Review note").fill("E2E: add the model years");
+  await rejected.getByRole("button", { name: "Reject" }).click();
+  await expect(rejected).toHaveCount(0);
+  await reviewer.context().close();
+  await page.goto(modelUrl);
+  await expect(
+    mangos.getByText(/Moto Mangos reviewed this model on .+ and didn't add it\./),
+  ).toBeVisible();
+  await expect(mangos.getByText("E2E: add the model years")).toBeVisible();
+  // Sent again: the old outcome goes.
+  await mangos.getByRole("button", { name: "Send to Moto Mangos" }).click();
+  await expect(mangos.getByText(/Sent to Moto Mangos\./)).toBeVisible();
+  await expect(mangos.getByText("E2E: add the model years")).toHaveCount(0);
+
   // The only place the approval list appears: the platform admin's. Here
   // the admin decides it is really an existing entry and merges it.
   const admin = await (await browser.newContext()).newPage();

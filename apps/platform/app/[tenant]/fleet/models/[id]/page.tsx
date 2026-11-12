@@ -22,6 +22,7 @@ import {
 import { catalogOptions } from "@/lib/model-options";
 import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
+import { formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
 import { deleteModel } from "../../actions";
 import {
@@ -195,6 +196,34 @@ export default async function ModelPage({
               title={tFleet("motoMangos.title")}
               intro={tFleet("motoMangos.intro")}
             >
+              {/* What Moto Mangos decided about this model's last request,
+                  until it is sent again or put on a list entry. */}
+              {model.catalog_rejected_at && !waiting && (
+                <div
+                  role="status"
+                  className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+                >
+                  <p className="font-medium">
+                    {tFleet("motoMangos.rejected", {
+                      date: formatInstant(
+                        new Date(model.catalog_rejected_at),
+                        tenant.timezone,
+                        locale,
+                      ),
+                    })}
+                  </p>
+                  {model.catalog_reject_reason ? (
+                    <p className="mt-2">
+                      {tFleet("motoMangos.rejectReason")}{" "}
+                      <q>{model.catalog_reject_reason}</q>
+                    </p>
+                  ) : (
+                    <p className="mt-2">
+                      {tFleet("motoMangos.rejectNoReason")}
+                    </p>
+                  )}
+                </div>
+              )}
               {waiting ? (
                 <p className="text-sm">{tFleet("motoMangos.waiting")}</p>
               ) : entry?.status === "rejected" ? (

@@ -65,7 +65,8 @@ where table_schema = 'public' and table_name = 'bike_catalog'
   and column_name in ('request_note', 'requested_by_tenant_id', 'review_notes');
 
 -- B5. ...and can read the 22 columns the marketplace uses. Expected: 22 for
--- anon and 22 for authenticated.
+-- anon and 22 for authenticated. (21 once 20261112000300 is applied, which
+-- also makes requested_by_shop_id private.)
 select grantee, count(*) as readable_columns
 from information_schema.column_privileges
 where table_schema = 'public' and table_name = 'bike_catalog'

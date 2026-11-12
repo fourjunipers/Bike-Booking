@@ -9,7 +9,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
-| Database | 48 migrations on `main`, **all 48 on live since 12 Nov 2026** (see below); a 49th (`20261112000100`, no default grants) is on the branch `platform/no-default-grants`, on local only. Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
+| Database | 49 migrations on `main`, **all 49 on live since 12 Nov 2026** (see below), and on staging. Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
@@ -56,7 +56,26 @@ Google Cloud checklist (owner, before setting `GOOGLE_PLACES_SERVER_KEY` in Netl
 5. Budget with alerts at e.g. 50%, 90%, 100% of a small monthly amount. Budgets only alert; the daily quotas are what stop spending.
 6. Put the key in Netlify → Site configuration → Environment variables only (scopes: Builds and Functions; the home page is built ahead, so redeploy after setting it). Never in the repo or chat.
 
+## Re-check follow-ups (branch `platform/recheck-followups`, 12 Nov 2026)
 
+Four follow-ups from the second look at the Phase 1a review. Three migrations, on local and staging; **not on live** (they go with the next push from `main`, after this merges).
+
+| # | What | Migration | Test |
+| --- | --- | --- | --- |
+| 1 | **Lock strength.** `set_member_role`, `remove_member` and the counts trigger took a full row lock (`FOR UPDATE`), which also waits for every foreign-key check on that row. A team change waited behind any open insert in the shop (3.6 s behind a 4 s downtime insert), and two bikes swapping models deadlocked. Now `FOR NO KEY UPDATE`: still one at a time, no longer in the way of foreign keys | `20261112000200_platform_lock_strength` | `recheck-followups.test.ts` › 1 (4 tests; the first and third failed before) |
+| 2 | **Marketplace admin queue** lists only requests from marketplace shops (`requested_by_shop_id is not null`). A platform shop's request is decided in the platform's `/admin/catalog`, which also unlinks or relinks the shop's models. The query moved to `apps/marketplace/lib/admin-queue.ts` so it can be tested | none | `apps/marketplace/tests/db/admin-queue.test.ts` (3 tests; 2 fail without the filter) |
+| 3 | **`requested_by_shop_id` is private.** Taken out of the catalog columns anon and signed-in users may select: 21 readable now, 4 private (`request_note`, `requested_by_tenant_id`, `review_notes`, `requested_by_shop_id`). No marketplace or platform query selected it with those roles: vendors only insert it, the "Shops read their own requests" policy uses it inside the database, and the admin pages use the service role | `20261112000300_marketplace_catalog_requester_private` | `recheck-followups.test.ts` › 3 |
+| 4 | **A rejected request says why.** New on `platform.models`: `catalog_rejected_at`, `catalog_reject_reason`, set by `review_catalog_request()` on reject, shown on the model page ("Moto Mangos reviewed this model on … and didn't add it", with the reviewer's note). Cleared when the model is sent again or put on a catalog entry. A trigger stops the shop writing them. `bike_catalog.review_notes` stays private. The admin's note field now says the shop will see it | `20261112000400_platform_reject_reason` | `recheck-followups.test.ts` › 4 (5 tests), and a step in the own-model Playwright test |
+
+Decisions and notes:
+
+- **Why a column on the model, not the audit row:** after a reject the model is unlinked from the catalog entry, and the audit row names the entry, not the model, so there was nothing to join on. The audit log is also owners and managers only. The audit row still records the note.
+- **No new grants were needed** under the no-default-grants rule: no new table, the two new columns sit on `platform.models` (granted on purpose in `20261110000500`), functions were replaced in place and keep their grants, and the one new function is a trigger function in `platform_private` with everything revoked. `default-grants.test.ts` passes.
+- **The 36 public read queries** were run again on a copy of live's data (from the 12 Nov backup) with all 52 migrations applied: answers byte-identical to the dry run's.
+- `review_catalog_request` still takes `FOR UPDATE` on the catalog entry. Not changed: the re-check named the three above, and nothing takes a foreign-key lock on a waiting request in a way that matters. Say if it should follow.
+- The marketplace admin can still open a platform shop's request by its direct address (`/admin/catalog/<id>`); only the queue hides it. Left as is.
+- Thai texts for the new lines are mine and need a native check, like the others.
+- Not covered by a test: that a real API call never waits behind other kinds of open inserts (bikes, models); the test uses a downtime insert, and the lock is the same one.
 
 ## Platform migrations on live (12 Nov 2026)
 
@@ -82,7 +101,10 @@ Live no longer exposes new tables automatically, but local and CI databases stil
 - **Rule from now on:** a migration that creates a table in `public` grants on purpose, to service_role too (`grant select on public.thing to anon, authenticated; grant all on public.thing to service_role;`). In root `CLAUDE.md`.
 - **Test** `apps/platform/tests/db/default-grants.test.ts` (runs in CI's "RLS + Playwright" job): the defaults give the API roles nothing; a new table or sequence is closed until granted; every table in `public` or `platform` that anon or authenticated can reach has a `grant` statement in a migration (the 23 marketplace tables from before the switch are a closed list); no function in `public` or `platform` is executable by everyone (the 35 marketplace functions from before the switch are a closed list). Shown to fail on a table granted outside a migration and on an open function, and to pass again when they are removed.
 - **Functions, known limit:** Postgres lets PUBLIC execute every new function, on live too, and that default can only be removed for all schemas at once, which would also hit extensions. So functions keep the existing rule (`revoke all on function ... from public, anon`, then grant), now enforced by the test above instead of by a default.
-- This migration is **not on live**; it goes with the next push from `main`.
+- **On live since 12 Nov 2026** (PR #9 merged; pushed from `main` at `b6fc97c` with `npx supabase db push --linked`, the dry run listing only this migration). Live records 49 of 49.
+  - Grants fingerprint (C6) before and after the push: identical (anon/public 135, authenticated/platform 45, authenticated/public 135, same hashes). No existing grant changed.
+  - C1 to C5 again: identical to the earlier runs.
+  - Live's defaults for what `postgres` creates in `public` are now empty for anon, authenticated and service_role on tables, sequences and functions (only `postgres` itself is listed). `platform` keeps its defaults for service_role only.
 
 ## Go-live runbook for the platform migrations (12 Nov 2026)
 
@@ -91,7 +113,7 @@ Prepared and dry-run before the go-live above: `docs/RUNBOOK-GO-LIVE-PLATFORM.md
 - Live has 27 migrations; 21 are pending (3 from Phase 0, 18 from PR #8). Migrations reach live only by hand, `npx supabase db push --linked` from `main`. Nothing touches the database on merge.
 - Live's schema is identical to a local database built from the first 27 migrations (no drift).
 - Dry run on a copy of live's schema and data: all 21 applied; every marketplace table, `auth.users` and `storage.objects` kept the same rows and checksums; 57 marketplace read queries returned identical answers before and after, with `platform` exposed and not.
-- The marketplace's own tests need the seed's fixed IDs, which clash with live's data, so they ran on the seeded local database built by the same 48 migrations: 81 passed (platform 115, unit 144 + 102 + 86).
+- The marketplace's own tests need the seed's fixed IDs and accounts, and the seed would not load on top of the copy of live's data, so they ran on the seeded local database built by the same 48 migrations: 81 passed (platform 115, unit 144 + 102 + 86).
 - `rollback.sql` was tested on the copy from three states; each time the schema and data came back identical to live's. It refuses to run once the platform holds a shop.
 - **Order matters on the dashboard:** exposing `platform` before the schema exists makes the API return 503 for every request, the marketplace's too. Expose it only after the migrations are applied and checked.
 - After "Automatically expose new tables" is turned off on live, a migration adding a table to `public` must grant access on purpose; local and CI still grant by default, so a missing grant would pass tests and fail on live.
