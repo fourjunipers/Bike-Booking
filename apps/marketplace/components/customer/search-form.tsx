@@ -8,7 +8,14 @@ import { inputClass } from "@/components/form-kit";
 import { Button } from "@/components/ui/button";
 import { localePath, type CustomerLocale } from "@/i18n/config";
 import { loadGoogleMaps } from "@/lib/google-maps";
-import { BIKE_TYPES, type SearchParams } from "@/lib/search-params";
+import {
+  addDays,
+  BIKE_TYPES,
+  DEFAULT_TIME,
+  timeOptions,
+  type BikeType,
+  type SearchParams,
+} from "@/lib/search-params";
 
 const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
@@ -23,7 +30,8 @@ type Point = { lat: number; lng: number; place: string };
 
 /**
  * Home and search form (SPEC "Customer screens"): where (GPS, a BTS/MRT
- * station, or an address when Google Places is set up), when, and bike type.
+ * station, or an address when Google Places is set up), when (Book ahead with
+ * dates, or Ride today for bikes ready now), and bike types (any number).
  * A plain GET form, so every search is a shareable /search URL.
  */
 export function SearchForm({
@@ -48,8 +56,12 @@ export function SearchForm({
       : null,
   );
   const [gpsState, setGpsState] = useState<"idle" | "busy" | "failed">("idle");
-  const [fromDate, fromTime] = (initial?.from ?? "T10:00").split("T");
-  const [toDate, toTime] = (initial?.to ?? "T10:00").split("T");
+  const [mode, setMode] = useState<"ahead" | "today">(
+    initial?.now ? "today" : "ahead",
+  );
+  const [types, setTypes] = useState<BikeType[]>(initial?.types ?? []);
+  const [fromDate, fromTime] = (initial?.from ?? `T${DEFAULT_TIME}`).split("T");
+  const [toDate, toTime] = (initial?.to ?? `T${DEFAULT_TIME}`).split("T");
   const [from, setFrom] = useState({ date: fromDate, time: fromTime });
   const [to, setTo] = useState({ date: toDate, time: toTime });
   const addressRef = useRef<HTMLDivElement>(null);
@@ -106,7 +118,7 @@ export function SearchForm({
     );
   }
 
-  const dated = from.date && to.date;
+  const dated = mode === "ahead" && from.date && to.date;
   const stationValue =
     stations.find(
       (s) =>
@@ -128,6 +140,7 @@ export function SearchForm({
           <input type="hidden" name="place" value={point.place} />
         </>
       )}
+      {mode === "today" && <input type="hidden" name="now" value="1" />}
       {dated && (
         <>
           <input
@@ -139,7 +152,7 @@ export function SearchForm({
         </>
       )}
 
-      <fieldset className="space-y-2">
+      <fieldset className="min-w-0 space-y-2">
         <legend className="font-medium">{t("where")}</legend>
         <div
           className={`grid gap-2 ${stacked ? "" : "sm:grid-cols-[1fr_auto]"}`}
@@ -184,49 +197,106 @@ export function SearchForm({
       </fieldset>
 
       {!compact && (
-        <div className={`grid gap-3 ${stacked ? "" : "sm:grid-cols-2"}`}>
-          <DateTime
-            legend={t("pickup")}
-            value={from}
-            onChange={setFrom}
-            ids="from"
-          />
-          <DateTime legend={t("return")} value={to} onChange={setTo} ids="to" />
-        </div>
+        <fieldset className="min-w-0 space-y-3">
+          <legend className="font-medium">{t("when")}</legend>
+          <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1">
+            {(["ahead", "today"] as const).map((m) => (
+              <label key={m} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="mode"
+                  // Not sent: the hidden "now" field carries the choice.
+                  form="search-mode-unsent"
+                  value={m}
+                  checked={mode === m}
+                  onChange={() => setMode(m)}
+                  className="peer sr-only"
+                />
+                <span className="flex min-h-11 items-center justify-center rounded-full px-3 text-center text-sm font-bold text-muted-foreground peer-checked:bg-navy peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
+                  {t(m === "ahead" ? "bookAhead" : "rideToday")}
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t(mode === "ahead" ? "bookAheadHint" : "rideTodayHint")}
+          </p>
+          {mode === "ahead" && (
+            <div className={`grid gap-3 ${stacked ? "" : "sm:grid-cols-2"}`}>
+              <DateTime
+                legend={t("pickup")}
+                value={from}
+                onChange={(v) => {
+                  setFrom(v);
+                  // Keep the return after the pickup: default to the next day.
+                  if (v.date && (!to.date || to.date <= v.date))
+                    setTo({ ...to, date: addDays(v.date, 1) });
+                }}
+                ids="from"
+              />
+              <DateTime
+                legend={t("return")}
+                value={to}
+                onChange={setTo}
+                ids="to"
+                minDate={from.date || undefined}
+              />
+            </div>
+          )}
+        </fieldset>
       )}
 
       {!compact && (
-        <fieldset className="space-y-2">
+        <fieldset className="min-w-0 space-y-2">
           <legend className="font-medium">{t("bikeType")}</legend>
-          <div className="flex flex-wrap gap-2">
-            <TypeChip value="" label={t("anyType")} initial={initial?.type} />
+          <p id="types-hint" className="text-sm text-muted-foreground">
+            {t("typesHint")}
+          </p>
+          <div className="flex flex-wrap gap-2" aria-describedby="types-hint">
+            <button
+              type="button"
+              aria-pressed={types.length === 0}
+              onClick={() => setTypes([])}
+              className={chipClass(types.length === 0)}
+            >
+              <Tick on={types.length === 0} />
+              {t("anyType")}
+            </button>
             {BIKE_TYPES.map((type) => (
-              <TypeChip
-                key={type}
-                value={type}
-                label={tb(`type.${type}`)}
-                initial={initial?.type}
-              />
+              <label key={type} className="cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="type"
+                  value={type}
+                  checked={types.includes(type)}
+                  onChange={(e) =>
+                    setTypes(
+                      e.target.checked
+                        ? BIKE_TYPES.filter(
+                            (x) => x === type || types.includes(x),
+                          )
+                        : types.filter((x) => x !== type),
+                    )
+                  }
+                  className="peer sr-only"
+                />
+                <span className={chipClass(types.includes(type), true)}>
+                  <Tick on={types.includes(type)} />
+                  {tb(`type.${type}`)}
+                </span>
+              </label>
             ))}
           </div>
         </fieldset>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit" size="lg" className="h-12 px-6 text-base">
-          {t("search")}
-        </Button>
-        <Button
-          type="submit"
-          name="now"
-          value="1"
-          size="lg"
-          className="h-12 bg-emerald-700 px-6 text-base text-white hover:bg-emerald-800"
-        >
-          {t("getBikeNow")}
-        </Button>
-      </div>
-      <p className="text-sm text-muted-foreground">{t("getBikeNowHint")}</p>
+      <Button
+        type="submit"
+        size="lg"
+        className="h-12 w-full px-6 text-base sm:w-auto"
+      >
+        {t("search")}
+      </Button>
     </form>
   );
 }
@@ -236,64 +306,65 @@ function DateTime({
   value,
   onChange,
   ids,
+  minDate,
 }: {
   legend: string;
   value: { date: string; time: string };
   onChange: (v: { date: string; time: string }) => void;
   ids: string;
+  minDate?: string;
 }) {
   const t = useTranslations("Search");
   return (
-    <fieldset className="space-y-1">
+    <fieldset className="min-w-0 space-y-1">
       <legend className="font-medium">{legend}</legend>
-      <div className="grid grid-cols-[1fr_7rem] gap-2">
+      {/* min-w-0: a fieldset is min-content wide by default, wider than a phone. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-2">
         <label>
           <span className="sr-only">{t("date")}</span>
           <input
             id={`${ids}-date`}
             type="date"
             value={value.date}
+            min={minDate}
             onChange={(e) => onChange({ ...value, date: e.target.value })}
             className={inputClass}
           />
         </label>
         <label>
           <span className="sr-only">{t("time")}</span>
-          <input
+          {/* A list, not <input type="time">: always 24-hour, any language. */}
+          <select
             id={`${ids}-time`}
-            type="time"
-            step={1800}
             value={value.time}
             onChange={(e) => onChange({ ...value, time: e.target.value })}
             className={inputClass}
-          />
+          >
+            {timeOptions(value.time).map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
     </fieldset>
   );
 }
 
-function TypeChip({
-  value,
-  label,
-  initial,
-}: {
-  value: string;
-  label: string;
-  initial?: string;
-}) {
-  return (
-    <label className="cursor-pointer">
-      <input
-        type="radio"
-        name="type"
-        value={value}
-        defaultChecked={(initial ?? "") === value}
-        className="peer sr-only"
-      />
-      <span className="inline-flex min-h-11 items-center rounded-full border border-input bg-card px-4 text-sm font-medium peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-ring">
-        {label}
-      </span>
-    </label>
-  );
+/** The tick on a chosen chip; hidden from screen readers (the state is). */
+function Tick({ on }: { on: boolean }) {
+  return on ? <span aria-hidden>✓</span> : null;
+}
+
+/** A type toggle: navy on mango when on, with a tick so colour isn't the only signal. */
+function chipClass(on: boolean, peer = false) {
+  const focus = peer
+    ? "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring"
+    : "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+  return `inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border-2 px-4 text-sm font-semibold ${focus} ${
+    on
+      ? "border-mango bg-mango text-navy"
+      : "border-input bg-card text-foreground hover:border-mango"
+  }`;
 }

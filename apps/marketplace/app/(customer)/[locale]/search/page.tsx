@@ -68,6 +68,7 @@ async function Results({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const t = await getTranslations({ locale, namespace: "Search" });
+  const tb = await getTranslations({ locale, namespace: "Bikes" });
   const p = parseSearchParams(await searchParams);
   const [offers, stations] = await Promise.all([runSearch(p), listStations()]);
   const cards = sortCards(groupOffers(offers), p.sort);
@@ -110,7 +111,7 @@ async function Results({
       <section className="space-y-4" aria-labelledby="results-heading">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="results-heading" className="text-lg font-semibold">
-            {summary(t, p, cards.length)}
+            {summary(t, tb, p, cards.length)}
           </h2>
           <nav aria-label={t("view")} className="flex gap-1">
             {(["list", "map"] as const).map((view) => (
@@ -163,7 +164,7 @@ async function Results({
           <p>
             <Link
               href={`${base}${searchQuery(p, { anyDistance: true })}`}
-              className="font-medium text-primary underline underline-offset-4"
+              className="font-medium text-link underline underline-offset-4"
             >
               {t("showFurther", { km: NEAR_KM })}
             </Link>
@@ -176,11 +177,14 @@ async function Results({
 
 function summary(
   t: Awaited<ReturnType<typeof getTranslations<"Search">>>,
+  tb: Awaited<ReturnType<typeof getTranslations<"Bikes">>>,
   p: SearchParams,
   count: number,
 ) {
   const parts = [t("results", { n: count })];
   if (p.place) parts.push(t("nearPlace", { place: p.place }));
+  if (p.types.length > 0)
+    parts.push(p.types.map((type) => tb(`type.${type}`)).join(", "));
   if (p.now) parts.push(t("availableNow"));
   else if (p.from && p.to)
     parts.push(
@@ -233,15 +237,22 @@ async function Filters({
         value={p.sort}
         options={SORTS.map((s) => ({ value: s, label: t(`sortBy.${s}`) }))}
       />
-      <Select
-        name="type"
-        label={t("bikeType")}
-        value={p.type ?? ""}
-        options={[
-          { value: "", label: t("anyType") },
-          ...BIKE_TYPES.map((v) => ({ value: v, label: tb(`type.${v}`) })),
-        ]}
-      />
+      <fieldset className="space-y-1">
+        <legend className="text-sm font-medium">{t("bikeType")}</legend>
+        <p className="text-xs text-muted-foreground">{t("typesHint")}</p>
+        {BIKE_TYPES.map((v) => (
+          <label key={v} className="flex min-h-11 items-center gap-3">
+            <input
+              type="checkbox"
+              name="type"
+              value={v}
+              defaultChecked={p.types.includes(v)}
+              className="size-5 accent-mango"
+            />
+            {tb(`type.${v}`)}
+          </label>
+        ))}
+      </fieldset>
       <Select
         name="transmission"
         label={t("transmission")}
@@ -277,7 +288,7 @@ async function Filters({
           name="passport"
           value="copy"
           defaultChecked={p.passportNotHeld}
-          className="size-5"
+          className="size-5 accent-mango"
         />
         {t("passportNotHeld")}
       </label>
@@ -287,9 +298,9 @@ async function Filters({
           name="now"
           value="1"
           defaultChecked={p.now}
-          className="size-5"
+          className="size-5 accent-mango"
         />
-        {t("getBikeNow")}
+        {t("readyNowOnly")}
       </label>
       <Button type="submit" className="h-11 w-full">
         {t("apply")}

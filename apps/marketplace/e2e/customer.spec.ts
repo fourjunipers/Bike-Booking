@@ -13,7 +13,9 @@ test("searching from Phra Khanong shows one card per model", async ({
     .getByRole("combobox")
     .filter({ hasText: "Choose a BTS/MRT station" })
     .selectOption({ label: "Phra Khanong (BTS)" });
-  await page.getByRole("button", { name: "Search bikes" }).click();
+  await page
+    .getByRole("button", { name: "Check availability & prices" })
+    .click();
   await expect(page).toHaveURL(/\/search\?lat=.*place=Phra/);
 
   // The PCX is offered by two shops: one card, the lower price, "2 shops".
