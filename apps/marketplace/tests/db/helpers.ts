@@ -70,3 +70,13 @@ export async function createUser(prefix: string) {
 export async function deleteUser(id: string) {
   await serviceClient().auth.admin.deleteUser(id);
 }
+
+/**
+ * Bangkok calendar date `days` from today, "YYYY-MM-DD". The seeded booking
+ * (K7Q4ZP) holds BSR's only PCX from bangkokDay(-2) to bangkokDay(12).
+ */
+export function bangkokDay(days: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(
+    Date.now() + days * 86_400_000,
+  );
+}

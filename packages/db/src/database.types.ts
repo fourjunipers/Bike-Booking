@@ -942,14 +942,14 @@ isOneToOne: true
                   ]
                 },"stations": {
                   Row: {
-                    "active": boolean,"created_at": string,"id": string,"lines": (string)[],"location": unknown,"name_en": string,"name_th": string | null,"updated_at": string
+                    "active": boolean,"created_at": string,"id": string,"lines": (string)[],"location": unknown,"name_en": string,"name_th": string | null,"osm_id": string | null,"osm_last_seen_at": string | null,"osm_missing_since": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"created_at"?: string,"id"?: string,"lines": (string)[],"location": unknown,"name_en": string,"name_th"?: string | null,"updated_at"?: string
+                    "active"?: boolean,"created_at"?: string,"id"?: string,"lines": (string)[],"location": unknown,"name_en": string,"name_th"?: string | null,"osm_id"?: string | null,"osm_last_seen_at"?: string | null,"osm_missing_since"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "active"?: boolean,"created_at"?: string,"id"?: string,"lines"?: (string)[],"location"?: unknown,"name_en"?: string,"name_th"?: string | null,"updated_at"?: string
+                    "active"?: boolean,"created_at"?: string,"id"?: string,"lines"?: (string)[],"location"?: unknown,"name_en"?: string,"name_th"?: string | null,"osm_id"?: string | null,"osm_last_seen_at"?: string | null,"osm_missing_since"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     

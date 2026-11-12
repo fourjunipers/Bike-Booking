@@ -7,7 +7,13 @@ import {
 import { priceForDays } from "@mango/core/pricing";
 import { rentalDays } from "@mango/core/rental-days";
 import { bangkokDateTime } from "@mango/core/time";
-import { anonClient, seed, serviceClient, type Db } from "./helpers";
+import {
+  anonClient,
+  bangkokDay,
+  seed,
+  serviceClient,
+  type Db,
+} from "./helpers";
 
 // Phase 3: the SQL availability, price and search functions follow the same
 // rules as lib/availability.ts, lib/pricing.ts and lib/rental-days.ts.
@@ -133,8 +139,9 @@ describe("search_offers", () => {
 
   it("hides a bike that's fully booked for the dates", async () => {
     const { data } = await anon.rpc("search_offers", {
-      p_start: at("2026-11-10").toISOString(),
-      p_end: at("2026-11-12").toISOString(),
+      // Inside the seeded booking (bangkokDay(-2) to bangkokDay(12)).
+      p_start: at(bangkokDay(5)).toISOString(),
+      p_end: at(bangkokDay(7)).toISOString(),
     });
     expect(data!.some((r) => r.bike_model_id === seed.bsrPcx)).toBe(false);
   });

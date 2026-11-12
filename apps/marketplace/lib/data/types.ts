@@ -86,9 +86,10 @@ export type SearchQuery = {
   radiusKm?: number;
   start?: Date;
   end?: Date;
-  /** Walk-ins: bikes ready to ride away now ("Get your bike now"). */
+  /** Walk-ins: bikes ready to ride away now ("Ride today"). */
   now: boolean;
-  type?: BikeType;
+  /** Any of these types; empty or omitted means any type. */
+  types?: BikeType[];
   transmission?: Transmission;
   ccMin?: number;
   ccMax?: number;

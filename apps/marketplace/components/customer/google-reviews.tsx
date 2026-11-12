@@ -131,7 +131,7 @@ export function GoogleReviews({
               href={data.mapsUri}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-sm font-medium text-primary underline underline-offset-4"
+              className="inline-block text-sm font-medium text-link underline underline-offset-4"
             >
               {t("googleAll")}
             </a>

@@ -9,7 +9,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
-| Database | 49 migrations on `main`, **all 49 on live since 12 Nov 2026** (see below), and on staging. Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
+| Database | 53 migrations on `main`, **all 53 on live since 12 Nov 2026** (see below). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
@@ -39,9 +39,73 @@ Known limits and open points:
 - The review block has no "dismiss": a rejection shows until the model is sent again or put on a list entry.
 - The local dev server (`next dev`) is too slow for the long Playwright tests; they were run against a local production build, as CI does.
 
+## Marketplace UI batch (branch `marketplace/ui-refresh`, 12 Nov 2026, not merged)
+
+Done (items 1 to 5 of the owner's batch):
+
+- **Moto Mangos look.** Tokens in `app/globals.css` (hex, so `lib/design-tokens.test.ts` checks WCAG contrast): mango primary with **near-black text** (white on mango fails AA), leaf green accents, cream background (palette updated to the logo, see below), `--link` (dark mango) for mango-coloured text. Nunito 800 headings (Thai falls back to the system font). Mango badge drawn in `components/brand/logo.tsx` and `app/icon.svg` (the favicon; `favicon.ico` removed); speed-line and leaf accents. The shared header is restyled for admin and vendor too; they show their area name as a pill.
+- **Page titles and descriptions, Thailand-wide** (owner approved, 12 Nov 2026), English and Thai: "Motorbike rental in Thailand", "Rent a {name} in Thailand", "{shop} – motorbike rental", root title "Moto Mangos – Motorbike rental in Thailand". The Thai is listed for native review in `i18n/machine-translated.ts` (`thaiNeedsNativeReview`).
+- **Bike types** are multi-select toggles; none = any type. URL: repeated `type=` (old one-type links still work). Adapter: `SearchQuery.types` (docs/INTEGRATION.md updated); `current-db.ts` passes one type to `search_offers` and filters several in code, so no migration.
+- **Book ahead / Ride today.** "Search bikes" → "Check availability & prices". The home form has two paths: Book ahead (dates) and Ride today (`now=1`, only bikes ready now; no dates). "Get your bike now" text is gone from the customer site and the vendor help text. docs/marketplace/SPEC.md (Home, Filters rows) updated.
+- **24-hour times**: a 00:00–23:30 list in 30-minute steps (`TIME_OPTIONS`), default 10:00 for pickup and return; picking a pickup date sets the return to the next day.
+- **Place search (item 2).** The station dropdown is replaced by a place search with suggestions (city, area, landmark, airport; any country), "Use my location", and an optional "Near a train station" list. Google Places API (New) through our own routes (`/api/places/autocomplete`, `/api/places/[placeId]`, `lib/places.ts`) with the server-only `GOOGLE_PLACES_SERVER_KEY`: one session token per search, 3 characters and a 300 ms pause before a request, Place Details asks for `location` only (Essentials SKU; `displayName` would be Pro), chosen places cached per server instance for 6 hours (Google allows 30 days), 60 requests a minute per caller. If Places fails or answers 429, the form shows the station list and "Use my location" instead (`e2e/place-search.spec.ts`).
+- **Station refresh from OpenStreetMap.** Migration `20261112100000_marketplace_station_osm_refresh` adds `osm_id`, `osm_last_seen_at`, `osm_missing_since` to `public.stations` (no new table or function; grants restated; `default-grants.test.ts` passes). Netlify scheduled function `refresh-stations` (03:00 UTC on the 1st) → `POST /api/cron/stations` (Bearer `CRON_SECRET`) → Overpass → merge by OSM id (`lib/stations/osm.ts`, `merge.ts`, `refresh.ts`). Seeded stations link by name within 400 m; a same-name station within 400 m of one we have is an interchange platform and isn't added; vanished stations are switched off, never deleted, and switched back on if they return; stations an admin switched off stay off; nothing is switched off if Overpass returns under half of the linked stations. Dry run on real OpenStreetMap data (12 Nov 2026): 181 of 182 seeded stations linked ("Sena Ruam" not found, left as is), 60 new (mostly SRT commuter and Maeklong line halts).
+- **Seed dates relative to today**: the seeded booking K7Q4ZP now runs from 2 days ago to 12 days on (Bangkok), so `e2e/customer.spec.ts` "dates show the total…" and the two DB tests that use it no longer fall into the past (`tests/db/helpers.ts` → `bangkokDay()`).
+- New keys in all 10 customer languages. The other eight are unreviewed machine translations, and the Thai awaits a native speaker's check; both lists are in `apps/marketplace/i18n/machine-translated.ts`.
+- **Sort**: "Recommended" (ranking score, 20% distance) stays the default when a place is chosen (owner, 12 Nov 2026); "Distance" is in Sort.
+- **Logo palette, logo, hero, search tabs** (owner, 12 Nov 2026, second pass):
+  - Navy is gone. Tokens now follow the logo: `--mango` #f8920a (sampled from the wordmark), `--ink` #0b1220 near-black for text and headings, `--leaf` #3f7f00 accent (`--leaf-bright` #68a800 is the logo's leaf, decorative only), white cards on warm cream. The header is white, and the footer is near-black. The favicon was recoloured to match. AA is checked in `lib/design-tokens.test.ts`, which now also covers the tab colours and tints. That test's token regex had lost its `\s` escape and only matched by luck; fixed.
+  - Logo: `public/logo.png` is the owner's "04 Helmet Mango" PNG (710×290), shown in the top bar on the left. It links to the language's home (`/`, `/th`, …) with the alt text "Moto Mangos – motorbike rental in Thailand". The drawn SVG logo component was removed.
+  - Hero: the H1 stays real text. A subline under it replaces the old intro line: "Compare bikes, prices and deposits from local shops. Get the best bike at the best price." (`Customer.subline`). Thai is flagged for native review; the other eight languages are machine-translated and listed. `<title>` and the meta description are unchanged.
+  - Book ahead / Ride today are now two large tabs at the top of the search box (the ARIA tabs pattern: arrows, Home, End, roving focus; at least 56 px tall). Each tab swaps a tinted card: leaf-soft for Book ahead, mango-soft for Ride today. The active tab is filled in its colour and has a notch pointing at the card; the inactive one is outlined. The URL and state are unchanged (`now=1`, `from`/`to` only for Book ahead).
+
+Open:
+
+- **Vendor opening hours still use the old time input** (`<input type="time">` in `app/vendor/settings/forms.tsx`), not the 24-hour list: the vendor screens are hidden and not built on. Mango Works replaces them.
+- **Station refresh not run against real Overpass end to end yet**: on 12 Nov 2026 overpass-api.de answered 502 and the mirror timed out (twice). The write path is tested (`tests/db/stations-refresh.test.ts`) and the merge was dry-run on real data. First real run: after deploy, or by hand with `curl -X POST -H "Authorization: Bearer $CRON_SECRET" <site>/api/cron/stations`.
+- **Check the station refresh after its first monthly run** (1st of the month, 03:00 UTC): open Netlify → Logs → Functions and look for the route's "Station refresh {…}" line (counts added, linked, switched off) or "Station refresh failed". The scheduled function waits only 25 s (its limit is 30 s; the route's is 60 s and Overpass often needs 30-40 s) and assumes the route keeps running after it stops waiting. **If the route times out**, split the work by region: one Overpass request per area in `STATION_AREAS` (`lib/stations/osm.ts`), one area per run or per call, instead of one large area at once.
+- **Migration only on local**: not on staging or live. Live gets it only from `main`.
+- **Titles in the other eight languages** still say Bangkok (only English and Thai were changed, as asked).
+- **Google keys are set in Netlify** (owner, 12 Nov 2026): place search works on deploy preview 12 (real suggestions checked). Quotas and the budget alert (checklist steps 4 and 5) are the owner's to confirm.
+
+Later, Moto Mangos (owner, 12 Nov 2026; not built):
+
+- **Suggest our own shop locations first, Google second.** As the customer types, match the text against our shops' names, areas and towns (free, from the shop list we already have). Call Google Places only when nothing of ours matches, to cut Places cost. Keep the 3-character, 300 ms and session-token rules for the Google calls.
+
+Google Cloud checklist (owner; keys set in Netlify on 12 Nov 2026, kept for reference):
+
+1. APIs enabled: Places API (New) and Maps JavaScript API only.
+2. Server key (`GOOGLE_PLACES_SERVER_KEY`): API restriction = Places API (New) only. Application restriction: none (Netlify has no fixed IP); it never reaches the browser.
+3. Browser key (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, map only): API restriction = Maps JavaScript API; website restriction = the site and deploy-preview domains.
+4. Quotas (Google Maps Platform → Quotas, Places API (New)): per-day caps on Autocomplete and Place Details/Get Place. Google's free-tier sizing is 10,000 ÷ 31 ≈ 322 a day each; raise when traffic grows. Also lower the per-minute caps if offered.
+5. Budget with alerts at e.g. 50%, 90%, 100% of a small monthly amount. Budgets only alert; the daily quotas are what stop spending.
+6. Put the key in Netlify → Site configuration → Environment variables only (scopes: Builds and Functions; the home page is built ahead, so redeploy after setting it). Never in the repo or chat.
+
+## Live at 53 of 53 migrations (12 Nov 2026, evening)
+
+Asked: push PR #12's one migration (`20261112100000_marketplace_station_osm_refresh`) to live. The dry run listed four, because **PR #11's three migrations had merged to `main` but had never been pushed to live**. Stopped, reported, and on the owner's go pushed all four together, in order.
+
+| Migration | On live it |
+| --- | --- |
+| `20261112000200_platform_lock_strength` | Replaces three platform functions (no data) |
+| `20261112000300_marketplace_catalog_requester_private` | Makes `requested_by_shop_id` unreadable to the public: 21 readable catalog columns, was 22 |
+| `20261112000400_platform_reject_reason` | Adds two columns and a trigger on `platform.models` (no rows) |
+| `20261112100000_marketplace_station_osm_refresh` | Adds `osm_id`, `osm_last_seen_at`, `osm_missing_since` to `public.stations` and a unique index on `osm_id` |
+
+- **From** `main` at `f0f7f19`, with `npx supabase db push --linked`, after a fresh backup (`C:\Users\markw\mango-live-backups\2026-11-12_1738`: roles, schema, data) and a dry run listing exactly these four. No errors.
+- **Live records 53 of 53.**
+- **Runbook checks (read-only):** row counts of all 24 `public` tables identical before and after (A1/B2); catalog defaults 25 of 25 (B3); private catalog columns readable by the public 0, now checking all four (B4); readable catalog columns **21** for anon and for authenticated (B5); platform still empty (B6); vehicle types and the hourly job unchanged (B7, B8); C1 to C5 identical to the earlier runs; grants fingerprint (C6) identical before and after.
+- **No-default-grants expectations on live:** defaults for new `public` tables, sequences and functions are still empty for anon, authenticated and service_role; 39 tables reachable by anon or authenticated, the same set as before (no new table); no function in `public` or `platform` is executable by everyone beyond the closed list; no table without RLS.
+- **Through live's API as the public (anon key, reads only):** 37 of 38 queries answer 200 and the private-column probe is refused, as before. 35 of the 36 dry-run queries are byte-identical to the dry-run answers. The one that differs is `stations` read with every column: the same 182 rows, now with the three new columns (all empty until the first refresh runs).
+- **Station list:** `station_list()` returns the same answer as before, byte for byte (182 stations). The marketplace home page and `/search` return 200.
+- **New station columns exist:** `osm_id text`, `osm_last_seen_at timestamptz`, `osm_missing_since timestamptz`, all nullable; 0 of 182 rows have an `osm_id` yet.
+- Not done here: nothing on Netlify or Google was touched, and whether the scheduled station refresh runs was not checked. PR #13's migration (`20261113000100`) is not on `main` and not on live.
+- `checks.sql` still says "22" for B5 with a note that it is 21 once `20261112000300` is applied; that is now the case on live.
+- The runbook's `rollback.sql` undoes the first 21 platform migrations only. It would not have been the way back for these four; a failure here would have needed a forward fix or the backup.
+
 ## Re-check follow-ups (branch `platform/recheck-followups`, 12 Nov 2026)
 
-Four follow-ups from the second look at the Phase 1a review. Three migrations, on local and staging; **not on live** (they go with the next push from `main`, after this merges).
+Four follow-ups from the second look at the Phase 1a review. Three migrations. They merged with PR #11 but **were not on live until the push of 12 Nov 2026 recorded below** (live stayed at 49 in between).
 
 | # | What | Migration | Test |
 | --- | --- | --- | --- |
