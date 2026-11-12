@@ -19,14 +19,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// TODO(launch): replace once the platform name is chosen (SPEC open question).
 export const metadata: Metadata = {
   // Turns the customer pages' relative hreflang links into full URLs.
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   ),
-  title: "Motorbike Rental Bangkok",
-  description: "Book motorbikes from local rental shops in Bangkok.",
+  title: "Moto Mangos – Motorbike rental in Thailand",
+  description: "Book motorbikes from local rental shops across Thailand.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

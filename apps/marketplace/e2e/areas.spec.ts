@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("customer home renders", async ({ page }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Motorbike rental in Bangkok" }),
+    page.getByRole("heading", { name: "Motorbike rental in Thailand" }),
   ).toBeVisible();
 });
 

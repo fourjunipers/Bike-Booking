@@ -6,25 +6,39 @@ import {
   machineTranslatedKeys,
   machineTranslatedLocales,
   reviewedLocales,
+  thaiNeedsNativeReview,
 } from "./machine-translated";
 
-const en = JSON.parse(
-  readFileSync(join(__dirname, "..", "messages", "en.json"), "utf8"),
-);
+const load = (locale: string) =>
+  JSON.parse(
+    readFileSync(join(__dirname, "..", "messages", `${locale}.json`), "utf8"),
+  );
+const en = load("en");
+const th = load("th");
+const get = (messages: unknown, key: string) =>
+  key
+    .split(".")
+    .reduce<unknown>((m, k) => (m as Record<string, unknown>)?.[k], messages);
 
 describe("machine-translated list", () => {
   it("names real English keys", () => {
-    for (const key of machineTranslatedKeys) {
-      const value = key
-        .split(".")
-        .reduce<unknown>((m, k) => (m as Record<string, unknown>)?.[k], en);
-      expect(typeof value, key).toBe("string");
-    }
+    for (const key of machineTranslatedKeys)
+      expect(typeof get(en, key), key).toBe("string");
   });
 
   it("covers every customer language except the reviewed ones", () => {
     expect([...machineTranslatedLocales, ...reviewedLocales].sort()).toEqual(
       [...customerLocales].sort(),
+    );
+  });
+});
+
+describe("Thai awaiting native review", () => {
+  it("names real Thai keys, once each", () => {
+    for (const key of thaiNeedsNativeReview)
+      expect(typeof get(th, key), key).toBe("string");
+    expect(new Set(thaiNeedsNativeReview).size).toBe(
+      thaiNeedsNativeReview.length,
     );
   });
 });

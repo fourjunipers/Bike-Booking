@@ -44,3 +44,25 @@ export const machineTranslatedLocales = [
   "es",
   "it",
 ] as const;
+
+/**
+ * Thai written by Claude in the same batch: approved by the owner for use,
+ * but NOT yet checked by a native Thai speaker. Review, then delete the keys.
+ */
+export const thaiNeedsNativeReview = [
+  // Page titles and descriptions, Thailand-wide (approved 12 Nov 2026).
+  "Customer.title",
+  "Customer.metaDescription",
+  "Search.metaDescription",
+  "Bike.metaTitle",
+  "Bike.metaDescription",
+  "Bike.listingDescription",
+  "Shop.metaTitle",
+  // Search form.
+  ...machineTranslatedKeys,
+  "Search.station",
+  "Search.chooseStation",
+  "Search.gpsFailed",
+  // Vendor help text ("Ride today").
+  "Fleet.helpReady",
+] as const;
