@@ -430,7 +430,9 @@ export default async function FleetPage({
                     href={`${base}/models/${section.model.id}`}
                     aria-label={`${t("editModel")}: ${section.model.name}`}
                     title={t("editModel")}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border bg-card hover:bg-accent"
+                    // A plain icon: no box until hovered or focused. 44 px to
+                    // tap; the negative margin keeps the heading row's height.
+                    className="-my-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <Pencil aria-hidden className="size-4" />
                   </Link>
