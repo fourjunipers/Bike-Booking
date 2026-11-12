@@ -7,9 +7,10 @@ import { parseCsv } from "./csv";
 import { buildFleetView, defaultView, parseView } from "./fleet-view";
 import {
   categoriesFor,
+  categoriesFromText,
   categoryFromText,
   categoryRequired,
-  checkCategory,
+  checkCategories,
   humanizeKey,
   kindTypes,
   reviewNews,
@@ -52,18 +53,31 @@ describe("kinds of vehicle and their categories (owner, 12 Nov 2026)", () => {
 
   it("a category is required for motorbikes and cars only", () => {
     expect(kindTypes.filter(categoryRequired)).toEqual(["motorbike", "car"]);
-    expect(checkCategory("motorbike", "")).toEqual({ error: "required" });
-    expect(checkCategory("car", "  ")).toEqual({ error: "required" });
-    expect(checkCategory("atv", "")).toEqual({ category: null });
-    expect(checkCategory("other", "")).toEqual({ category: null });
+    expect(checkCategories("motorbike", [])).toEqual({ error: "required" });
+    expect(checkCategories("car", ["  "])).toEqual({ error: "required" });
+    expect(checkCategories("atv", [])).toEqual({ categories: [] });
+    expect(checkCategories("other", [""])).toEqual({ categories: [] });
   });
 
   it("a category must belong to its kind", () => {
-    expect(checkCategory("car", "suv")).toEqual({ category: "suv" });
-    expect(checkCategory("motorbike", "suv")).toEqual({
+    expect(checkCategories("car", ["suv"])).toEqual({ categories: ["suv"] });
+    expect(checkCategories("motorbike", ["suv"])).toEqual({
       error: "invalidCategory",
     });
-    expect(checkCategory("other", "suv")).toEqual({ error: "invalidCategory" });
+    expect(checkCategories("other", ["suv"])).toEqual({
+      error: "invalidCategory",
+    });
+  });
+
+  it("a model can have several categories (owner, 12 Nov 2026)", () => {
+    // Kept in the list's own order, without repeats, however they were ticked.
+    expect(
+      checkCategories("motorbike", ["adventure", "touring", "adventure"]),
+    ).toEqual({ categories: ["touring", "adventure"] });
+    // One that isn't the kind's spoils the lot.
+    expect(checkCategories("motorbike", ["touring", "suv"])).toEqual({
+      error: "invalidCategory",
+    });
   });
 
   it("every key is one the database accepts", () => {
@@ -94,6 +108,24 @@ describe("kinds of vehicle and their categories (owner, 12 Nov 2026)", () => {
     expect(categoryFromText("boat", "Jet ski")).toBe("jet_ski");
     expect(categoryFromText("car", "scooter")).toBeNull();
     expect(categoryFromText("other", "anything")).toBeNull();
+  });
+
+  it("reads several categories from one CSV cell, separated by a semicolon", () => {
+    expect(categoriesFromText("motorbike", "Adventure; Touring")).toEqual([
+      "touring",
+      "adventure",
+    ]);
+    expect(categoriesFromText("motorbike", "scooter;")).toEqual([
+      "city_scooter",
+    ]);
+    expect(categoriesFromText("car", "SUV;suv ; pickup")).toEqual([
+      "suv",
+      "pickup",
+    ]);
+    expect(categoriesFromText("car", "")).toEqual([]);
+    // A comma is not a separator, and one wrong name fails the cell.
+    expect(categoriesFromText("car", "suv, pickup")).toBeNull();
+    expect(categoriesFromText("car", "suv; scooter")).toBeNull();
   });
 });
 
@@ -167,8 +199,19 @@ describe("CSV import: the category column", () => {
     expect(good.errors).toEqual([]);
     expect(good.models[0]).toMatchObject({
       vehicle_type: "car",
-      category: "suv",
+      categories: ["suv"],
     });
+    const several = plan(
+      "make,model,plate,vehicle_type,category\nToyota,Hilux,C-2,car,Pickup; SUV",
+    );
+    expect(several.errors).toEqual([]);
+    expect(several.models[0].categories).toEqual(["suv", "pickup"]);
+    const oneWrong = plan(
+      "make,model,plate,vehicle_type,category\nToyota,Hilux,C-2,car,pickup; scooter",
+    );
+    expect(oneWrong.errors.map((e) => `${e.column}:${e.code}`)).toEqual([
+      "category:invalidCategory",
+    ]);
   });
 
   it('"Off-road" in the kind column is an ATV or UTV; its category is optional', () => {
@@ -180,9 +223,9 @@ describe("CSV import: the category column", () => {
       ].join("\n"),
     );
     expect(result.errors).toEqual([]);
-    expect(result.models.map((m) => [m.vehicle_type, m.category])).toEqual([
-      ["atv", "utv"],
-      ["atv", null],
+    expect(result.models.map((m) => [m.vehicle_type, m.categories])).toEqual([
+      ["atv", ["utv"]],
+      ["atv", []],
     ]);
   });
 
@@ -192,10 +235,12 @@ describe("CSV import: the category column", () => {
     expect(plain.models).toEqual([
       { id: "new-1", name: "Honda PCX 160", catalog_id: "cat-pcx" },
     ]);
-    const named = plan("make,model,plate,category\nHonda,PCX 160,P-1,touring");
+    const named = plan(
+      "make,model,plate,category\nHonda,PCX 160,P-1,adventure;touring",
+    );
     expect(named.models[0]).toMatchObject({
       catalog_id: "cat-pcx",
-      category: "touring",
+      categories: ["touring", "adventure"],
     });
     const wrong = plan("make,model,plate,category\nHonda,PCX 160,P-1,sedan");
     expect(wrong.errors.map((e) => e.code)).toEqual(["invalidCategory"]);
@@ -229,6 +274,7 @@ describe("fleet list: the kind filter", () => {
         cc: 160,
         transmission: "automatic",
         kind: "motorbike",
+        categories: ["touring", "adventure"],
       },
       {
         id: "m-car",
@@ -238,6 +284,7 @@ describe("fleet list: the kind filter", () => {
         cc: null,
         transmission: "automatic",
         kind: "car",
+        categories: ["sedan"],
       },
       {
         id: "m-empty-car",
@@ -247,6 +294,7 @@ describe("fleet list: the kind filter", () => {
         cc: null,
         transmission: null,
         kind: "car",
+        categories: ["suv", "pickup"],
       },
     ],
   };
@@ -269,5 +317,26 @@ describe("fleet list: the kind filter", () => {
       kind: "motorbike",
     });
     expect(bikes.sections.map((s) => s.model?.name)).toEqual(["PCX"]);
+  });
+
+  it("the category filter finds a model by any of its categories", () => {
+    expect(parseView({ category: "touring" }).category).toBe("touring");
+    expect(parseView({ category: "Not a key" }).category).toBe("");
+    const names = (category: string) =>
+      buildFleetView(data as never, { ...defaultView, category })
+        .sections.map((s) => s.model?.name)
+        .sort();
+    // The PCX is both touring and adventure: either finds it.
+    expect(names("touring")).toEqual(["PCX"]);
+    expect(names("adventure")).toEqual(["PCX"]);
+    expect(names("sedan")).toEqual(["Yaris"]);
+    // A make & model with no vehicles yet still shows.
+    expect(names("pickup")).toEqual(["Fortuner"]);
+    expect(names("sport")).toEqual([]);
+    // The sections carry every category, for the list to show.
+    const all = buildFleetView(data as never, defaultView);
+    expect(
+      all.sections.find((s) => s.model?.name === "PCX")?.model?.categories,
+    ).toEqual(["touring", "adventure"]);
   });
 });

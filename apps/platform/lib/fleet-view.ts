@@ -56,6 +56,8 @@ export type ViewModel = {
   transmission: string | null;
   /** The kind of vehicle (public.vehicle_types): motorbike, car, atv… */
   kind?: string;
+  /** Its categories (lib/vehicle-kinds): a model can have several. */
+  categories?: readonly string[];
 };
 
 export type ViewBand = { model_id: string; year_from: number; year_to: number };
@@ -64,6 +66,8 @@ export type FleetFilters = {
   q: string;
   /** Kind of vehicle: motorbike, car, atv, boat or other. */
   kind: string;
+  /** A category key: models that have it among their categories. */
+  category: string;
   make: string;
   model: string;
   ccMin: number | null;
@@ -96,6 +100,7 @@ export const defaultView: FleetViewOptions = {
   sort: "makeModel",
   q: "",
   kind: "",
+  category: "",
   make: "",
   model: "",
   ccMin: null,
@@ -173,6 +178,9 @@ export function parseView(
     kind: (kindTypes as readonly string[]).includes(text(query.kind))
       ? text(query.kind)
       : "",
+    category: /^[a-z][a-z0-9_]{0,39}$/.test(text(query.category))
+      ? text(query.category)
+      : "",
     make: text(query.make),
     model: text(query.model),
     ccMin: positiveInt(query.ccMin, 5000),
@@ -200,6 +208,7 @@ export function activeFilterCount(view: FleetFilters): number {
   return [
     view.q,
     view.kind,
+    view.category,
     view.make,
     view.model,
     view.ccMin,
@@ -274,6 +283,8 @@ export function buildFleetView(
     if (!inScope(unit)) return false;
     if (!matchesText(unit, view.q)) return false;
     if (view.kind && (model?.kind ?? "motorbike") !== view.kind) return false;
+    if (view.category && !model?.categories?.includes(view.category))
+      return false;
     if (view.make && model?.make !== view.make) return false;
     if (view.model && unit.model_id !== view.model) return false;
     if (view.ccMin !== null && (model?.cc ?? 0) < view.ccMin) return false;
@@ -382,15 +393,18 @@ export function buildFleetView(
       }
       return { key: modelId, model, count: members.length, groups };
     });
-    // With no filters on (or only the kind of vehicle), a make & model that
-    // has no vehicles yet is still listed, so it can be given some.
+    // With no filters on (or only the kind of vehicle and the category), a
+    // make & model that has no vehicles yet is still listed, so it can be
+    // given some.
     if (
-      activeFilterCount({ ...view, kind: "" }) === 0 &&
+      activeFilterCount({ ...view, kind: "", category: "" }) === 0 &&
       view.scope !== "past"
     ) {
       for (const model of data.models) {
         if (byModel.has(model.id)) continue;
         if (view.kind && (model.kind ?? "motorbike") !== view.kind) continue;
+        if (view.category && !model.categories?.includes(view.category))
+          continue;
         sections.push({
           key: model.id,
           model,

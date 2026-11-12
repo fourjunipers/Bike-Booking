@@ -29,7 +29,7 @@ import { parseMoney } from "@/lib/money";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
 import { fromLocalInput } from "@/lib/shop-time";
-import { checkCategory } from "@/lib/vehicle-kinds";
+import { checkCategories } from "@/lib/vehicle-kinds";
 import { createClient } from "@mango/db/platform-server";
 
 /**
@@ -162,19 +162,21 @@ export async function saveModel(
       what = { catalog_id: null, ...own.data };
     }
   }
-  // Blank on a list model means "as Moto Mangos files it": the database
-  // fills it from the entry.
+  // One or more categories (the chips are checkboxes named "category"). None
+  // on a list model means "as Moto Mangos files it": the database fills it
+  // from the entry.
+  const ticked = formData.getAll("category");
   const checked =
-    presetId && field(formData, "category") === ""
-      ? { category: null }
-      : checkCategory(kind, raw.category);
+    presetId && ticked.length === 0
+      ? { categories: [] }
+      : checkCategories(kind, ticked);
   if ("error" in checked) return { errors: { category: checked.error } };
 
   const defaultName = what ? `${what.make} ${what.model}` : "";
   const common = {
     ...rest,
     ...(wantsDefaultName ? { name: defaultName } : {}),
-    category: checked.category,
+    categories: checked.categories,
     deposit,
     deposit_currency: deposit === null ? null : tenant.currency,
   };
@@ -808,16 +810,16 @@ export async function submitModelToCatalog(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const raw = Object.fromEntries(formData);
-  // Moto Mangos files a motorbike under its category, set on the model.
+  // Moto Mangos files a motorbike under one type: the model's first category
+  // (in the order of the list in lib/vehicle-kinds.ts).
   const { data: model } = await supabase
     .from("models")
-    .select("category")
+    .select("categories")
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .maybeSingle();
-  const type = (bikeTypes as readonly string[]).includes(model?.category ?? "")
-    ? (model!.category as (typeof bikeTypes)[number])
-    : null;
+  const type =
+    bikeTypes.find((bikeType) => model?.categories.includes(bikeType)) ?? null;
   if (!type) return { errors: { form: "categoryFirst" } };
   const parsed = catalogSubmitSchema.safeParse({
     year_from: raw.year_from,

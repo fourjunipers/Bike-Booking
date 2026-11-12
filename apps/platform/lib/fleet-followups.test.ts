@@ -409,7 +409,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         vehicle_type: "motorbike",
         cc: 125,
         transmission: "automatic",
-        category: "city_scooter",
+        categories: ["city_scooter"],
       },
       {
         id: "new-2",
@@ -420,7 +420,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         vehicle_type: "car",
         cc: null,
         transmission: "automatic",
-        category: "sedan",
+        categories: ["sedan"],
       },
       {
         id: "new-3",
@@ -431,7 +431,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         vehicle_type: "boat",
         cc: null,
         transmission: null,
-        category: null,
+        categories: [],
       },
     ]);
     // Same make and model, whatever the case and spacing: one model, not two.

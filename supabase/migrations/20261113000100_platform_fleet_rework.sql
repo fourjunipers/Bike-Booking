@@ -1,19 +1,20 @@
--- Fleet rework (owner, 12 Nov 2026): a category on every model, and the result
+-- Fleet rework (owner, 12 Nov 2026): categories on every model, and the result
 -- of a Moto Mangos review kept where the shop can be told about it.
 --
--- 1. platform.models.category: what kind of motorbike, car, off-road vehicle or
---    boat a model is (scooter, SUV, ATV, jet ski...). Renters will filter by
---    it; the shop sets it once on the model instead of each time it sends a
+-- 1. platform.models.categories: what kind of motorbike, car, off-road vehicle
+--    or boat a model is (scooter, SUV, ATV, jet ski...). A model can have
+--    several ("adventure" and "touring"), so it is a list. Renters will filter
+--    by it; the shop sets it once on the model instead of each time it sends a
 --    model to Moto Mangos. The lists are first guesses and live in the app
 --    (apps/platform/lib/vehicle-kinds.ts) so they can change with no
---    migration: the database only checks the value's shape.
+--    migration: the database only checks each value's shape.
 --    A motorbike model on a catalog entry takes the entry's type when it has
---    no category of its own; existing models are filled in the same way.
+--    no categories of its own; existing models are filled in the same way.
 -- 2. platform.models.catalog_approved_at: when Moto Mangos added (or merged)
 --    the model's request. With catalog_rejected_at from 20261112000400 this
 --    lets the dashboard and the fleet list show the result of a review. Set
 --    only by review_catalog_request(); the shop can't write it.
--- 3. import_fleet() carries a model's category from the CSV.
+-- 3. import_fleet() carries a model's categories from the CSV.
 --
 -- No new table and no new function reachable over the API, so no new grants
 -- (20261112000100): the columns sit on platform.models, which grants to
@@ -22,8 +23,17 @@
 -- function in platform_private with everything revoked.
 
 alter table platform.models
-  add column category text
-    check (category ~ '^[a-z][a-z0-9_]{0,39}$'),
+  add column categories text[] not null default '{}'
+    constraint models_categories_shape check (
+      -- Up to 10 lower-case keys, none null. The comma test: no key holds a
+      -- comma, so the joined text below splits back into the same keys.
+      cardinality(categories) <= 10
+      and array_position(categories, null) is null
+      and cardinality(categories)
+        = coalesce(cardinality(string_to_array(array_to_string(categories, ','), ',')), 0)
+      and array_to_string(categories, ',')
+        ~ '^([a-z][a-z0-9_]{0,39}(,[a-z][a-z0-9_]{0,39})*)?$'
+    ),
   add column catalog_approved_at timestamptz;
 
 -- A motorbike on a catalog entry: the entry's type, unless the shop chose one.
@@ -33,11 +43,16 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_type text;
 begin
-  if new.category is null and new.catalog_id is not null then
-    select c.type::text into new.category
+  if cardinality(new.categories) = 0 and new.catalog_id is not null then
+    select c.type::text into v_type
     from public.bike_catalog c
     where c.id = new.catalog_id and c.vehicle_type = 'motorbike';
+    if v_type is not null then
+      new.categories := array[v_type];
+    end if;
   end if;
   return new;
 end;
@@ -46,11 +61,11 @@ $$;
 revoke all on function platform_private.models_default_category() from public, anon, authenticated;
 
 create trigger models_default_category
-before insert or update of catalog_id, category on platform.models
+before insert or update of catalog_id, categories on platform.models
 for each row execute function platform_private.models_default_category();
 
 -- Existing models (the trigger above fills them; nothing else changes).
-update platform.models set category = null where category is null and catalog_id is not null;
+update platform.models set categories = '{}' where categories = '{}' and catalog_id is not null;
 
 -- The review outcome is the reviewer's to write, as in 20261112000400, now
 -- with the approval date as well.
@@ -204,7 +219,7 @@ begin
 end;
 $$;
 
--- The CSV import, as in 20261111000300, plus each new model's category.
+-- The CSV import, as in 20261111000300, plus each new model's categories.
 create or replace function platform.import_fleet(p_tenant_id uuid, p_models jsonb, p_units jsonb)
 returns jsonb
 language plpgsql
@@ -221,11 +236,12 @@ begin
   end if;
   select currency into v_currency from platform.tenants where id = p_tenant_id;
 
-  insert into platform.models (id, tenant_id, catalog_id, name, make, model, vehicle_type, cc, transmission, category)
-  select m.id, p_tenant_id, m.catalog_id, m.name, m.make, m.model, m.vehicle_type, m.cc, m.transmission, m.category
+  insert into platform.models (id, tenant_id, catalog_id, name, make, model, vehicle_type, cc, transmission, categories)
+  select m.id, p_tenant_id, m.catalog_id, m.name, m.make, m.model, m.vehicle_type, m.cc, m.transmission,
+    coalesce(m.categories, '{}')
   from jsonb_to_recordset(coalesce(p_models, '[]')) as m (
     id uuid, catalog_id uuid, name text, make text, model text, vehicle_type text,
-    cc int, transmission public.transmission, category text
+    cc int, transmission public.transmission, categories text[]
   );
   get diagnostics v_models = row_count;
 

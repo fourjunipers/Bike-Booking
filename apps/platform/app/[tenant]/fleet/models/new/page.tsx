@@ -59,7 +59,7 @@ export default async function NewModelPage({
             model: "",
             cc: "",
             transmission: "",
-            category: chosen?.type ?? "",
+            categories: chosen ? [chosen.type] : [],
           }}
           values={{
             name: "",

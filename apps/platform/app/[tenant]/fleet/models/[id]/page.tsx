@@ -102,11 +102,11 @@ export default async function ModelPage({
           model.vehicle_type === "motorbike"
             ? null
             : tFleet(`kind.${model.vehicle_type}` as "kind.car"),
-          model.category
-            ? tFleet.has(`category.${model.category}` as "category.sedan")
-              ? tFleet(`category.${model.category}` as "category.sedan")
-              : humanizeKey(model.category)
-            : null,
+          ...model.categories.map((key) =>
+            tFleet.has(`category.${key}` as "category.sedan")
+              ? tFleet(`category.${key}` as "category.sedan")
+              : humanizeKey(key),
+          ),
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -122,7 +122,7 @@ export default async function ModelPage({
                 model: own ? model.model : "",
                 cc: own && model.cc !== null ? String(model.cc) : "",
                 transmission: own ? (model.transmission ?? "") : "",
-                category: model.category ?? "",
+                categories: model.categories,
               }}
               waiting={waiting}
               makes={[...new Set(catalog.map((c) => c.make))].sort()}
@@ -262,7 +262,7 @@ export default async function ModelPage({
                 </>
               ) : model.vehicle_type !== "motorbike" ? (
                 <p className="text-sm">{tFleet("motoMangos.bikesOnly")}</p>
-              ) : !model.category ? (
+              ) : model.categories.length === 0 ? (
                 <p className="text-sm">{tFleet("motoMangos.categoryFirst")}</p>
               ) : (
                 <>

@@ -40,7 +40,12 @@ import {
 } from "@/lib/fleet-view";
 import { shopModelOptions } from "@/lib/model-options";
 import { canManageFleet } from "@/lib/roles";
-import { kindTypes, reviewNews } from "@/lib/vehicle-kinds";
+import {
+  humanizeKey,
+  kindTypes,
+  reviewNews,
+  vehicleKinds,
+} from "@/lib/vehicle-kinds";
 import { cn } from "@/lib/utils";
 import { ExpandCollapse, RememberView } from "./fleet-controls";
 
@@ -118,6 +123,7 @@ export default async function FleetPage({
         cc: model.catalog?.cc ?? null,
         transmission: model.catalog?.transmission ?? null,
         kind: model.vehicle_type,
+        categories: model.categories,
       })),
     },
     view,
@@ -158,6 +164,10 @@ export default async function FleetPage({
         : group.kind === "all"
           ? t("allBikes")
           : group.title;
+  const categoryLabel = (key: string) =>
+    t.has(`category.${key}` as "category.sedan")
+      ? t(`category.${key}` as "category.sedan")
+      : humanizeKey(key);
   const options = <T extends string>(
     values: readonly T[],
     label: (v: T) => string,
@@ -295,6 +305,23 @@ export default async function FleetPage({
               >
                 <option value="">{t("view.any")}</option>
                 {options(kindTypes, (kind) => t(`kind.${kind}`))}
+              </select>
+            </Field>
+            <Field id="category" label={t("view.category")}>
+              <select
+                id="category"
+                name="category"
+                defaultValue={view.category}
+                className={inputClass}
+              >
+                <option value="">{t("view.any")}</option>
+                {vehicleKinds
+                  .filter((kind) => kind.categories.length > 0)
+                  .map((kind) => (
+                    <optgroup key={kind.type} label={t(`kind.${kind.type}`)}>
+                      {options(kind.categories, categoryLabel)}
+                    </optgroup>
+                  ))}
               </select>
             </Field>
             <MakeModelPicker
@@ -442,14 +469,15 @@ export default async function FleetPage({
                     id={`section-${section.key}`}
                     className="text-lg font-semibold"
                   >
+                    {/* No underline at rest (owner, 12 Nov 2026): the
+                        pencil beside it says it can be opened. */}
                     <Link
                       href={`${base}/models/${section.model.id}`}
-                      className="underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-current"
+                      className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       {section.model.name}
                     </Link>
                   </h2>
-                  {/* The name is a link; this makes it look like one. */}
                   <Link
                     href={`${base}/models/${section.model.id}`}
                     aria-label={`${t("editModel")}: ${section.model.name}`}
@@ -488,6 +516,8 @@ export default async function FleetPage({
                           `transmission.${section.model.transmission}` as "transmission.manual",
                         )
                       : null,
+                    // Every category the model has.
+                    ...(section.model.categories ?? []).map(categoryLabel),
                     t("unitCount", { count: section.count }),
                   ]
                     .filter(Boolean)
@@ -513,15 +543,22 @@ export default async function FleetPage({
                       </p>
                     </div>
                     {manage && section.model && (
+                      // A labelled button, not a bare plus (owner, 12 Nov
+                      // 2026). Its name starts with what is on it.
                       <Link
                         href={`${base}/units/new?model=${section.model.id}`}
-                        aria-label={t("addUnitTo", {
-                          name: section.model.name,
-                        })}
                         title={t("addUnit")}
-                        className="-my-1 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "-my-1 h-11 bg-card px-3",
+                        )}
                       >
-                        <Plus aria-hidden className="size-5" />
+                        <Plus aria-hidden />
+                        {t("addUnitRow")}
+                        <span className="sr-only">
+                          {": "}
+                          {t("addUnitTo", { name: section.model.name })}
+                        </span>
                       </Link>
                     )}
                     <ChevronDown

@@ -71,7 +71,7 @@ export const getFleet = cache(async (tenantId: string) => {
     supabase
       .from("models")
       .select(
-        "id, name, catalog_id, make, model, vehicle_type, category, cc, transmission, bookable_online, marketplace_listed, catalog_rejected_at, catalog_approved_at",
+        "id, name, catalog_id, make, model, vehicle_type, categories, cc, transmission, bookable_online, marketplace_listed, catalog_rejected_at, catalog_approved_at",
       )
       .eq("tenant_id", tenantId)
       .order("name"),
@@ -130,7 +130,7 @@ export async function getModel(tenantId: string, id: string) {
   const { data, error } = await supabase
     .from("models")
     .select(
-      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now, category, catalog_rejected_at, catalog_reject_reason, catalog_approved_at",
+      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now, categories, catalog_rejected_at, catalog_reject_reason, catalog_approved_at",
     )
     .eq("tenant_id", tenantId)
     .eq("id", id)

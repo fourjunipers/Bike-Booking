@@ -69,19 +69,24 @@ export function categoryRequired(type: string): boolean {
 }
 
 /**
- * Checks a category typed or chosen for a kind. Blank is "none".
- * Returns the category to store, or the error key for the form.
+ * Checks the categories ticked or typed for a kind. A model can have several
+ * (owner, 12 Nov 2026: "Adventure and Touring"); none is fine unless the kind
+ * requires one. Returns them without repeats, in the list's own order, or the
+ * error key for the form.
  */
-export function checkCategory(
+export function checkCategories(
   type: string,
-  value: unknown,
-): { category: string | null } | { error: "required" | "invalidCategory" } {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text)
-    return categoryRequired(type) ? { error: "required" } : { category: null };
-  return categoriesFor(type).includes(text)
-    ? { category: text }
-    : { error: "invalidCategory" };
+  values: readonly unknown[],
+): { categories: string[] } | { error: "required" | "invalidCategory" } {
+  const chosen = values
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  if (chosen.length === 0)
+    return categoryRequired(type) ? { error: "required" } : { categories: [] };
+  const list = categoriesFor(type);
+  if (chosen.some((key) => !list.includes(key)))
+    return { error: "invalidCategory" };
+  return { categories: list.filter((key) => chosen.includes(key)) };
 }
 
 /** "jet_ski" as "Jet ski": the fallback when a category has no label yet. */
@@ -104,6 +109,25 @@ export function categoryFromText(type: string, text: string): string | null {
   // "scooter" is how people say Moto Mangos' "city scooter".
   if (type === "motorbike" && key === "scooter") return "city_scooter";
   return list.includes(key) ? key : null;
+}
+
+/**
+ * The category cell of a CSV file: one category, or several separated by a
+ * semicolon ("adventure; touring"). Returns the keys without repeats, in the
+ * list's own order; null when any of them isn't a category of the kind.
+ */
+export function categoriesFromText(
+  type: string,
+  text: string,
+): string[] | null {
+  const keys: string[] = [];
+  for (const part of text.split(";")) {
+    if (!part.trim()) continue;
+    const key = categoryFromText(type, part);
+    if (!key) return null;
+    keys.push(key);
+  }
+  return categoriesFor(type).filter((key) => keys.includes(key));
 }
 
 /** How long a "Moto Mangos added it" note stays on the dashboard and fleet list. */

@@ -71,19 +71,17 @@ export function ModelForm({
       className="max-w-3xl"
     >
       {waiting ? (
-        <div className="grid gap-5 md:grid-cols-2">
-          <CategoryField
-            kind={what.vehicle_type}
-            defaultValue={what.category}
-          />
-        </div>
+        <CategoryField
+          kind={what.vehicle_type}
+          defaultValue={what.categories}
+        />
       ) : (
         <WhatFields
           values={what}
           listOptions={listOptions}
           listTypes={listTypes}
           makes={makes}
-          showCard={isNew}
+          showTip={isNew}
         />
       )}
       <TextInput

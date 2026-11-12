@@ -4,6 +4,25 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 
 Thai already used the general word for a vehicle (รถ, counted in คัน) wherever English said “bike”, so the bike-to-vehicle change needed no Thai edits beyond the lines below.
 
+## Second round (after the click-through, 12 Nov 2026)
+
+New or changed since the first list: the “+ Vehicle” row button, the category filter, several categories per model, and the helpful tip beside the make and model. The four `Fleet.what.card.*` lines are gone (the tip replaced the card). The lines that changed are repeated here and updated in their tables below.
+
+| Key | English | Thai |
+| --- | --- | --- |
+| `Fleet.addUnitRow` | Vehicle | รถ |
+| `Fleet.view.category` | Category | หมวด |
+| `Fleet.what.typeIt` | Not in the list? | ไม่มีในรายการ? |
+| `Fleet.what.listHelp` | Pick from the Moto Mangos list. | เลือกจากรายการของ Moto Mangos |
+| `Fleet.what.category` | Categories | หมวด |
+| `Fleet.what.categoryHelp` | Choose at least one; you can choose several. Helps renters find it when they search and filter. | เลือกอย่างน้อยหนึ่งหมวด เลือกได้หลายหมวด ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
+| `Fleet.what.categoryOptional` | Optional; you can choose several. Helps renters find it when they search and filter. | ไม่บังคับ เลือกได้หลายหมวด ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
+| `Fleet.what.tip.label` | Helpful tip | เคล็ดลับ |
+| `Fleet.what.tip.fromList` | Any model from this list can be listed on Moto Mangos, the marketplace that matches renters with rental providers. | ทุกรุ่นในรายการนี้ลงประกาศบน Moto Mangos ได้ ซึ่งเป็นตลาดที่จับคู่ผู้เช่ากับผู้ให้เช่า |
+| `Fleet.what.tip.typed` | To add this vehicle to the Moto Mangos marketplace, save it first, then send it for review from its details page. | หากต้องการเพิ่มรถคันนี้ในตลาด Moto Mangos ให้บันทึกก่อน แล้วส่งให้ตรวจจากหน้ารายละเอียดของรุ่น |
+| `Fleet.import.columnsHelp` | “make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a make & model of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the make & model. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}. | ต้องมี “make” และ “model” หากตรงกับรายการของ Moto Mangos ด้านล่าง รถจะอยู่ในรายการนั้น หากรุ่นมีหลายเจเนอเรชัน “model_year” จะเลือกรายการที่ถูกต้อง หากไม่ตรง รถจะอยู่ในยี่ห้อและรุ่นของร้านเอง ซึ่งจะถูกสร้างให้ถ้ายังไม่มี: ระบุ “vehicle_type” (motorbike, car, atv, boat หรือ other เว้นว่างหมายถึง motorbike) และ “category” (ตัวเลือกอยู่ใต้หัวข้อ หมวด ด้านล่าง บังคับสำหรับมอเตอร์ไซค์และรถยนต์ หากมีหลายหมวดให้คั่นด้วยเครื่องหมาย ; เช่น “adventure; touring”) มอเตอร์ไซค์ต้องมี “cc” และ “transmission” (automatic, semi_auto หรือ manual) ด้วย สำหรับยานพาหนะประเภทอื่นไม่บังคับ “name” ไม่บังคับ: ชื่อที่ร้านใช้เรียกยี่ห้อและรุ่น เว้น “plate” ว่างสำหรับรถที่ยังไม่มีทะเบียน วันที่เป็น YYYY-MM-DD เลขไมล์เป็น {unit} ราคาซื้อเป็น {currency} |
+| `Fleet.import.categoriesHelp` | What to write in the “category” column, for each kind of vehicle. For more than one, put a semicolon between them. | สิ่งที่เขียนในคอลัมน์ “category” ของยานพาหนะแต่ละประเภท หากมีมากกว่าหนึ่งหมวด ให้คั่นด้วยเครื่องหมาย ; |
+
 ## Buttons and Fleet page
 
 | Key | English | Thai |
@@ -58,19 +77,15 @@ Thai already used the general word for a vehicle (รถ, counted in คัน) 
 | `Fleet.what.make` | Make | ยี่ห้อ |
 | `Fleet.what.makeHelp` | Pick an existing make, or type a new one. | เลือกยี่ห้อที่มีอยู่ หรือพิมพ์ยี่ห้อใหม่ |
 | `Fleet.what.model` | Model | รุ่น |
-| `Fleet.what.listHelp` | The Moto Mangos list. A model picked from it can be listed there with no extra step. | รายการของ Moto Mangos รุ่นที่เลือกจากรายการนี้ลงประกาศที่นั่นได้โดยไม่ต้องทำอะไรเพิ่ม |
-| `Fleet.what.typeIt` | Not in the list? Type it in | ไม่มีในรายการ? พิมพ์เอง |
+| `Fleet.what.listHelp` | Pick from the Moto Mangos list. | เลือกจากรายการของ Moto Mangos |
+| `Fleet.what.typeIt` | Not in the list? | ไม่มีในรายการ? |
 | `Fleet.what.useList` | Choose from the list instead | เลือกจากรายการแทน |
 | `Fleet.what.cc` | Engine size (cc) | ขนาดเครื่องยนต์ (ซีซี) |
 | `Fleet.what.transmission` | Transmission | ระบบเกียร์ |
 | `Fleet.what.optional` | Optional. | ไม่บังคับ |
-| `Fleet.what.category` | Category | หมวด |
-| `Fleet.what.categoryHelp` | Helps renters find it when they search and filter. | ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
-| `Fleet.what.categoryOptional` | Optional. Helps renters find it when they search and filter. | ไม่บังคับ ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
-| `Fleet.what.card.intro` | The online marketplace where renters in your area find motorbikes to rent. | ตลาดออนไลน์ที่ผู้เช่าในพื้นที่ของคุณหามอเตอร์ไซค์เช่า |
-| `Fleet.what.card.onList` | This model is on the Moto Mangos list. After saving, you can list it from its page. | รุ่นนี้อยู่ในรายการของ Moto Mangos หลังบันทึกแล้วลงประกาศได้จากหน้าของรุ่น |
-| `Fleet.what.card.pick` | Pick a model above to see whether it is on the Moto Mangos list. | เลือกรุ่นด้านบนเพื่อดูว่าอยู่ในรายการของ Moto Mangos หรือไม่ |
-| `Fleet.what.card.notOnList` | Not on the Moto Mangos list yet. After saving, you can send it for review from its page. | ยังไม่อยู่ในรายการของ Moto Mangos หลังบันทึกแล้วส่งให้ตรวจได้จากหน้าของรุ่น |
+| `Fleet.what.category` | Categories | หมวด |
+| `Fleet.what.categoryHelp` | Choose at least one; you can choose several. Helps renters find it when they search and filter. | เลือกอย่างน้อยหนึ่งหมวด เลือกได้หลายหมวด ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
+| `Fleet.what.categoryOptional` | Optional; you can choose several. Helps renters find it when they search and filter. | ไม่บังคับ เลือกได้หลายหมวด ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
 | `Fleet.model.newTitle` | Add a make & model | เพิ่มยี่ห้อและรุ่น |
 | `Fleet.model.newIntro` | A kind of vehicle you rent out, like a Honda Click 160. Add the vehicles themselves afterwards, with “Add to inventory”. | ยานพาหนะแบบหนึ่งที่ร้านให้เช่า เช่น Honda Click 160 จากนั้นเพิ่มรถแต่ละคันด้วย “เพิ่มเข้าคลังรถ” |
 | `Fleet.model.nameHelpNew` | Optional. Your own name for it; blank uses the make and model. | ไม่บังคับ ชื่อที่ร้านใช้เรียก เว้นว่างจะใช้ยี่ห้อและรุ่น |
@@ -98,9 +113,9 @@ Thai already used the general word for a vehicle (รถ, counted in คัน) 
 
 | Key | English | Thai |
 | --- | --- | --- |
-| `Fleet.import.columnsHelp` | “make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a make & model of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the make & model. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}. | ต้องมี “make” และ “model” หากตรงกับรายการของ Moto Mangos ด้านล่าง รถจะอยู่ในรายการนั้น หากรุ่นมีหลายเจเนอเรชัน “model_year” จะเลือกรายการที่ถูกต้อง หากไม่ตรง รถจะอยู่ในยี่ห้อและรุ่นของร้านเอง ซึ่งจะถูกสร้างให้ถ้ายังไม่มี: ระบุ “vehicle_type” (motorbike, car, atv, boat หรือ other เว้นว่างหมายถึง motorbike) และ “category” (ตัวเลือกอยู่ใต้หัวข้อ หมวด ด้านล่าง บังคับสำหรับมอเตอร์ไซค์และรถยนต์) มอเตอร์ไซค์ต้องมี “cc” และ “transmission” (automatic, semi_auto หรือ manual) ด้วย สำหรับยานพาหนะประเภทอื่นไม่บังคับ “name” ไม่บังคับ: ชื่อที่ร้านใช้เรียกยี่ห้อและรุ่น เว้น “plate” ว่างสำหรับรถที่ยังไม่มีทะเบียน วันที่เป็น YYYY-MM-DD เลขไมล์เป็น {unit} ราคาซื้อเป็น {currency} |
+| `Fleet.import.columnsHelp` | “make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a make & model of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the make & model. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}. | ต้องมี “make” และ “model” หากตรงกับรายการของ Moto Mangos ด้านล่าง รถจะอยู่ในรายการนั้น หากรุ่นมีหลายเจเนอเรชัน “model_year” จะเลือกรายการที่ถูกต้อง หากไม่ตรง รถจะอยู่ในยี่ห้อและรุ่นของร้านเอง ซึ่งจะถูกสร้างให้ถ้ายังไม่มี: ระบุ “vehicle_type” (motorbike, car, atv, boat หรือ other เว้นว่างหมายถึง motorbike) และ “category” (ตัวเลือกอยู่ใต้หัวข้อ หมวด ด้านล่าง บังคับสำหรับมอเตอร์ไซค์และรถยนต์ หากมีหลายหมวดให้คั่นด้วยเครื่องหมาย ; เช่น “adventure; touring”) มอเตอร์ไซค์ต้องมี “cc” และ “transmission” (automatic, semi_auto หรือ manual) ด้วย สำหรับยานพาหนะประเภทอื่นไม่บังคับ “name” ไม่บังคับ: ชื่อที่ร้านใช้เรียกยี่ห้อและรุ่น เว้น “plate” ว่างสำหรับรถที่ยังไม่มีทะเบียน วันที่เป็น YYYY-MM-DD เลขไมล์เป็น {unit} ราคาซื้อเป็น {currency} |
 | `Fleet.import.categories` | Categories | หมวด |
-| `Fleet.import.categoriesHelp` | What to write in the “category” column, for each kind of vehicle. | สิ่งที่เขียนในคอลัมน์ “category” ของยานพาหนะแต่ละประเภท |
+| `Fleet.import.categoriesHelp` | What to write in the “category” column, for each kind of vehicle. For more than one, put a semicolon between them. | สิ่งที่เขียนในคอลัมน์ “category” ของยานพาหนะแต่ละประเภท หากมีมากกว่าหนึ่งหมวด ให้คั่นด้วยเครื่องหมาย ; |
 | `Fleet.import.errors.invalidCategory` | This isn't one of the categories for that kind of vehicle. | ไม่ใช่หมวดของยานพาหนะประเภทนั้น |
 | `Fleet.import.errors.ownNeedsCategory` | A new motorbike or car needs a “category”. | มอเตอร์ไซค์หรือรถยนต์ที่เพิ่มใหม่ต้องมี “category” |
 

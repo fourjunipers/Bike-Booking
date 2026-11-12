@@ -2,18 +2,25 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Bike, Car, Mountain, Sailboat, Shapes } from "lucide-react";
+import {
+  Bike,
+  Car,
+  Check,
+  Lightbulb,
+  Mountain,
+  Sailboat,
+  Shapes,
+} from "lucide-react";
 import {
   SelectInput,
   TextInput,
   useFieldError,
 } from "@/components/action-form";
-import { MotoMangosMark } from "@/components/brand/moto-mangos-mark";
 import {
   MakeModelPicker,
   type ModelOption,
 } from "@/components/fleet/make-model-picker";
-import { Field, inputClass } from "@/components/form";
+import { Button } from "@/components/ui/button";
 import { needsEngineSize, needsTransmission, transmissions } from "@/lib/fleet";
 import { cn } from "@/lib/utils";
 import {
@@ -40,7 +47,8 @@ export type WhatValues = {
   model: string;
   cc: string;
   transmission: string;
-  category: string;
+  /** Keys from lib/vehicle-kinds; a model can have several. */
+  categories: string[];
 };
 
 /** A category's label, or its key made readable when it has no label yet. */
@@ -64,7 +72,7 @@ export function WhatFields({
   listOptions,
   listTypes,
   makes,
-  showCard,
+  showTip,
 }: {
   values: WhatValues;
   /** The Moto Mangos list: make, then model. */
@@ -73,26 +81,35 @@ export function WhatFields({
   listTypes: Record<string, string>;
   /** Makes on the list, offered as suggestions when typing one in. */
   makes: string[];
-  /** The Moto Mangos card: on the add form only (the model page has its own). */
-  showCard?: boolean;
+  /** The Moto Mangos tip: on the add form only (the model page has its own panel). */
+  showTip?: boolean;
 }) {
   const t = useTranslations("Fleet.what");
   const tFleet = useTranslations("Fleet");
-  const categoryLabel = useCategoryLabel();
   const [kind, setKind] = useState(values.vehicle_type || "motorbike");
   // A motorbike starts on the list unless it was typed in before.
   const [typed, setTyped] = useState(!values.catalog_id && values.make !== "");
-  const [entry, setEntry] = useState(values.catalog_id);
-  const [category, setCategory] = useState(values.category);
-  const categoryError = useFieldError("category");
+  const [chosen, setChosen] = useState(values.categories);
 
   const fromList = kind === "motorbike" && !typed;
-  const categories = categoriesFor(kind);
   const chooseKind = (next: string) => {
     setKind(next);
     // A category belongs to its kind.
-    if (!categoriesFor(next).includes(category)) setCategory("");
+    setChosen((keys) => keys.filter((k) => categoriesFor(next).includes(k)));
   };
+  // Beside the make and model, motorbikes only (Moto Mangos lists motorbikes).
+  const tip = showTip && kind === "motorbike" && (
+    <aside
+      aria-label={t("tip.label")}
+      className="flex items-start gap-3 rounded-lg border border-primary/25 bg-accent p-3 text-sm text-accent-foreground md:col-span-2"
+    >
+      <Lightbulb aria-hidden className="mt-0.5 size-5 shrink-0" />
+      <p>
+        <strong className="font-semibold">{t("tip.label")}:</strong>{" "}
+        {t(fromList ? "tip.fromList" : "tip.typed")}
+      </p>
+    </aside>
+  );
 
   return (
     <div className="space-y-5">
@@ -140,20 +157,21 @@ export function WhatFields({
             defaultModel={values.catalog_id}
             required
             onModelChange={(id) => {
-              setEntry(id);
               // Filed the way the list files it, until the shop says otherwise.
-              if (listTypes[id]) setCategory(listTypes[id]);
+              if (listTypes[id]) setChosen([listTypes[id]]);
             }}
             footer={
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setTyped(true)}
-                className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
+                className="mt-3 h-11 bg-card px-4"
               >
                 {t("typeIt")}
-              </button>
+              </Button>
             }
           />
+          {tip}
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
@@ -182,15 +200,17 @@ export function WhatFields({
               defaultValue={values.model}
             />
             {kind === "motorbike" && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setTyped(false)}
-                className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
+                className="mt-3 h-11 bg-card px-4"
               >
                 {t("useList")}
-              </button>
+              </Button>
             )}
           </div>
+          {tip}
           <TextInput
             name="cc"
             label={t("cc")}
@@ -217,85 +237,96 @@ export function WhatFields({
         </div>
       )}
 
-      {categories.length > 0 && (
-        <div className="grid gap-5 md:grid-cols-2">
-          <Field
-            id="category"
-            label={t("category")}
-            help={t(
-              categoryRequired(kind) ? "categoryHelp" : "categoryOptional",
-            )}
-            error={categoryError}
-          >
-            <select
-              id="category"
-              name="category"
-              value={category}
-              required={categoryRequired(kind)}
-              aria-invalid={categoryError ? true : undefined}
-              aria-describedby="category-help"
-              onChange={(event) => setCategory(event.target.value)}
-              className={inputClass}
-            >
-              <option value="">—</option>
-              {categories.map((key) => (
-                <option key={key} value={key}>
-                  {categoryLabel(key)}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      )}
-
-      {showCard && kind === "motorbike" && (
-        <aside
-          aria-label="Moto Mangos"
-          className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4"
-        >
-          <MotoMangosMark className="size-10 shrink-0" />
-          <div className="min-w-0 text-sm">
-            <p className="font-medium">Moto Mangos</p>
-            <p className="text-muted-foreground">{t("card.intro")}</p>
-            <p className="mt-2">
-              {t(
-                fromList && entry
-                  ? "card.onList"
-                  : fromList
-                    ? "card.pick"
-                    : "card.notOnList",
-              )}
-            </p>
-          </div>
-        </aside>
-      )}
+      <CategoryChips kind={kind} chosen={chosen} onChange={setChosen} />
     </div>
   );
 }
 
-/** The category alone, for a model whose make and model can't be edited now. */
+/**
+ * A kind's categories as chips to tick: a model can have several ("Adventure"
+ * and "Touring"). Real checkboxes, so they work with a keyboard and a screen
+ * reader; each chip is 44 px tall.
+ */
+function CategoryChips({
+  kind,
+  chosen,
+  onChange,
+}: {
+  kind: string;
+  chosen: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const t = useTranslations("Fleet.what");
+  const categoryLabel = useCategoryLabel();
+  const error = useFieldError("category");
+  const categories = categoriesFor(kind);
+  if (categories.length === 0) return null;
+  return (
+    <fieldset
+      aria-describedby={
+        error ? "category-help category-error" : "category-help"
+      }
+    >
+      <legend className="mb-1 block text-sm font-medium">
+        {t("category")}
+      </legend>
+      <p id="category-help" className="mb-2 text-xs text-muted-foreground">
+        {t(categoryRequired(kind) ? "categoryHelp" : "categoryOptional")}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {categories.map((key) => {
+          const on = chosen.includes(key);
+          return (
+            <label
+              key={key}
+              className={cn(
+                "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring has-focus-visible:ring-offset-2 has-focus-visible:ring-offset-background",
+                on
+                  ? "border-primary bg-primary/5 text-foreground"
+                  : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <input
+                type="checkbox"
+                name="category"
+                value={key}
+                checked={on}
+                onChange={(event) =>
+                  onChange(
+                    event.target.checked
+                      ? [...chosen, key]
+                      : chosen.filter((k) => k !== key),
+                  )
+                }
+                className="sr-only"
+              />
+              {on && <Check aria-hidden className="size-4 shrink-0" />}
+              {categoryLabel(key)}
+            </label>
+          );
+        })}
+      </div>
+      {error && (
+        <p
+          id="category-error"
+          role="alert"
+          className="mt-2 text-sm text-destructive"
+        >
+          {error}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
+/** The categories alone, for a model whose make and model can't be edited now. */
 export function CategoryField({
   kind,
   defaultValue,
 }: {
   kind: string;
-  defaultValue: string;
+  defaultValue: string[];
 }) {
-  const t = useTranslations("Fleet.what");
-  const categoryLabel = useCategoryLabel();
-  const categories = categoriesFor(kind);
-  if (categories.length === 0) return null;
-  return (
-    <SelectInput
-      name="category"
-      label={t("category")}
-      help={t(categoryRequired(kind) ? "categoryHelp" : "categoryOptional")}
-      required={categoryRequired(kind)}
-      defaultValue={defaultValue}
-      options={[
-        { value: "", label: "—" },
-        ...categories.map((key) => ({ value: key, label: categoryLabel(key) })),
-      ]}
-    />
-  );
+  const [chosen, setChosen] = useState(defaultValue);
+  return <CategoryChips kind={kind} chosen={chosen} onChange={setChosen} />;
 }

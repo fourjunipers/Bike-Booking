@@ -1,6 +1,6 @@
 /**
- * Fleet rework (migration 20261113000100): a category on every model, the
- * approval date for the shop, and the CSV import carrying a category.
+ * Fleet rework (migration 20261113000100): categories on every model, the
+ * approval date for the shop, and the CSV import carrying categories.
  */
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -40,7 +40,9 @@ const row = async (id: string) =>
   (
     await service
       .from("models")
-      .select("catalog_id, category, catalog_approved_at, catalog_rejected_at")
+      .select(
+        "catalog_id, categories, catalog_approved_at, catalog_rejected_at",
+      )
       .eq("id", id)
       .single()
   ).data!;
@@ -80,37 +82,58 @@ afterAll(async () => {
   for (const id of [presetId, ...catalogIds]) await removeCatalogEntry(id);
 });
 
-describe("a model's category", () => {
+describe("a model's categories", () => {
   it("a motorbike put on a list entry takes the entry's type", async () => {
     const id = await addModel({ catalog_id: presetId });
     // createCatalogEntry files its entries as city scooters.
-    expect((await row(id)).category).toBe("city_scooter");
+    expect((await row(id)).categories).toEqual(["city_scooter"]);
+  });
+
+  it("a model can have several", async () => {
+    const id = await addModel({ categories: ["touring", "adventure"] });
+    expect((await row(id)).categories).toEqual(["touring", "adventure"]);
+    // Cleared on a list entry, it goes back to the entry's type.
+    await shop.members.owner.db
+      .from("models")
+      .update({ catalog_id: presetId, categories: [] })
+      .eq("id", id)
+      .throwOnError();
+    expect((await row(id)).categories).toEqual(["city_scooter"]);
   });
 
   it("the shop's own choice is kept, on a list entry or not", async () => {
     const listed = await addModel({
       catalog_id: presetId,
-      category: "touring",
+      categories: ["touring"],
     });
-    expect((await row(listed)).category).toBe("touring");
+    expect((await row(listed)).categories).toEqual(["touring"]);
     const car = await addModel({
       vehicle_type: "car",
       cc: null,
       transmission: null,
-      category: "suv",
+      categories: ["suv", "pickup"],
     });
-    expect((await row(car)).category).toBe("suv");
+    expect((await row(car)).categories).toEqual(["suv", "pickup"]);
   });
 
   it("a typed-in model has no category until the shop gives one", async () => {
-    expect((await row(await addModel())).category).toBeNull();
+    expect((await row(await addModel())).categories).toEqual([]);
   });
 
-  it("only a lower-case key is stored", async () => {
-    const { error } = await shop.members.owner.db
-      .from("models")
-      .insert(own({ category: "Not A Key!" }));
-    expect(error?.code).toBe("23514");
+  it("only lower-case keys are stored", async () => {
+    for (const categories of [
+      ["Not A Key!"],
+      ["suv", "Pickup"],
+      // A comma inside one value can't pass as two keys.
+      ["suv,pickup"],
+      [""],
+      Array.from({ length: 11 }, (_, i) => `key_${i}`),
+    ]) {
+      const { error } = await shop.members.owner.db
+        .from("models")
+        .insert(own({ categories }));
+      expect(error?.code, JSON.stringify(categories)).toBe("23514");
+    }
   });
 });
 
@@ -180,7 +203,7 @@ describe("the shop is told when Moto Mangos adds its model", () => {
 });
 
 describe("CSV import", () => {
-  it("saves each new model's category, and a list model takes the list's", async () => {
+  it("saves each new model's categories, and a list model takes the list's", async () => {
     const [carId, listedId] = [randomUUID(), randomUUID()];
     const { data, error } = await shop.members.owner.db.rpc("import_fleet", {
       p_tenant_id: shop.id,
@@ -194,7 +217,7 @@ describe("CSV import", () => {
           vehicle_type: "car",
           cc: null,
           transmission: null,
-          category: "pickup",
+          categories: ["suv", "pickup"],
         },
         { id: listedId, catalog_id: presetId, name: `Import listed ${tag}` },
       ],
@@ -209,7 +232,7 @@ describe("CSV import", () => {
     });
     expect(error).toBeNull();
     expect(data).toMatchObject({ models: 2, units: 1 });
-    expect((await row(carId)).category).toBe("pickup");
-    expect((await row(listedId)).category).toBe("city_scooter");
+    expect((await row(carId)).categories).toEqual(["suv", "pickup"]);
+    expect((await row(listedId)).categories).toEqual(["city_scooter"]);
   });
 });

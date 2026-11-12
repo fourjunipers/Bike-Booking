@@ -9,7 +9,7 @@ import {
   vehicleTypes,
 } from "./fleet";
 import { parseMoney } from "./money";
-import { categoryFromText, categoryRequired } from "./vehicle-kinds";
+import { categoriesFromText, categoryRequired } from "./vehicle-kinds";
 
 /**
  * Checks a fleet CSV (SPEC › Team, settings and platform: CSV import for
@@ -118,8 +118,8 @@ export type ImportModel = {
   vehicle_type?: string;
   cc?: number | null;
   transmission?: string | null;
-  /** A key from lib/vehicle-kinds; blank on a list model means the list's own. */
-  category?: string | null;
+  /** Keys from lib/vehicle-kinds; none on a list model means the list's own. */
+  categories?: string[];
 };
 export type ImportUnit = {
   model_id: string;
@@ -258,7 +258,9 @@ export function planImport(
             id: model.id,
             name: model.name,
             catalog_id: model.catalog_id,
-            ...(model.category ? { category: model.category } : {}),
+            ...(model.categories?.length
+              ? { categories: model.categories }
+              : {}),
           }
         : model,
     );
@@ -337,12 +339,10 @@ export function planImport(
           else if (onEntry.length === 1) modelId = onEntry[0].id;
           else {
             // The list files it under a category already; the file may name
-            // another of the motorbike categories.
+            // others of the motorbike categories (several, with semicolons).
             const categoryText = get("category");
-            const category = categoryText
-              ? categoryFromText("motorbike", categoryText)
-              : null;
-            if (categoryText && !category) fail("category", "invalidCategory");
+            const categories = categoriesFromText("motorbike", categoryText);
+            if (!categories) fail("category", "invalidCategory");
             else
               modelId = addModel({
                 id: context.newId(),
@@ -350,7 +350,7 @@ export function planImport(
                 catalog_id: entry.id,
                 make: entry.make,
                 model: entry.model,
-                category,
+                categories,
               });
           }
         }
@@ -361,9 +361,7 @@ export function planImport(
         else {
           const typeText = kindFromText(get("vehicle_type"));
           const categoryText = get("category");
-          const category = categoryText
-            ? categoryFromText(typeText, categoryText)
-            : null;
+          const categories = categoriesFromText(typeText, categoryText);
           const ccText = get("cc");
           const gearText = key(get("transmission")).replace(/[\s-]+/g, "_");
           const cc = ccText ? Number(ccText) : null;
@@ -380,8 +378,8 @@ export function planImport(
           if (needsEngineSize(typeText) && !ccText) fail("cc", "ownNeedsSpecs");
           if (needsTransmission(typeText) && !gearText)
             fail("transmission", "ownNeedsSpecs");
-          if (categoryText && !category) fail("category", "invalidCategory");
-          else if (!categoryText && categoryRequired(typeText))
+          if (!categories) fail("category", "invalidCategory");
+          else if (categories.length === 0 && categoryRequired(typeText))
             fail("category", "ownNeedsCategory");
           if (errors.length === before)
             modelId = addModel({
@@ -393,7 +391,7 @@ export function planImport(
               vehicle_type: typeText,
               cc,
               transmission: gearText || null,
-              category,
+              categories: categories ?? [],
             });
         }
       }

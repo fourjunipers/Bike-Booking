@@ -288,7 +288,7 @@
       "title": "Import vehicles from CSV",
       "intro": "One row per vehicle. The whole file is checked first: if any row has a problem, nothing is saved.",
       "columns": "Columns",
-      "columnsHelp": "“make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a make & model of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the make & model. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
+      "columnsHelp": "“make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a make & model of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the make & model. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
       "template": "Download a template",
       "file": "CSV file",
       "paste": "Or paste the rows here",
@@ -334,7 +334,7 @@
       "showCodes": "{count, plural, one {Show # entry} other {Show # entries}}",
       "years": "years",
       "categories": "Categories",
-      "categoriesHelp": "What to write in the “category” column, for each kind of vehicle."
+      "categoriesHelp": "What to write in the “category” column, for each kind of vehicle. For more than one, put a semicolon between them."
     },
     "noUnits": "No vehicles of this model yet.",
     "unitCount": "{count, plural, one {# vehicle} other {# vehicles}}",
@@ -480,6 +480,7 @@
       "sortBy": "Sort by",
       "filters": "Filters ({count})",
       "any": "Any",
+      "category": "Category",
       "ccMin": "Engine size from (cc)",
       "ccMax": "Engine size to (cc)",
       "apply": "Apply",
@@ -579,6 +580,7 @@
     },
     "editModel": "Edit make & model",
     "addUnitTo": "Add a {name} to inventory",
+    "addUnitRow": "Vehicle",
     "reviewNews": {
       "added": "Added to Moto Mangos",
       "notAdded": "Not added to Moto Mangos"
@@ -614,20 +616,19 @@
       "make": "Make",
       "makeHelp": "Pick an existing make, or type a new one.",
       "model": "Model",
-      "listHelp": "The Moto Mangos list. A model picked from it can be listed there with no extra step.",
-      "typeIt": "Not in the list? Type it in",
+      "listHelp": "Pick from the Moto Mangos list.",
+      "typeIt": "Not in the list?",
       "useList": "Choose from the list instead",
       "cc": "Engine size (cc)",
       "transmission": "Transmission",
       "optional": "Optional.",
-      "category": "Category",
-      "categoryHelp": "Helps renters find it when they search and filter.",
-      "categoryOptional": "Optional. Helps renters find it when they search and filter.",
-      "card": {
-        "intro": "The online marketplace where renters in your area find motorbikes to rent.",
-        "onList": "This model is on the Moto Mangos list. After saving, you can list it from its page.",
-        "pick": "Pick a model above to see whether it is on the Moto Mangos list.",
-        "notOnList": "Not on the Moto Mangos list yet. After saving, you can send it for review from its page."
+      "category": "Categories",
+      "categoryHelp": "Choose at least one; you can choose several. Helps renters find it when they search and filter.",
+      "categoryOptional": "Optional; you can choose several. Helps renters find it when they search and filter.",
+      "tip": {
+        "label": "Helpful tip",
+        "fromList": "Any model from this list can be listed on Moto Mangos, the marketplace that matches renters with rental providers.",
+        "typed": "To add this vehicle to the Moto Mangos marketplace, save it first, then send it for review from its details page."
       }
     }
   },
