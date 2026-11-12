@@ -32,7 +32,6 @@ Done (items 1 to 5 of the owner's batch):
   - Logo: `public/logo.png` is the owner's "04 Helmet Mango" PNG (710×290), shown in the top bar on the left. It links to the language's home (`/`, `/th`, …) with the alt text "Moto Mangos – motorbike rental in Thailand". The drawn SVG logo component was removed.
   - Hero: the H1 stays real text. A subline under it replaces the old intro line: "Compare bikes, prices and deposits from local shops. Get the best bike at the best price." (`Customer.subline`). Thai is flagged for native review; the other eight languages are machine-translated and listed. `<title>` and the meta description are unchanged.
   - Book ahead / Ride today are now two large tabs at the top of the search box (the ARIA tabs pattern: arrows, Home, End, roving focus; at least 56 px tall). Each tab swaps a tinted card: leaf-soft for Book ahead, mango-soft for Ride today. The active tab is filled in its colour and has a notch pointing at the card; the inactive one is outlined. The URL and state are unchanged (`now=1`, `from`/`to` only for Book ahead).
-- **Why place search didn't show on deploy preview 12** (diagnosed 12 Nov 2026): the page shows the place search only when `GOOGLE_PLACES_SERVER_KEY` is set on the server (`lib/places-server.ts` → `placeSearchEnabled()`). On the preview, `/api/places/autocomplete?q=asok` answered 503 `{"error":"disabled"}`, so the deploy-preview functions don't have the key. The home page is also prerendered (`X-Nextjs-Prerender: 1`), so the key must be there at build time too. Fix (owner): in Netlify, give `GOOGLE_PLACES_SERVER_KEY` the Deploy Previews context (or "All deploy contexts") with the Builds and Functions scopes, then redeploy (a new build; setting the variable alone doesn't change an existing deploy).
 
 Open:
 
@@ -41,13 +40,13 @@ Open:
 - **Check the station refresh after its first monthly run** (1st of the month, 03:00 UTC): open Netlify → Logs → Functions and look for the route's "Station refresh {…}" line (counts added, linked, switched off) or "Station refresh failed". The scheduled function waits only 25 s (its limit is 30 s; the route's is 60 s and Overpass often needs 30-40 s) and assumes the route keeps running after it stops waiting. **If the route times out**, split the work by region: one Overpass request per area in `STATION_AREAS` (`lib/stations/osm.ts`), one area per run or per call, instead of one large area at once.
 - **Migration only on local**: not on staging or live. Live gets it only from `main`.
 - **Titles in the other eight languages** still say Bangkok (only English and Thai were changed, as asked).
-- **Google Cloud set-up (owner)**: see the checklist below.
+- **Google keys are set in Netlify** (owner, 12 Nov 2026): place search works on deploy preview 12 (real suggestions checked). Quotas and the budget alert (checklist steps 4 and 5) are the owner's to confirm.
 
 Later, Moto Mangos (owner, 12 Nov 2026; not built):
 
 - **Suggest our own shop locations first, Google second.** As the customer types, match the text against our shops' names, areas and towns (free, from the shop list we already have). Call Google Places only when nothing of ours matches, to cut Places cost. Keep the 3-character, 300 ms and session-token rules for the Google calls.
 
-Google Cloud checklist (owner, before setting `GOOGLE_PLACES_SERVER_KEY` in Netlify):
+Google Cloud checklist (owner; keys set in Netlify on 12 Nov 2026, kept for reference):
 
 1. APIs enabled: Places API (New) and Maps JavaScript API only.
 2. Server key (`GOOGLE_PLACES_SERVER_KEY`): API restriction = Places API (New) only. Application restriction: none (Netlify has no fixed IP); it never reaches the browser.
