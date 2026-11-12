@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Logo } from "@/components/brand/logo";
 
 /** Placeholder chrome shared by the three areas until each gets real navigation. */
 export function AreaShell({
@@ -29,7 +29,7 @@ export function AreaShell({
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b bg-card shadow-sm">
-        <div className="relative overflow-hidden bg-navy text-white">
+        <div className="relative bg-card text-foreground">
           {/* Mango stripe along the bottom of the bar. */}
           <div
             aria-hidden
@@ -37,17 +37,25 @@ export function AreaShell({
           />
           <nav
             aria-label="Areas"
-            className={`mx-auto flex ${width} flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm`}
+            className={`mx-auto flex ${width} flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-sm`}
           >
+            {/* The customer area links to its language's home page. */}
             <Link
               href={homeHref}
-              className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun"
+              className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-              <Logo />
+              <Image
+                src="/logo.png"
+                alt="Moto Mangos – motorbike rental in Thailand"
+                width={710}
+                height={290}
+                priority
+                className="h-12 w-auto md:h-14"
+              />
             </Link>
             {/* Customers see only the brand; staff areas say where they are. */}
             {area !== "Customer" && (
-              <span className="rounded-full bg-white/10 px-3 py-1 font-semibold tracking-wide">
+              <span className="rounded-full bg-muted px-3 py-1 font-semibold tracking-wide">
                 {area}
               </span>
             )}
@@ -56,7 +64,7 @@ export function AreaShell({
                 <li key={a.href}>
                   <Link
                     href={a.href}
-                    className="inline-flex min-h-11 items-center rounded-full px-2 font-semibold text-white/90 underline-offset-4 hover:text-sun hover:underline focus-visible:outline-2 focus-visible:outline-sun"
+                    className="inline-flex min-h-11 items-center rounded-full px-2 font-semibold text-foreground underline-offset-4 hover:text-link hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     {a.label}
                   </Link>

@@ -28,8 +28,11 @@ for (const width of [375, 1280]) {
           .getByRole("navigation", { name: "Areas" })
           .getByRole("link")
           .first();
-        await expect(home).toContainText("MotoMangos");
-        await expect(home.locator("svg")).toBeVisible();
+        await expect(
+          home.getByRole("img", {
+            name: "Moto Mangos – motorbike rental in Thailand",
+          }),
+        ).toBeVisible();
 
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth - window.innerWidth,
@@ -65,10 +68,10 @@ test("the favicon is the mango icon", async ({ page, request }) => {
   expect(href).toContain("/icon.svg");
   const res = await request.get(href!);
   expect(res.ok()).toBe(true);
-  expect(await res.text()).toContain("#14213d");
+  expect(await res.text()).toContain("#0b1220");
 });
 
-test("primary buttons are mango with navy text", async ({ page }) => {
+test("primary buttons are mango with near-black text", async ({ page }) => {
   await page.goto("/");
   const button = page.getByRole("button", {
     name: "Check availability & prices",
@@ -77,7 +80,49 @@ test("primary buttons are mango with navy text", async ({ page }) => {
     const s = getComputedStyle(el);
     return { bg: s.backgroundColor, fg: s.color };
   });
-  // --mango #f9a51a and --navy #14213d.
-  expect(colours.bg).toBe("rgb(249, 165, 26)");
-  expect(colours.fg).toBe("rgb(20, 33, 61)");
+  // --mango #f8920a (the logo's orange) and --ink #0b1220.
+  expect(colours.bg).toBe("rgb(248, 146, 10)");
+  expect(colours.fg).toBe("rgb(11, 18, 32)");
+});
+
+for (const [path, home] of [
+  ["/", "/"],
+  ["/th", "/th"],
+] as const) {
+  test(`the top bar logo links home (${path})`, async ({ page }) => {
+    await page.goto(path);
+    const logo = page
+      .getByRole("navigation", { name: "Areas" })
+      .getByRole("img", { name: "Moto Mangos – motorbike rental in Thailand" });
+    await expect(logo).toBeVisible();
+    expect(
+      await logo.evaluate((img: HTMLImageElement) => img.naturalWidth),
+    ).toBeGreaterThan(0);
+    await expect(
+      page.getByRole("navigation", { name: "Areas" }).getByRole("link", {
+        name: "Moto Mangos – motorbike rental in Thailand",
+      }),
+    ).toHaveAttribute("href", home);
+  });
+}
+
+test("the hero keeps a real H1 with the subline under it", async ({ page }) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Motorbike rental in Thailand",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Compare bikes, prices and deposits from local shops. Get the best bike at the best price.",
+    ),
+  ).toBeVisible();
+  // Title unchanged by the hero work.
+  await expect(page).toHaveTitle("Motorbike rental in Thailand");
+  await page.goto("/th");
+  await expect(
+    page.getByText(/เลือกรถที่ดีที่สุดในราคาที่ดีที่สุด/),
+  ).toBeVisible();
 });

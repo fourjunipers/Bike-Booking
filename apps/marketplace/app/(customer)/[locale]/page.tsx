@@ -38,7 +38,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
 
   return (
     <div className="space-y-10">
-      <section className="relative space-y-6 overflow-hidden rounded-3xl bg-linear-to-br from-sun via-mango to-mango-strong px-5 py-8 text-navy md:px-10 md:py-12">
+      <section className="relative space-y-6 overflow-hidden rounded-3xl bg-linear-to-br from-sun via-mango to-mango-strong px-5 py-8 text-ink md:px-10 md:py-12">
         {/* Decorative: a big soft sun and a leaf in the corner. */}
         <div
           aria-hidden
@@ -46,9 +46,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         />
         <Leaf className="pointer-events-none absolute top-5 right-5 size-12 rotate-12 md:size-16" />
         <div className="relative max-w-2xl space-y-3">
-          <SpeedLines className="h-5 w-10 [&_path]:stroke-navy" />
+          <SpeedLines className="h-5 w-10 [&_path]:stroke-ink" />
+          {/* Real text, not an image: it's the page's main heading. */}
           <h1 className="text-3xl font-black md:text-5xl">{t("title")}</h1>
-          <p className="text-lg font-medium text-navy/90">{t("intro")}</p>
+          <p className="text-lg font-semibold md:text-xl">{t("subline")}</p>
         </div>
         <div className="relative rounded-2xl bg-card p-4 text-card-foreground shadow-xl md:p-6">
           <SearchForm

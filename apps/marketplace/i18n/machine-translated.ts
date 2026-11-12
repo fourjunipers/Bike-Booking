@@ -13,6 +13,8 @@ export const reviewedLocales = ["en", "th"] as const;
 
 /** "Namespace.key" in every unreviewed language. */
 export const machineTranslatedKeys = [
+  // Hero subline under the H1 (palette and tabs batch, 12 Nov 2026).
+  "Customer.subline",
   // Book ahead / Ride today, type toggles (UI batch items 3 and 4).
   "Search.search",
   "Search.when",
