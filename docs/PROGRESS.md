@@ -13,6 +13,20 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Go-live runbook for the platform migrations (12 Nov 2026)
+
+Prepared, **not run**: `docs/RUNBOOK-GO-LIVE-PLATFORM.md`, with `docs/runbook-go-live-platform/checks.sql` (read-only checks and expected results) and `rollback.sql` (emergency undo). Live was only read (migration list and a `pg_dump` copy through the CLI); the copy of its data was deleted after the dry run.
+
+- Live has 27 migrations; 21 are pending (3 from Phase 0, 18 from PR #8). Migrations reach live only by hand, `npx supabase db push --linked` from `main`. Nothing touches the database on merge.
+- Live's schema is identical to a local database built from the first 27 migrations (no drift).
+- Dry run on a copy of live's schema and data: all 21 applied; every marketplace table, `auth.users` and `storage.objects` kept the same rows and checksums; 57 marketplace read queries returned identical answers before and after, with `platform` exposed and not.
+- The marketplace's own tests need the seed's fixed IDs, which clash with live's data, so they ran on the seeded local database built by the same 48 migrations: 81 passed (platform 115, unit 144 + 102 + 86).
+- `rollback.sql` was tested on the copy from three states; each time the schema and data came back identical to live's. It refuses to run once the platform holds a shop.
+- **Order matters on the dashboard:** exposing `platform` before the schema exists makes the API return 503 for every request, the marketplace's too. Expose it only after the migrations are applied and checked.
+- After "Automatically expose new tables" is turned off on live, a migration adding a table to `public` must grant access on purpose; local and CI still grant by default, so a missing grant would pass tests and fail on live.
+- Not covered: `pg_cron` on live is expected (Supabase offers it on every plan; staging runs it) but confirmed only by check A3 at go-live. Netlify's variables were not read (no access from the repo).
+- Open before the platform app can point at live: a way to create the first shop and first platform admin there (only the demo seed does it today), and the platform URL in live's Auth redirect list.
+
 ## Platform Phase 1a: independent review fixes (same branch and PR #8, 11 Nov 2026)
 
 An independent review of Phase 1a found six things that had to be fixed and three small ones. All nine are fixed. Each has a database test in `apps/platform/tests/db/review-fixes.test.ts` that was run against the database before the fix (it failed, including the real races: a shop left with no owner, a sold bike with a future block, two admins both deciding one request) and after (it passes).
@@ -315,7 +329,7 @@ Mapping first: `docs/platform/MAPPING.md` (legacy marketplace tables → tenants
 
 ## Next
 
-1. Owner: try the Phase 1a click-through on the deploy preview (phone and desktop), review PR #8, and add `platform` to API › Exposed schemas on live when it merges.
+1. Owner: try the Phase 1a click-through on the deploy preview (phone and desktop), review PR #8, then follow `docs/RUNBOOK-GO-LIVE-PLATFORM.md` after it merges (it covers exposing `platform` on live, in the right order).
 2. Owner: register Google and LINE sign-in for staging (not tested end to end yet).
 3. Owner: archive `mango-works-platform` (the old repo) if not done yet.
 4. Then Phase 2 (pricing + availability), 3 (orders + calendar), 3M (marketplace switch), 1b (fleet care).
