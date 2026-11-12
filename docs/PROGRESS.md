@@ -2,20 +2,46 @@
 
 What's done, open decisions and known issues, across both apps. Update this at the end of every session so the next one starts clean.
 
-## Status (11 Nov 2026)
+## Status (12 Nov 2026)
 
 | Track | Where it stands |
 | --- | --- |
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
-| Database | 48 migrations in `supabase/migrations` (27 + 3 platform on `main`, 18 more on the Phase 1a branch). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
+| Database | 48 migrations on `main`, **all 48 on live since 12 Nov 2026** (see below); a 49th (`20261112000100`, no default grants) is on the branch `platform/no-default-grants`, on local only. Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Platform migrations on live (12 Nov 2026)
+
+Done by `docs/RUNBOOK-GO-LIVE-PLATFORM.md`, from `main` at `02f5a26` (PR #8 merged).
+
+- **Pre-flight (read-only):** 27 migrations on live, `pg_cron` 1.6.4 and `btree_gist` 1.7 available and not installed, nothing in the way, row counts as on the dry-run copy.
+- **Backup:** `C:\Users\markw\mango-live-backups\2026-11-12_1112` (`roles.sql`, `schema.sql`, `data.sql`), outside the repo. The schema file is identical to the copy the dry run used. Owner: keep a second private copy.
+- **Applied:** `npx supabase db push --linked`, 21 migrations, no errors. Live records 48 of 48.
+- **Verified (B1 to B8, C1 to C5):** all as expected. Every marketplace table has the row count it had before; the 25 catalog entries got the defaults; the public reads 22 catalog columns and none of the 3 private ones; the platform is empty (0 shops, 0 members, 0 admins); the hourly job `platform-renewal-notifications` is scheduled and active; RLS is on for every `public` and `platform` table and no platform policy is open.
+- **Dashboard (owner):** `platform` added to Exposed schemas (`platform_private` is not); "Automatically expose new tables" turned off.
+- **After the dashboard change:** the grants fingerprint (C6) is unchanged (anon/public 135, authenticated/platform 45, authenticated/public 135, same hashes), so the switch altered no existing grant. C1 to C5 again: identical.
+- **Through live's API as the public (anon key, reads only):** the dry run's 36 public queries (22 tables, the catalog as each page asks for it, stations, search, shop and model functions) returned answers byte-identical to the dry-run copy; a private catalog column is refused. Every `platform` table and function answers "permission denied for schema platform" (the schema is exposed and the public has no way in; no rows), and `platform_private` answers "Only the following schemas are exposed: public, graphql_public, platform".
+- **How live was read:** the CLI has no SQL command, so checks ran through the CLI's own temporary login in a session set to read-only (a write was tried first and refused).
+- Not done: the signed-in marketplace click-through (vendor fleet, admin catalog) is the owner's. The dry run's 21 service-role queries were not repeated on live (public key only).
+- Still open before the platform app can point at live: a way to create the first shop and first platform admin there, and the platform URL in live's Auth redirect list. Netlify still points every platform context at staging.
+
+## No default grants on new tables (branch `platform/no-default-grants`, 12 Nov 2026)
+
+Live no longer exposes new tables automatically, but local and CI databases still granted everything by default, so a migration that forgot its grant would have passed every test and failed on live.
+
+- **What the dashboard switch did on live** (read from `pg_default_acl`): for objects `postgres` creates in `public`, anon, authenticated **and service_role** lost SELECT, INSERT, UPDATE, DELETE on tables, USAGE and SELECT on sequences, and EXECUTE on functions. It left TRUNCATE, REFERENCES, TRIGGER, MAINTAIN on tables and UPDATE on sequences.
+- **Migration `20261112000100_platform_no_default_grants`:** removes every default for those three roles on new tables, sequences and functions in `public`. Local and CI now behave like live; on live it only removes the leftovers above. Nothing that exists changes. `platform` keeps its own defaults for service_role and never had any for anon or authenticated.
+- **Rule from now on:** a migration that creates a table in `public` grants on purpose, to service_role too (`grant select on public.thing to anon, authenticated; grant all on public.thing to service_role;`). In root `CLAUDE.md`.
+- **Test** `apps/platform/tests/db/default-grants.test.ts` (runs in CI's "RLS + Playwright" job): the defaults give the API roles nothing; a new table or sequence is closed until granted; every table in `public` or `platform` that anon or authenticated can reach has a `grant` statement in a migration (the 23 marketplace tables from before the switch are a closed list); no function in `public` or `platform` is executable by everyone (the 35 marketplace functions from before the switch are a closed list). Shown to fail on a table granted outside a migration and on an open function, and to pass again when they are removed.
+- **Functions, known limit:** Postgres lets PUBLIC execute every new function, on live too, and that default can only be removed for all schemas at once, which would also hit extensions. So functions keep the existing rule (`revoke all on function ... from public, anon`, then grant), now enforced by the test above instead of by a default.
+- This migration is **not on live**; it goes with the next push from `main`.
+
 ## Go-live runbook for the platform migrations (12 Nov 2026)
 
-Prepared, **not run**: `docs/RUNBOOK-GO-LIVE-PLATFORM.md`, with `docs/runbook-go-live-platform/checks.sql` (read-only checks and expected results) and `rollback.sql` (emergency undo). Live was only read (migration list and a `pg_dump` copy through the CLI); the copy of its data was deleted after the dry run.
+Prepared and dry-run before the go-live above: `docs/RUNBOOK-GO-LIVE-PLATFORM.md`, with `docs/runbook-go-live-platform/checks.sql` (read-only checks and expected results) and `rollback.sql` (emergency undo). Live was only read (migration list and a `pg_dump` copy through the CLI); the copy of its data was deleted after the dry run.
 
 - Live has 27 migrations; 21 are pending (3 from Phase 0, 18 from PR #8). Migrations reach live only by hand, `npx supabase db push --linked` from `main`. Nothing touches the database on merge.
 - Live's schema is identical to a local database built from the first 27 migrations (no drift).
@@ -24,7 +50,7 @@ Prepared, **not run**: `docs/RUNBOOK-GO-LIVE-PLATFORM.md`, with `docs/runbook-go
 - `rollback.sql` was tested on the copy from three states; each time the schema and data came back identical to live's. It refuses to run once the platform holds a shop.
 - **Order matters on the dashboard:** exposing `platform` before the schema exists makes the API return 503 for every request, the marketplace's too. Expose it only after the migrations are applied and checked.
 - After "Automatically expose new tables" is turned off on live, a migration adding a table to `public` must grant access on purpose; local and CI still grant by default, so a missing grant would pass tests and fail on live.
-- Not covered: `pg_cron` on live is expected (Supabase offers it on every plan; staging runs it) but confirmed only by check A3 at go-live. Netlify's variables were not read (no access from the repo).
+- Netlify's variables were not read (no access from the repo).
 - Open before the platform app can point at live: a way to create the first shop and first platform admin there (only the demo seed does it today), and the platform URL in live's Auth redirect list.
 
 ## Platform Phase 1a: independent review fixes (same branch and PR #8, 11 Nov 2026)
