@@ -162,14 +162,11 @@ export async function saveModel(
       what = { catalog_id: null, ...own.data };
     }
   }
-  // One or more categories (the chips are checkboxes named "category"). None
-  // on a list model means "as Moto Mangos files it": the database fills it
-  // from the entry.
-  const ticked = formData.getAll("category");
-  const checked =
-    presetId && ticked.length === 0
-      ? { categories: [] }
-      : checkCategories(kind, ticked);
+  // One or more categories (the chips are checkboxes named "category"). A
+  // motorbike or a car needs at least one, list model or not: until 12 Nov
+  // 2026 a list model with none ticked was let through here ("as Moto Mangos
+  // files it") and the database filled it in, so the form never refused it.
+  const checked = checkCategories(kind, formData.getAll("category"));
   if ("error" in checked) return { errors: { category: checked.error } };
 
   const defaultName = what ? `${what.make} ${what.model}` : "";

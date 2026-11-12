@@ -4,6 +4,32 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 
 Thai already used the general word for a vehicle (รถ, counted in คัน) wherever English said “bike”, so the bike-to-vehicle change needed no Thai edits beyond the lines below.
 
+## Third round (12 Nov 2026, late)
+
+New or changed in the third round: the “Manually enter” button and its question, the Moto Mangos chips on the Fleet list, the new text for a model that isn’t on the list, and “what to do next” for a model that was not added. Gone: `Fleet.what.listHelp`, `Fleet.motoMangos.submitHelp` and the two `Fleet.reviewNews.*` lines.
+
+| Key | English | Thai |
+| --- | --- | --- |
+| `Fleet.what.typeIt` | Manually enter | กรอกเอง |
+| `Fleet.what.notInList` | Don’t see your bike in the list? | ไม่เห็นรถของคุณในรายการ? |
+| `Fleet.listing.listed` | Listed on Moto Mangos | ลงประกาศบน Moto Mangos แล้ว |
+| `Fleet.listing.inReview` | In review | กำลังตรวจ |
+| `Fleet.listing.needsChanges` | Needs changes | ต้องแก้ไข |
+| `Fleet.listing.notListed` | Not listed | ยังไม่ลงประกาศ |
+| `Fleet.modelFacts` | About {name} | เกี่ยวกับ {name} |
+| `Fleet.motoMangos.notOnList` | This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or choose a model from the list to skip the review. | ยี่ห้อและรุ่นนี้ยังไม่อยู่ในรายการของ Moto Mangos แต่ยังลงประกาศได้: เปิดใช้งานแล้วเราจะตรวจก่อน เพราะเป็นยี่ห้อและรุ่นใหม่ เมื่ออนุมัติแล้วจะขึ้นแสดงทันที หรือเลือกรุ่นจากรายการเพื่อข้ามการตรวจ |
+| `Fleet.motoMangos.waiting` | Sent to Moto Mangos. It is waiting for review and goes live once approved; you can keep using the model meanwhile. | ส่งให้ Moto Mangos แล้ว กำลังรอตรวจ และจะขึ้นแสดงเมื่ออนุมัติ ระหว่างนี้ใช้งานรุ่นนี้ต่อได้ |
+| `Fleet.motoMangos.submitTitle` | List it on Moto Mangos | ลงประกาศบน Moto Mangos |
+| `Fleet.motoMangos.submit` | Switch on and send for review | เปิดใช้งานและส่งให้ตรวจ |
+| `Fleet.motoMangos.submitAgain` | Send for review again | ส่งให้ตรวจอีกครั้ง |
+| `Fleet.motoMangos.nextTitle` | What to do next | ต้องทำอะไรต่อ |
+| `Fleet.motoMangos.nextHelp` | Fix the details and send it for review again, or switch to a model that is already on the list. | แก้ไขรายละเอียดแล้วส่งให้ตรวจอีกครั้ง หรือเปลี่ยนไปใช้รุ่นที่อยู่ในรายการอยู่แล้ว |
+| `Fleet.motoMangos.editAgain` | Edit and send again | แก้ไขแล้วส่งอีกครั้ง |
+| `Fleet.motoMangos.chooseInstead` | Choose a model from the list instead | เลือกรุ่นจากรายการแทน |
+| `Fleet.motoMangos.chooseTitle` | Choose a model from the list | เลือกรุ่นจากรายการ |
+| `Fleet.motoMangos.chooseHelp` | It takes the list’s make, model and specs, and needs no review. | จะใช้ยี่ห้อ รุ่น และสเปกตามรายการ และไม่ต้องรอตรวจ |
+| `Fleet.motoMangos.useChosen` | Use this model | ใช้รุ่นนี้ |
+
 ## Second round (after the click-through, 12 Nov 2026)
 
 New or changed since the first list: the “+ Vehicle” row button, the category filter, several categories per model, and the helpful tip beside the make and model. The four `Fleet.what.card.*` lines are gone (the tip replaced the card). The lines that changed are repeated here and updated in their tables below.
@@ -12,8 +38,7 @@ New or changed since the first list: the “+ Vehicle” row button, the categor
 | --- | --- | --- |
 | `Fleet.addUnitRow` | Vehicle | รถ |
 | `Fleet.view.category` | Category | หมวด |
-| `Fleet.what.typeIt` | Not in the list? | ไม่มีในรายการ? |
-| `Fleet.what.listHelp` | Pick from the Moto Mangos list. | เลือกจากรายการของ Moto Mangos |
+| `Fleet.what.typeIt` | Manually enter | กรอกเอง |
 | `Fleet.what.category` | Categories | หมวด |
 | `Fleet.what.categoryHelp` | Choose at least one; you can choose several. Helps renters find it when they search and filter. | เลือกอย่างน้อยหนึ่งหมวด เลือกได้หลายหมวด ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
 | `Fleet.what.categoryOptional` | Optional; you can choose several. Helps renters find it when they search and filter. | ไม่บังคับ เลือกได้หลายหมวด ช่วยให้ผู้เช่าค้นหาและกรองเจอ |
@@ -34,8 +59,6 @@ New or changed since the first list: the “+ Vehicle” row button, the categor
 | `Fleet.intro` | {units, plural, =0 {No vehicles yet} one {# vehicle} other {# vehicles}} in {models, plural, one {# make & model} other {# makes & models}}. | {units, plural, =0 {ยังไม่มีรถ} other {รถ # คัน}} ใน {models, plural, other {# ยี่ห้อและรุ่น}} |
 | `Fleet.empty` | Nothing here yet. Start with “Make & model”, then add your vehicles to the inventory, or import them all from a CSV file. | ยังไม่มีรถ เริ่มที่ “ยี่ห้อและรุ่น” แล้วเพิ่มรถเข้าคลัง หรือนำเข้าทั้งหมดจากไฟล์ CSV |
 | `Fleet.view.kind` | Kind of vehicle | ประเภทยานพาหนะ |
-| `Fleet.reviewNews.added` | Added to Moto Mangos | เพิ่มใน Moto Mangos แล้ว |
-| `Fleet.reviewNews.notAdded` | Not added to Moto Mangos | Moto Mangos ไม่ได้เพิ่ม |
 
 ## Kinds of vehicle
 
@@ -77,8 +100,7 @@ New or changed since the first list: the “+ Vehicle” row button, the categor
 | `Fleet.what.make` | Make | ยี่ห้อ |
 | `Fleet.what.makeHelp` | Pick an existing make, or type a new one. | เลือกยี่ห้อที่มีอยู่ หรือพิมพ์ยี่ห้อใหม่ |
 | `Fleet.what.model` | Model | รุ่น |
-| `Fleet.what.listHelp` | Pick from the Moto Mangos list. | เลือกจากรายการของ Moto Mangos |
-| `Fleet.what.typeIt` | Not in the list? | ไม่มีในรายการ? |
+| `Fleet.what.typeIt` | Manually enter | กรอกเอง |
 | `Fleet.what.useList` | Choose from the list instead | เลือกจากรายการแทน |
 | `Fleet.what.cc` | Engine size (cc) | ขนาดเครื่องยนต์ (ซีซี) |
 | `Fleet.what.transmission` | Transmission | ระบบเกียร์ |

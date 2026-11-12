@@ -41,7 +41,7 @@ const row = async (id: string) =>
     await service
       .from("models")
       .select(
-        "catalog_id, categories, catalog_approved_at, catalog_rejected_at",
+        "catalog_id, categories, catalog_approved_at, catalog_rejected_at, catalog_reject_reason, marketplace_listed",
       )
       .eq("id", id)
       .single()
@@ -156,6 +156,15 @@ describe("the shop is told when Moto Mangos adds its model", () => {
       Date.now() - 60_000,
     );
     expect(after.catalog_rejected_at).toBeNull();
+    // Sending it was asking for it to be listed: approved means listed.
+    expect(after.marketplace_listed).toBe(true);
+    // The shop can still switch it off.
+    await shop.members.owner.db
+      .from("models")
+      .update({ marketplace_listed: false })
+      .eq("id", model)
+      .throwOnError();
+    expect((await row(model)).marketplace_listed).toBe(false);
   });
 
   it("merging into an existing entry sets it too", async () => {
@@ -165,6 +174,7 @@ describe("the shop is told when Moto Mangos adds its model", () => {
     const after = await row(model);
     expect(after.catalog_id).toBe(presetId);
     expect(after.catalog_approved_at).not.toBeNull();
+    expect(after.marketplace_listed).toBe(true);
   });
 
   it("rejecting sets the rejection, not an approval", async () => {
@@ -173,6 +183,41 @@ describe("the shop is told when Moto Mangos adds its model", () => {
     const after = await row(model);
     expect(after.catalog_approved_at).toBeNull();
     expect(after.catalog_rejected_at).not.toBeNull();
+    expect(after.marketplace_listed).toBe(false);
+  });
+
+  it("a rejected model can be sent again: it waits again, and the old reason stays on the old request", async () => {
+    const model = await addModel();
+    const first = await submit(model);
+    const rejected = await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: first,
+      p_approve: false,
+      p_notes: "Add the model years",
+    });
+    expect(rejected.error).toBeNull();
+    const back = await row(model);
+    // Back with the shop, with the reason.
+    expect(back.catalog_id).toBeNull();
+    expect(back.catalog_reject_reason).toBe("Add the model years");
+
+    const second = await submit(model);
+    expect(second).not.toBe(first);
+    const waiting = await row(model);
+    expect(waiting.catalog_id).toBe(second);
+    // Pending again: the model no longer shows the old outcome...
+    expect(waiting.catalog_rejected_at).toBeNull();
+    expect(waiting.catalog_reject_reason).toBeNull();
+    // ...which is kept on the request that was turned down.
+    const { data: entries } = await service
+      .schema("public")
+      .from("bike_catalog")
+      .select("id, status, review_notes")
+      .in("id", [first, second]);
+    expect(entries?.find((e) => e.id === first)).toMatchObject({
+      status: "rejected",
+      review_notes: "Add the model years",
+    });
+    expect(entries?.find((e) => e.id === second)?.status).toBe("requested");
   });
 
   it("the shop can't write the date, and moving the model off the entry clears it", async () => {

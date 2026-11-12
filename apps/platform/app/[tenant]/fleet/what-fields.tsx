@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import {
-  Bike,
-  Car,
-  Check,
-  Lightbulb,
-  Mountain,
-  Sailboat,
-  Shapes,
-} from "lucide-react";
+import { Check, Lightbulb } from "lucide-react";
 import {
   SelectInput,
   TextInput,
   useFieldError,
 } from "@/components/action-form";
+import { kindIcons } from "@/components/fleet/kind-icon";
 import {
   MakeModelPicker,
   type ModelOption,
@@ -28,16 +21,11 @@ import {
   categoryRequired,
   humanizeKey,
   kindTypes,
-  type VehicleKind,
 } from "@/lib/vehicle-kinds";
 
-const kindIcons: Record<VehicleKind, typeof Bike> = {
-  motorbike: Bike,
-  car: Car,
-  atv: Mountain,
-  boat: Sailboat,
-  other: Shapes,
-};
+/** Outlined in Moto Mangos leaf green; 44 px tall. AA: see globals.css. */
+const leafButton =
+  "h-11 border-leaf bg-card px-4 text-leaf hover:bg-leaf-soft hover:text-leaf dark:border-leaf dark:bg-card dark:hover:bg-leaf-soft";
 
 export type WhatValues = {
   vehicle_type: string;
@@ -152,7 +140,6 @@ export function WhatFields({
             modelName="catalog_id"
             makeLabel={t("make")}
             modelLabel={t("model")}
-            help={t("listHelp")}
             models={listOptions}
             defaultModel={values.catalog_id}
             required
@@ -161,14 +148,19 @@ export function WhatFields({
               if (listTypes[id]) setChosen([listTypes[id]]);
             }}
             footer={
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setTyped(true)}
-                className="mt-3 h-11 bg-card px-4"
-              >
-                {t("typeIt")}
-              </Button>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {t("notInList")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setTyped(true)}
+                  className={leafButton}
+                >
+                  {t("typeIt")}
+                </Button>
+              </div>
             }
           />
           {tip}
@@ -204,7 +196,7 @@ export function WhatFields({
                 type="button"
                 variant="outline"
                 onClick={() => setTyped(false)}
-                className="mt-3 h-11 bg-card px-4"
+                className={cn("mt-3", leafButton)}
               >
                 {t("useList")}
               </Button>

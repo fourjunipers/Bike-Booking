@@ -15,6 +15,9 @@
 --    lets the dashboard and the fleet list show the result of a review. Set
 --    only by review_catalog_request(); the shop can't write it.
 -- 3. import_fleet() carries a model's categories from the CSV.
+-- 4. Sending a model for review is asking for it to be listed (owner, 12 Nov
+--    2026: "It goes live once approved"), so approving or merging a request
+--    switches the shop's model to listed. The shop can switch it off again.
 --
 -- No new table and no new function reachable over the API, so no new grants
 -- (20261112000100): the columns sit on platform.models, which grants to
@@ -146,7 +149,9 @@ begin
     end if;
     v_decision := 'merge';
     update platform.models
-    set catalog_id = p_merge_into, catalog_approved_at = now()
+    set catalog_id = p_merge_into, catalog_approved_at = now(),
+        -- The shop asked for it to be listed; the target is approved.
+        marketplace_listed = true
     where catalog_id = p_catalog_id;
     update public.bike_catalog
     set status = 'rejected',
@@ -164,7 +169,10 @@ begin
         requested_by_tenant_id = null
     where id = p_catalog_id;
     -- What the shop is told, on its own model.
-    update platform.models set catalog_approved_at = now() where catalog_id = p_catalog_id;
+    -- ...and listed, which is what the shop asked for by sending it.
+    update platform.models
+    set catalog_approved_at = now(), marketplace_listed = true
+    where catalog_id = p_catalog_id;
   else
     v_decision := 'reject';
     for v_model in

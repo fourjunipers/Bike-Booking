@@ -13,6 +13,7 @@ import {
   checkCategories,
   humanizeKey,
   kindTypes,
+  listingStatus,
   reviewNews,
   vehicleKinds,
 } from "./vehicle-kinds";
@@ -149,6 +150,34 @@ describe("what the shop is told about a Moto Mangos review", () => {
 
   it("nothing to say about a model that was never reviewed", () => {
     expect(reviewNews(model(null, null), now)).toBeNull();
+  });
+});
+
+describe("the Moto Mangos chip on a model's row", () => {
+  const bike = {
+    vehicle_type: "motorbike",
+    marketplace_listed: false,
+    catalog_rejected_at: null as string | null,
+  };
+
+  it("green only when it is on an approved entry and switched on", () => {
+    expect(
+      listingStatus({ ...bike, marketplace_listed: true }, "approved"),
+    ).toBe("listed");
+    expect(listingStatus(bike, "approved")).toBe("notListed");
+    expect(listingStatus(bike, null)).toBe("notListed");
+  });
+
+  it("amber while its request waits, red after it was turned down", () => {
+    expect(listingStatus(bike, "requested")).toBe("inReview");
+    const rejected = { ...bike, catalog_rejected_at: "2026-11-12T00:00:00Z" };
+    expect(listingStatus(rejected, null)).toBe("needsChanges");
+    // Turned down but still tied to the request (the shop has a twin).
+    expect(listingStatus(rejected, "rejected")).toBe("needsChanges");
+  });
+
+  it("nothing for a car or a boat: Moto Mangos lists motorbikes only", () => {
+    expect(listingStatus({ ...bike, vehicle_type: "car" }, null)).toBeNull();
   });
 });
 

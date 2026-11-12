@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { deleteModel } from "../../actions";
 import {
   ListingForm,
+  ChoosePresetForm,
   SubmitToCatalogForm,
   UsePresetButton,
 } from "../../moto-mangos-forms";
@@ -113,7 +115,7 @@ export default async function ModelPage({
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         {manage && (
-          <Panel>
+          <Panel id="model-details">
             <ModelForm
               what={{
                 vehicle_type: model.vehicle_type,
@@ -197,7 +199,20 @@ export default async function ModelPage({
           </section>
           {manage && (
             <Panel
-              title={tFleet("motoMangos.title")}
+              id="moto-mangos"
+              // The logo is the heading (its alt text is the name). On a
+              // white plate, so it reads on the dark theme too.
+              title={
+                <span className="inline-flex rounded-md bg-white px-2 py-1">
+                  <Image
+                    src="/moto-mangos-logo.png"
+                    alt={tFleet("motoMangos.title")}
+                    width={710}
+                    height={290}
+                    className="h-12 w-auto"
+                  />
+                </span>
+              }
               intro={tFleet("motoMangos.intro")}
             >
               {/* What Moto Mangos decided about this model's last request,
@@ -225,6 +240,36 @@ export default async function ModelPage({
                     <p className="mt-2">
                       {tFleet("motoMangos.rejectNoReason")}
                     </p>
+                  )}
+                  {/* What to do next: only a model that came back to the
+                      shop can be changed and sent again. */}
+                  {own && (
+                    <div className="mt-3 border-t border-amber-300 pt-3">
+                      <p className="font-medium">
+                        {tFleet("motoMangos.nextTitle")}
+                      </p>
+                      <p className="mt-1">{tFleet("motoMangos.nextHelp")}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <a
+                          href="#model-details"
+                          className={cn(
+                            buttonVariants({ variant: "outline" }),
+                            "h-11 bg-card px-4 text-foreground",
+                          )}
+                        >
+                          {tFleet("motoMangos.editAgain")}
+                        </a>
+                        <a
+                          href="#choose-from-list"
+                          className={cn(
+                            buttonVariants({ variant: "outline" }),
+                            "h-11 bg-card px-4 text-foreground",
+                          )}
+                        >
+                          {tFleet("motoMangos.chooseInstead")}
+                        </a>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -266,6 +311,7 @@ export default async function ModelPage({
                 <p className="text-sm">{tFleet("motoMangos.categoryFirst")}</p>
               ) : (
                 <>
+                  <p className="text-sm">{tFleet("motoMangos.notOnList")}</p>
                   {matches.length > 0 && (
                     <div className="mt-4">
                       <p className="mb-2 font-medium">
@@ -288,13 +334,30 @@ export default async function ModelPage({
                     </div>
                   )}
                   <div className="mt-5 border-t pt-5">
-                    <h3 className="mb-1 font-medium">
+                    <h3 className="mb-3 font-medium">
                       {tFleet("motoMangos.submitTitle")}
                     </h3>
+                    <SubmitToCatalogForm
+                      slug={slug}
+                      id={model.id}
+                      again={Boolean(model.catalog_rejected_at)}
+                    />
+                  </div>
+                  <div
+                    id="choose-from-list"
+                    className="mt-5 scroll-mt-20 border-t pt-5"
+                  >
+                    <h3 className="mb-1 font-medium">
+                      {tFleet("motoMangos.chooseTitle")}
+                    </h3>
                     <p className="mb-3 text-sm text-muted-foreground">
-                      {tFleet("motoMangos.submitHelp")}
+                      {tFleet("motoMangos.chooseHelp")}
                     </p>
-                    <SubmitToCatalogForm slug={slug} id={model.id} />
+                    <ChoosePresetForm
+                      slug={slug}
+                      id={model.id}
+                      options={catalogOptions(catalog)}
+                    />
                   </div>
                 </>
               )}

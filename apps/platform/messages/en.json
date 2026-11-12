@@ -561,13 +561,12 @@
       "ready": "On the Moto Mangos list as {name}.",
       "list": "List this model on Moto Mangos",
       "later": "Listing takes effect when Moto Mangos starts reading from this system.",
-      "waiting": "Sent to Moto Mangos. It is waiting for review; you can keep using the model meanwhile.",
+      "waiting": "Sent to Moto Mangos. It is waiting for review and goes live once approved; you can keep using the model meanwhile.",
       "bikesOnly": "Moto Mangos lists motorbikes only, for now. This model is yours to use here.",
       "didYouMean": "Did you mean:",
       "use": "Use {name}",
-      "submitTitle": "Don't see your model? Send it to Moto Mangos",
-      "submitHelp": "We check it, add it to our database, and make it viewable on the Moto Mangos marketplace.",
-      "submit": "Send to Moto Mangos",
+      "submitTitle": "List it on Moto Mangos",
+      "submit": "Switch on and send for review",
       "yearFrom": "First model year",
       "yearTo": "Last model year",
       "note": "Note for the reviewer",
@@ -576,15 +575,27 @@
       "rejectReason": "The reviewer's note:",
       "rejectNoReason": "The reviewer left no note. You can change the details and send it again.",
       "approved": "Moto Mangos added this model to its list on {date}.",
-      "categoryFirst": "Choose a category for this model in the form on this page, save, and then you can send it to Moto Mangos."
+      "categoryFirst": "Choose a category for this model in the form on this page, save, and then you can send it to Moto Mangos.",
+      "notOnList": "This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or choose a model from the list to skip the review.",
+      "submitAgain": "Send for review again",
+      "nextTitle": "What to do next",
+      "nextHelp": "Fix the details and send it for review again, or switch to a model that is already on the list.",
+      "editAgain": "Edit and send again",
+      "chooseInstead": "Choose a model from the list instead",
+      "chooseTitle": "Choose a model from the list",
+      "chooseHelp": "It takes the list’s make, model and specs, and needs no review.",
+      "useChosen": "Use this model"
     },
     "editModel": "Edit make & model",
     "addUnitTo": "Add a {name} to inventory",
     "addUnitRow": "Vehicle",
-    "reviewNews": {
-      "added": "Added to Moto Mangos",
-      "notAdded": "Not added to Moto Mangos"
+    "listing": {
+      "listed": "Listed on Moto Mangos",
+      "inReview": "In review",
+      "needsChanges": "Needs changes",
+      "notListed": "Not listed"
     },
+    "modelFacts": "About {name}",
     "kind": {
       "motorbike": "Motorbike",
       "car": "Car",
@@ -616,8 +627,7 @@
       "make": "Make",
       "makeHelp": "Pick an existing make, or type a new one.",
       "model": "Model",
-      "listHelp": "Pick from the Moto Mangos list.",
-      "typeIt": "Not in the list?",
+      "typeIt": "Manually enter",
       "useList": "Choose from the list instead",
       "cc": "Engine size (cc)",
       "transmission": "Transmission",
@@ -629,7 +639,8 @@
         "label": "Helpful tip",
         "fromList": "Any model from this list can be listed on Moto Mangos, the marketplace that matches renters with rental providers.",
         "typed": "To add this vehicle to the Moto Mangos marketplace, save it first, then send it for review from its details page."
-      }
+      },
+      "notInList": "Don’t see your bike in the list?"
     }
   },
   "Locations": {

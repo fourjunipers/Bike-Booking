@@ -156,3 +156,31 @@ export function reviewNews(
     return "added";
   return null;
 }
+
+/** Where a motorbike model stands with Moto Mangos, for the chip on the Fleet list. */
+export type ListingStatus =
+  "listed" | "inReview" | "needsChanges" | "notListed";
+
+/**
+ * - needsChanges: its last request was not added (until it is sent again or
+ *   put on a list entry);
+ * - inReview: sent, waiting for the reviewer;
+ * - listed: on an approved entry and switched on;
+ * - notListed: everything else.
+ * Null for anything but a motorbike: Moto Mangos lists motorbikes only.
+ */
+export function listingStatus(
+  model: {
+    vehicle_type: string;
+    marketplace_listed: boolean;
+    catalog_rejected_at: string | null;
+  },
+  /** The status of the catalog entry the model is on, if any. */
+  entryStatus: string | null,
+): ListingStatus | null {
+  if (model.vehicle_type !== "motorbike") return null;
+  if (model.catalog_rejected_at) return "needsChanges";
+  if (entryStatus === "requested") return "inReview";
+  if (entryStatus === "approved" && model.marketplace_listed) return "listed";
+  return "notListed";
+}

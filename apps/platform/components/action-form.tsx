@@ -323,7 +323,7 @@ export function Panel({
 }: {
   /** An anchor to link or scroll to, e.g. "purchase-sale". */
   id?: string;
-  title?: string;
+  title?: ReactNode;
   intro?: ReactNode;
   children: ReactNode;
   className?: string;

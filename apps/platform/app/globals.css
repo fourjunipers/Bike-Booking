@@ -42,6 +42,8 @@
   --color-section: var(--section);
   --color-section-foreground: var(--section-foreground);
   --color-primary-text: var(--primary-text);
+  --color-leaf: var(--leaf);
+  --color-leaf-soft: var(--leaf-soft);
   --color-highlight: var(--highlight);
   --color-highlight-foreground: var(--highlight-foreground);
   --color-highlight-border: var(--highlight-border);
@@ -63,6 +65,8 @@
    * - --ring on white 5.18:1, on the grey page 4.71:1 (3:1 needed)
    * - --muted-foreground on white 7.73:1, on the grey page 7.03:1
    * - --highlight-foreground on --highlight 6.88:1
+   * - --leaf (Moto Mangos leaf green, text and outline) on white 6.89:1,
+   *   on --leaf-soft 6.22:1
    */
   --background: #f4f4f5;
   --foreground: #18181b;
@@ -104,6 +108,8 @@
   --sidebar-ring: #c2410c;
   --section: #fff7ed;
   --section-foreground: #9a3412;
+  --leaf: #336600;
+  --leaf-soft: #f0f7e6;
 }
 
 /*
@@ -152,6 +158,9 @@
   --sidebar-ring: #fb923c;
   --section: #3b2516;
   --section-foreground: #fdba74;
+  /* Light leaf on the dark panels 10.5:1, on --leaf-soft 9.3:1. */
+  --leaf: #a3d977;
+  --leaf-soft: #1f2d12;
 }
 
 @layer base {

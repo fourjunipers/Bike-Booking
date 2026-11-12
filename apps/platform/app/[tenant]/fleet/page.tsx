@@ -11,7 +11,7 @@ import {
   Printer,
   Search,
 } from "lucide-react";
-import { MotoMangosMark } from "@/components/brand/moto-mangos-mark";
+import { KindIcon } from "@/components/fleet/kind-icon";
 import { MakeModelPicker } from "@/components/fleet/make-model-picker";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { Field, inputClass } from "@/components/form";
@@ -43,11 +43,21 @@ import { canManageFleet } from "@/lib/roles";
 import {
   humanizeKey,
   kindTypes,
-  reviewNews,
+  listingStatus,
   vehicleKinds,
+  type ListingStatus,
 } from "@/lib/vehicle-kinds";
 import { cn } from "@/lib/utils";
 import { ExpandCollapse, RememberView } from "./fleet-controls";
+
+/** The Moto Mangos chip on a model's row: the word says it, the colour helps. */
+const listingClass: Record<ListingStatus, string> = {
+  listed:
+    "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+  inReview: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  needsChanges: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  notListed: "border bg-card text-muted-foreground",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Nav");
@@ -108,7 +118,6 @@ export default async function FleetPage({
     })),
   );
   const modelOf = new Map(fleet.map((model) => [model.id, model]));
-  const now = new Date();
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   const result = buildFleetView(
     {
@@ -459,142 +468,184 @@ export default async function FleetPage({
         </p>
       )}
 
-      <div className="space-y-5">
-        {result.sections.map((section) => (
-          <section key={section.key} aria-labelledby={`section-${section.key}`}>
-            {section.model && (
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                  <h2
-                    id={`section-${section.key}`}
-                    className="text-lg font-semibold"
-                  >
-                    {/* No underline at rest (owner, 12 Nov 2026): the
-                        pencil beside it says it can be opened. */}
-                    <Link
-                      href={`${base}/models/${section.model.id}`}
-                      className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      {section.model.name}
-                    </Link>
-                  </h2>
-                  <Link
-                    href={`${base}/models/${section.model.id}`}
-                    aria-label={`${t("editModel")}: ${section.model.name}`}
-                    title={t("editModel")}
-                    // A plain icon: no box until hovered or focused. 44 px to
-                    // tap; the negative margin keeps the heading row's height.
-                    className="-my-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    <Pencil aria-hidden className="size-4" />
-                  </Link>
-                  {(() => {
-                    const news = manage
-                      ? reviewNews(modelOf.get(section.model.id)!, now)
-                      : null;
-                    return news ? (
+      <div className="space-y-4">
+        {result.sections.map((section) => {
+          const model = section.model ? modelOf.get(section.model.id) : null;
+          const status =
+            manage && model ? listingStatus(model, model.entry_status) : null;
+          // Only a web address can be shown as it is; photos are uploaded
+          // with the online booking page (Phase 3).
+          const photo = model?.photos.find((url) => /^https?:\/\//.test(url));
+          return (
+            <section
+              key={section.key}
+              aria-labelledby={`section-${section.key}`}
+              className="overflow-hidden rounded-lg border bg-card"
+            >
+              {section.model && (
+                // The header row: a light mango tint (dark text on it is AA).
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-accent px-3 py-2 sm:px-4">
+                  {/* A fixed box, so the row doesn't move when a photo loads. */}
+                  <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-card text-muted-foreground">
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- a shop's own photo address, not ours to optimise
+                      <img
+                        src={photo}
+                        alt=""
+                        width={44}
+                        height={44}
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <KindIcon
+                        kind={model?.vehicle_type ?? "motorbike"}
+                        className="size-5"
+                      />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1 basis-40">
+                    <div className="flex min-w-0 items-center gap-1">
+                      <h2
+                        id={`section-${section.key}`}
+                        className="min-w-0 text-lg font-semibold"
+                      >
+                        {/* No underline at rest (owner, 12 Nov 2026): the
+                            pencil beside it says it can be opened. */}
+                        <Link
+                          href={`${base}/models/${section.model.id}`}
+                          className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
+                        >
+                          {section.model.name}
+                        </Link>
+                      </h2>
                       <Link
                         href={`${base}/models/${section.model.id}`}
-                        className={cn(
-                          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
-                          news === "added"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-950"
-                            : "border-amber-300 bg-amber-50 text-amber-950",
-                        )}
+                        aria-label={`${t("editModel")}: ${section.model.name}`}
+                        title={t("editModel")}
+                        // A plain icon: no box until hovered or focused. 44 px
+                        // to tap; the negative margin keeps the row's height.
+                        className="-my-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
                       >
-                        <MotoMangosMark className="size-4" />
-                        {t(`reviewNews.${news}`)}
+                        <Pencil aria-hidden className="size-4" />
                       </Link>
-                    ) : null;
-                  })()}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {[
-                    section.model.cc ? `${section.model.cc} cc` : null,
-                    section.model.transmission
-                      ? t(
-                          `transmission.${section.model.transmission}` as "transmission.manual",
-                        )
-                      : null,
-                    // Every category the model has.
-                    ...(section.model.categories ?? []).map(categoryLabel),
-                    t("unitCount", { count: section.count }),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-            )}
-            <div className="space-y-2">
-              {section.groups.map((group) => (
-                <details
-                  key={group.key}
-                  data-fleet-group
-                  open={openAll && group.count > 0}
-                  className="group overflow-hidden rounded-lg border bg-card"
-                >
-                  <summary className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{groupTitle(group)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {group.count === 0
-                          ? t("unitCount", { count: 0 })
-                          : `${t("unitCount", { count: group.count })}: ${breakdown(group.statusCounts)}`}
-                      </p>
                     </div>
-                    {manage && section.model && (
-                      // A labelled button, not a bare plus (owner, 12 Nov
-                      // 2026). Its name starts with what is on it.
-                      <Link
-                        href={`${base}/units/new?model=${section.model.id}`}
-                        title={t("addUnit")}
+                    {(section.model.cc || section.model.transmission) && (
+                      <p className="text-sm text-muted-foreground">
+                        {[
+                          section.model.cc ? `${section.model.cc} cc` : null,
+                          section.model.transmission
+                            ? t(
+                                `transmission.${section.model.transmission}` as "transmission.manual",
+                              )
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <ul
+                    aria-label={t("modelFacts", { name: section.model.name })}
+                    className="flex flex-wrap items-center gap-1.5"
+                  >
+                    {status && (
+                      <li
                         className={cn(
-                          buttonVariants({ variant: "outline" }),
-                          "-my-1 h-11 bg-card px-3",
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                          listingClass[status],
                         )}
                       >
-                        <Plus aria-hidden />
-                        {t("addUnitRow")}
-                        <span className="sr-only">
-                          {": "}
-                          {t("addUnitTo", { name: section.model.name })}
-                        </span>
-                      </Link>
+                        {t(`listing.${status}`)}
+                      </li>
                     )}
-                    <ChevronDown
-                      aria-hidden
-                      className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                    />
-                  </summary>
-                  {group.count > 0 && (
-                    <ul className="divide-y border-t">
-                      {group.units.map((unit) => (
-                        <UnitRow
-                          key={unit.id}
-                          unit={unit}
-                          href={`${base}/units/${unit.id}`}
-                          distanceUnit={tenant.distanceUnit}
-                          locale={locale}
-                          detail={
-                            [
-                              group.kind === "band"
-                                ? null
-                                : modelOf.get(unit.model_id)?.name,
-                              unit.model_year,
-                              locationNames.get(unit.location_id),
-                            ]
-                              .filter(Boolean)
-                              .join(" · ") || undefined
-                          }
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </details>
-              ))}
-            </div>
-          </section>
-        ))}
+                    {/* Every category the model has. */}
+                    {(section.model.categories ?? []).map((key) => (
+                      <li
+                        key={key}
+                        className="rounded-full border bg-card px-2 py-0.5 text-xs font-medium"
+                      >
+                        {categoryLabel(key)}
+                      </li>
+                    ))}
+                    <li className="rounded-full bg-foreground px-2 py-0.5 text-xs font-semibold text-background tabular-nums">
+                      {t("unitCount", { count: section.count })}
+                    </li>
+                  </ul>
+                </div>
+              )}
+              <div className="divide-y">
+                {section.groups.map((group) => (
+                  <details
+                    key={group.key}
+                    data-fleet-group
+                    open={openAll && group.count > 0}
+                    // A very light cream on every other row.
+                    className="group even:bg-accent/40"
+                  >
+                    <summary className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none sm:px-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{groupTitle(group)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {group.count === 0
+                            ? t("unitCount", { count: 0 })
+                            : `${t("unitCount", { count: group.count })}: ${breakdown(group.statusCounts)}`}
+                        </p>
+                      </div>
+                      {manage && section.model && (
+                        // A labelled button, not a bare plus (owner, 12 Nov
+                        // 2026). Its name starts with what is on it.
+                        <Link
+                          href={`${base}/units/new?model=${section.model.id}`}
+                          title={t("addUnit")}
+                          className={cn(
+                            buttonVariants({ variant: "outline" }),
+                            "-my-1 h-11 bg-card px-3",
+                          )}
+                        >
+                          <Plus aria-hidden />
+                          {t("addUnitRow")}
+                          <span className="sr-only">
+                            {": "}
+                            {t("addUnitTo", { name: section.model.name })}
+                          </span>
+                        </Link>
+                      )}
+                      <ChevronDown
+                        aria-hidden
+                        className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                      />
+                    </summary>
+                    {group.count > 0 && (
+                      <ul className="divide-y border-t bg-card [&>li:nth-child(even)]:bg-accent/40">
+                        {group.units.map((unit) => (
+                          <UnitRow
+                            key={unit.id}
+                            unit={unit}
+                            href={`${base}/units/${unit.id}`}
+                            distanceUnit={tenant.distanceUnit}
+                            locale={locale}
+                            detail={
+                              [
+                                group.kind === "band"
+                                  ? null
+                                  : modelOf.get(unit.model_id)?.name,
+                                unit.model_year,
+                                locationNames.get(unit.location_id),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ") || undefined
+                            }
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </details>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </>
   );
