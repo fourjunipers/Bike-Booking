@@ -33,7 +33,7 @@ import {
   renewalState,
 } from "@/lib/renewals";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
-import { dateInZone, formatInstant, toLocalInput } from "@/lib/shop-time";
+import { dateInZone, formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
 import { deleteUnit } from "../../actions";
 import {
@@ -276,6 +276,14 @@ export default async function UnitPage({
             title={t("downtime.title")}
             intro={t("downtime.intro", { zone: zone.replaceAll("_", " ") })}
           >
+            {query.downtime === "gone" && (
+              <p
+                role="status"
+                className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+              >
+                {t("downtime.alreadyEnded")}
+              </p>
+            )}
             {current.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t("downtime.none")}
@@ -306,6 +314,7 @@ export default async function UnitPage({
                     {work && block.kind === "downtime" && (
                       <EndDowntimeButton
                         slug={slug}
+                        unit={unit.id}
                         block={block.id}
                         label={
                           block.from > now
@@ -320,11 +329,7 @@ export default async function UnitPage({
             )}
             {work && !gone && (
               <div className="mt-5 border-t pt-5">
-                <DowntimeForm
-                  slug={slug}
-                  id={unit.id}
-                  now={toLocalInput(now, zone)}
-                />
+                <DowntimeForm slug={slug} id={unit.id} />
               </div>
             )}
             {past.length > 0 && (

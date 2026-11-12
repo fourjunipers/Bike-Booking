@@ -250,16 +250,7 @@ export function StatusForm({
   );
 }
 
-export function DowntimeForm({
-  slug,
-  id,
-  now,
-}: {
-  slug: string;
-  id: string;
-  /** The current time at the bike's location, as a datetime-local value. */
-  now: string;
-}) {
+export function DowntimeForm({ slug, id }: { slug: string; id: string }) {
   const t = useTranslations("Fleet.downtime");
   return (
     <ActionForm
@@ -271,9 +262,10 @@ export function DowntimeForm({
         <TextInput
           name="from"
           label={t("from")}
+          // Blank = now, decided when it is saved. A time filled in when the
+          // page opened would be stale by then.
+          help={t("fromHelp")}
           type="datetime-local"
-          required
-          defaultValue={now}
         />
         <TextInput
           name="until"
@@ -289,17 +281,19 @@ export function DowntimeForm({
 
 export function EndDowntimeButton({
   slug,
+  unit,
   block,
   label,
 }: {
   slug: string;
+  unit: string;
   block: string;
   label: string;
 }) {
   return (
     <ActionForm
       action={endDowntime}
-      hidden={{ slug, block }}
+      hidden={{ slug, unit, block }}
       submitLabel={label}
       destructive
       className="space-y-1"

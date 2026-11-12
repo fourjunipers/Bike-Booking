@@ -266,8 +266,7 @@
     "merge_target_not_approved": "Choose an approved entry to merge into.",
     "requiredSpecs": "A motorbike needs an engine size and a transmission.",
     "ccRange": "Enter an engine size from 1 to 20000 cc.",
-    "staleUnit": "This bike was changed by someone else while this form was open. Reload the page to see the latest, then make your change again.",
-    "alreadyEnded": "This downtime was already ended or removed by someone else. Nothing was changed."
+    "staleUnit": "This bike was changed by someone else while this form was open. Reload the page to see the latest, then make your change again."
   },
   "Fleet": {
     "title": "Fleet",
@@ -426,7 +425,9 @@
         "hold": "Hold",
         "transfer": "Transfer"
       },
-      "past": "Earlier blocks"
+      "past": "Earlier blocks",
+      "fromHelp": "Leave blank to start now.",
+      "alreadyEnded": "That downtime was already ended or removed by someone else. This is the bike as it is now."
     },
     "money": {
       "title": "Purchase and sale",

@@ -260,6 +260,8 @@ test("a driver reads a bike but can't change it", async ({ page }) => {
 test("a mechanic: one status control, the odometer with a confirmation when lower, and downtime with a clear overlap message", async ({
   page,
 }, info) => {
+  // Two tabs and many steps: three times the usual time limit.
+  test.slow();
   const plate = isPhone(info.project.name) ? "DEMO-002" : "DEMO-003";
   await signIn(page, demo.bsrMechanic);
   await expect(page).toHaveURL(/\/bsr\/maintenance$/);
@@ -354,6 +356,38 @@ test("a mechanic: one status control, the odometer with a confirmation when lowe
   await expect(page.getByText("Downtime: E2E tyre change")).toHaveCount(1);
   await page.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByText("Downtime: E2E tyre change")).toHaveCount(0);
+  await expect(page.getByText("No downtime now or planned.")).toBeVisible();
+
+  // Downtime from now ("From" left blank), with the bike open in two tabs.
+  // (The form still holds the times of the refused attempt above.)
+  await page.getByLabel("From", { exact: true }).fill("");
+  await page.getByLabel("Until", { exact: true }).fill("");
+  await page.getByLabel("Reason").fill("E2E flat tyre");
+  await page.getByRole("button", { name: "Add downtime" }).click();
+  await expect(page.getByText("Downtime: E2E flat tyre")).toBeVisible();
+  const second = await page.context().newPage();
+  await second.goto(page.url());
+  await expect(second.getByText("Downtime: E2E flat tyre")).toBeVisible();
+  // Ended in the first tab...
+  await page.getByRole("button", { name: "End now" }).click();
+  await expect(page.getByText("No downtime now or planned.")).toBeVisible();
+  // ...so the second, stale, tab is told so and nothing is written again.
+  await second.getByRole("button", { name: "End now" }).click();
+  await expect(
+    second.getByText(/already ended or removed by someone else/),
+  ).toBeVisible();
+  await expect(second.getByText("No downtime now or planned.")).toBeVisible();
+  // A new downtime can be added straight away, in either tab, no reload.
+  await second.getByLabel("Reason").fill("E2E second flat");
+  await second.getByRole("button", { name: "Add downtime" }).click();
+  await expect(second.getByText("Downtime: E2E second flat")).toBeVisible();
+  await second.getByRole("button", { name: "End now" }).click();
+  await expect(second.getByText("No downtime now or planned.")).toBeVisible();
+  await second.close();
+  await page.getByLabel("Reason").fill("E2E third flat");
+  await page.getByRole("button", { name: "Add downtime" }).click();
+  await expect(page.getByText("Downtime: E2E third flat")).toBeVisible();
+  await page.getByRole("button", { name: "End now" }).click();
   await expect(page.getByText("No downtime now or planned.")).toBeVisible();
   await noSidewaysScroll(page);
 });

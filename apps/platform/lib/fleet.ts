@@ -391,3 +391,12 @@ export function runningAt(now: Date): string {
   const at = now.toISOString();
   return `[${at},${at}]`;
 }
+
+/**
+ * The start of the minute `at` falls in. Downtime is typed to the minute, so
+ * "now" is kept to the minute too: a block ended at 10:30:45 would otherwise
+ * still cover a new one typed as starting 10:30.
+ */
+export function wholeMinute(at: Date): Date {
+  return new Date(Math.floor(at.getTime() / 60_000) * 60_000);
+}

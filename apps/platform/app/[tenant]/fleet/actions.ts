@@ -19,6 +19,7 @@ import {
   runningAt,
   unitSchema,
   unitStatuses,
+  wholeMinute,
   yearBandSchema,
 } from "@/lib/fleet";
 import { getCatalog, getLocations } from "@/lib/fleet-data";
@@ -621,7 +622,13 @@ export async function addDowntime(
   if (!unit) return notAllowed;
   const zone = unit.location.timezone;
 
-  const from = fromLocalInput(field(formData, "from"), zone);
+  // "From" left blank means now. The time comes from the server at this
+  // moment, not from when the page was opened, so it can't land inside a
+  // block that was ended since.
+  const fromText = field(formData, "from");
+  const from = fromText
+    ? fromLocalInput(fromText, zone)
+    : wholeMinute(new Date());
   const untilText = field(formData, "until");
   const until = untilText ? fromLocalInput(untilText, zone) : null;
   const note = field(formData, "note");
@@ -652,6 +659,13 @@ export async function endDowntime(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canWorkOnUnits(role)) return notAllowed;
   const blockId = field(formData, "block");
+  // Someone else ended or removed it first: back to the bike, which says so.
+  const alreadyGone = (): never => {
+    refresh(slug);
+    redirect(
+      `/${slug}/fleet/units/${encodeURIComponent(field(formData, "unit"))}?downtime=gone`,
+    );
+  };
 
   const { data: block } = await supabase
     .from("unit_blocks")
@@ -660,18 +674,22 @@ export async function endDowntime(
     .eq("id", blockId)
     .eq("kind", "downtime")
     .maybeSingle();
-  if (!block) return notAllowed;
+  if (!block) return alreadyGone();
   const start = new Date(
     String(block.period).replace(/^[[(]/, "").split(",")[0].replace(/"/g, ""),
   );
   const now = new Date();
+  // Ends on the whole minute, like every time typed on this screen, so a new
+  // downtime can start in the same minute this one ended.
+  const end = wholeMinute(now);
 
   const query =
-    start >= now
+    // Not started yet, or started within this minute: nothing left to keep.
+    start >= end
       ? supabase.from("unit_blocks").delete()
       : supabase
           .from("unit_blocks")
-          .update({ period: `[${start.toISOString()},${now.toISOString()})` })
+          .update({ period: `[${start.toISOString()},${end.toISOString()})` })
           // Only a block that is running right now. From a stale page, one
           // that someone already ended would otherwise be stretched to now.
           .overlaps("period", runningAt(now));
@@ -680,11 +698,7 @@ export async function endDowntime(
     .eq("id", blockId)
     .select("id");
   if (error) return { errors: { form: dbErrorKey(error) } };
-  if (data.length !== 1) {
-    // Already ended or removed by someone else: show the page as it is now.
-    refresh(slug);
-    return { errors: { form: "alreadyEnded" } };
-  }
+  if (data.length !== 1) return alreadyGone();
   refresh(slug);
   return { ok: true };
 }

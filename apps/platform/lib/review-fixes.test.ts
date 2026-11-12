@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { dbErrorKey, fieldErrors, ownModelSchema, runningAt } from "./fleet";
+import {
+  dbErrorKey,
+  fieldErrors,
+  ownModelSchema,
+  runningAt,
+  wholeMinute,
+} from "./fleet";
 
 /** The independent Phase 1a review (11 Nov 2026): the parts that are plain code. */
 describe("review fix 9: engine size, one range and a readable message", () => {
@@ -41,5 +47,16 @@ describe("review fix 7: ending downtime", () => {
     expect(runningAt(now)).toBe(
       "[2026-11-11T08:30:00.000Z,2026-11-11T08:30:00.000Z]",
     );
+  });
+});
+
+describe("downtime works in whole minutes (owner's click-through, 12 Nov 2026)", () => {
+  it('"now" is the start of the current minute, so ending and starting in one minute don\'t collide', () => {
+    const ended = wholeMinute(new Date("2026-11-12T03:30:45.123Z"));
+    expect(ended.toISOString()).toBe("2026-11-12T03:30:00.000Z");
+    // A new downtime typed as 10:30, or started "now" seconds later.
+    const startedNow = wholeMinute(new Date("2026-11-12T03:30:58.000Z"));
+    expect(startedNow.getTime()).toBeGreaterThanOrEqual(ended.getTime());
+    expect(wholeMinute(ended)).toEqual(ended);
   });
 });
