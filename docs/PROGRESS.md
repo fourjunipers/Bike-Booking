@@ -13,6 +13,22 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Marketplace UI batch (branch `marketplace/ui-refresh`, 12 Nov 2026, not merged)
+
+Done (items 1, 3, 4, 5 of the owner's batch):
+
+- **Moto Mangos look.** Tokens in `app/globals.css` (hex, so `lib/design-tokens.test.ts` checks WCAG contrast): mango primary with **navy text** (white on mango is only 2:1), leaf green accents, navy header and footer, cream background, `--link` (dark mango) for mango-coloured text. Nunito 800 headings (Thai falls back to the system font). Mango badge drawn in `components/brand/logo.tsx` and `app/icon.svg` (the favicon; `favicon.ico` removed); speed-line and leaf accents. The shared header is restyled for admin and vendor too; they show their area name as a pill. Page titles and metadata are not rebranded.
+- **Bike types** are multi-select toggles; none = any type. URL: repeated `type=` (old one-type links still work). Adapter: `SearchQuery.types` (docs/INTEGRATION.md updated); `current-db.ts` passes one type to `search_offers` and filters several in code, so no migration.
+- **Book ahead / Ride today.** "Search bikes" → "Check availability & prices". The home form has two paths: Book ahead (dates) and Ride today (`now=1`, only bikes ready now; no dates). "Get your bike now" text is gone from the customer site and the vendor help text. docs/marketplace/SPEC.md (Home, Filters rows) updated.
+- **24-hour times**: a 00:00–23:30 list in 30-minute steps (`TIME_OPTIONS`), default 10:00 for pickup and return; picking a pickup date sets the return to the next day.
+- New keys in all 10 customer languages; English and Thai await the owner's approval, the other eight are unreviewed machine-quality translations.
+
+Open:
+
+- **Item 2 (location search)**: plan sent to the owner, not built until they reply.
+- `e2e/customer.spec.ts` "dates show the total…" fails since 12 Nov 2026 on `main` too: it searches 9–12 Nov, which is now in the past. Needs seed dates relative to today.
+- The hidden vendor settings still use `<input type="time">` for opening hours (hidden screens are not built on).
+
 ## Platform migrations on live (12 Nov 2026)
 
 Done by `docs/RUNBOOK-GO-LIVE-PLATFORM.md`, from `main` at `02f5a26` (PR #8 merged).
