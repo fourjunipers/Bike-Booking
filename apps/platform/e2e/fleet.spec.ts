@@ -155,7 +155,7 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
   // Its chips: where it stands with Moto Mangos, its categories, how many.
   const facts = section.getByRole("list", { name: "About Honda PCX 160" });
   await expect(facts.getByRole("listitem")).toHaveText([
-    "Not listed",
+    "Not on Moto Mangos",
     "Scooter",
     /^(29|30) vehicles$/,
   ]);
@@ -258,8 +258,9 @@ test("a driver reads a bike but can't change it", async ({ page }) => {
   await signIn(page, demo.bsrDriver);
   await page.goto("/bsr/fleet");
   await expect(
-    page.getByRole("link", { name: "Add to inventory" }),
+    page.getByRole("link", { name: /Add product to inventory/ }),
   ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "New Product" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Import CSV" })).toHaveCount(0);
   await openBike(page, "DEMO-004");
   await expect(
@@ -945,7 +946,7 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await expect(mangos.getByRole("img", { name: "Moto Mangos" })).toBeVisible();
   await expect(
     mangos.getByText(
-      "This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or choose a model from the list to skip the review.",
+      "This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or select the model if already in the list below.",
     ),
   ).toBeVisible();
   await expect(
@@ -1069,7 +1070,7 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
 });
 
-test("removing things: Retire instead when a delete is refused, Restore, and retiring a make & model", async ({
+test("removing things: deleting for good, Restore, and retiring a make & model", async ({
   page,
 }) => {
   test.slow();
@@ -1108,33 +1109,38 @@ test("removing things: Retire instead when a delete is refused, Restore, and ret
   ).toHaveCount(0);
   await page.goto(unitUrl);
 
-  // Deleting is refused (the downtime points at it): the message says why
-  // and offers to retire it instead. Every step asks first.
+  // Every step asks first, saying what will happen.
   const questions: string[] = [];
   page.on("dialog", (dialog) => {
     questions.push(dialog.message());
     void dialog.accept();
   });
-  await page.getByRole("button", { name: "Delete vehicle" }).click();
-  await expect(
-    page.getByText(
-      "This vehicle has downtime or bookings on record, so it can't be deleted. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept.",
-    ),
-  ).toBeVisible();
-  const retireInstead = page.getByRole("button", { name: "Retire instead" });
+  // Delete is the last thing on the page, under the purchase and sale
+  // details, and a solid red button.
+  const del = page.getByRole("button", { name: "Delete vehicle" });
+  const delBox = (await del.boundingBox())!;
+  const moneyBox = (await panel(page, "Purchase and sale").boundingBox())!;
+  expect(delBox.y).toBeGreaterThan(moneyBox.y + moneyBox.height);
+  expect(Math.round(delBox.height)).toBeGreaterThanOrEqual(44);
   expect(
-    Math.round((await retireInstead.boundingBox())!.height),
-  ).toBeGreaterThanOrEqual(44);
-  // Not while the downtime is still to come.
-  await retireInstead.click();
+    await del.evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).not.toMatch(/rgba\(0, 0, 0, 0\)|255, 255, 255|244, 244, 245/);
+  expect(await del.evaluate((el) => getComputedStyle(el).color)).toBe(
+    "rgb(255, 255, 255)",
+  );
+
+  // Retiring is refused while a downtime is still to come.
+  const status = panel(page, "Status");
+  await status.getByRole("radio", { name: /^Retired/ }).check();
+  await status.getByRole("button", { name: "Save" }).click();
   await expect(
-    page.getByText(/still has a block that ends in the future/),
+    status.getByText(/still has a block that ends in the future/),
   ).toBeVisible();
   await page.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByText("No downtime now or planned.")).toBeVisible();
-  await retireInstead.click();
-  const status = panel(page, "Status");
-  await expect(status.getByRole("radio", { name: /^Retired/ })).toBeChecked();
+  await status.getByRole("radio", { name: /^Retired/ }).check();
+  await status.getByRole("button", { name: "Save" }).click();
+  await expect(status.getByRole("button", { name: "Restore" })).toBeVisible();
   expect(questions).toContain(
     "Retire this vehicle? It leaves the fleet list and can't be rented or booked. Its history is kept, and you can restore it later.",
   );
@@ -1173,7 +1179,7 @@ test("removing things: Retire instead when a delete is refused, Restore, and ret
       .getByText("Retired", { exact: true }),
   ).toBeVisible();
   await expect(
-    retired.getByRole("link", { name: `Add a ${name} to inventory` }),
+    retired.getByRole("link", { name: /Add product to inventory/ }),
   ).toHaveCount(0);
   await page.goto("/bsr/fleet/units/new");
   await expect(
@@ -1198,26 +1204,42 @@ test("removing things: Retire instead when a delete is refused, Restore, and ret
   await expect(status.getByRole("radio", { name: /^Active/ })).toBeChecked();
   await expect(status.getByRole("button", { name: "Restore" })).toHaveCount(0);
 
-  // Clean up: the vehicle (no history left), then the model.
-  await page.getByRole("button", { name: "Delete vehicle" }).click();
+  // A downtime that has ended stays on the vehicle's record. It used to stop
+  // the vehicle being deleted at all; now it goes with the vehicle.
+  await page.getByLabel("From", { exact: true }).fill("");
+  await page.getByLabel("Until", { exact: true }).fill("");
+  await page.getByLabel("Reason").fill("E2E old repair");
+  await page.getByRole("button", { name: "Add downtime" }).click();
+  await page.getByRole("button", { name: "End now" }).click();
+  await expect(page.getByText("No downtime now or planned.")).toBeVisible();
+
+  // Deleted for good, after a warning that says so. Then the model.
+  await del.click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
+  expect(questions).toContain(
+    "Delete this vehicle for good? This is permanent and can't be undone. Its purchase and sale details, tax and insurance records, downtime and odometer history are erased with it.",
+  );
+  await page.goto(`/bsr/fleet?scope=all&q=${plate}`);
+  await expect(page.getByText(`No vehicle matches “${plate}”.`)).toBeVisible();
   await page.goto(modelUrl);
   await page.getByRole("button", { name: "Delete model" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
 });
 
-test("fleet: one button adds a make & model, another adds to the inventory, a + Vehicle button on each row, and a kind filter", async ({
+test("fleet: New Product at the top, Add product to inventory on each row, and a kind filter", async ({
   page,
 }) => {
   await signIn(page, demo.bsrManager);
   await page.goto("/bsr/fleet");
   // The two jobs have one button each, and nothing says "bike".
   await expect(
-    page.getByRole("link", { name: "Make & model", exact: true }),
+    page.getByRole("link", { name: "New Product", exact: true }),
   ).toHaveAttribute("href", "/bsr/fleet/models/new");
+  // No separate "Add to inventory" button on this page any more: each
+  // row has its own.
   await expect(
     page.getByRole("link", { name: "Add to inventory", exact: true }),
-  ).toHaveAttribute("href", "/bsr/fleet/units/new");
+  ).toHaveCount(0);
   await expect(page.getByRole("link", { name: /add bike/i })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /add model/i })).toHaveCount(0);
 
@@ -1232,7 +1254,9 @@ test("fleet: one button adds a make & model, another adds to the inventory, a + 
   // A count badge, a Moto Mangos chip, and a kind icon in a fixed box at the
   // start of the row (so nothing moves when a photo loads).
   await expect(facts.getByText(/^\d+ vehicles?$/)).toBeVisible();
-  await expect(facts.getByText("Not listed", { exact: true })).toBeVisible();
+  await expect(
+    facts.getByText("Not on Moto Mangos", { exact: true }),
+  ).toBeVisible();
   const header = page.locator("section", { has: title }).locator("div").first();
   const iconBox = await header.locator("span").first().boundingBox();
   expect(Math.round(iconBox!.width)).toBe(44);
@@ -1246,9 +1270,11 @@ test("fleet: one button adds a make & model, another adds to the inventory, a + 
   // "+ Vehicle" on a model's row adds a vehicle of that make & model. It
   // looks like a button: labelled, outlined, 44 px tall.
   const plus = page
-    .getByRole("link", { name: "Add a Honda PCX 160 to inventory" })
+    .getByRole("link", {
+      name: /^Add product to inventory\s*: Honda PCX 160$/,
+    })
     .first();
-  await expect(plus).toContainText("Vehicle");
+  await expect(plus).toContainText("Add product to inventory");
   const box = await plus.boundingBox();
   expect(Math.round(box!.width)).toBeGreaterThanOrEqual(44);
   expect(Math.round(box!.height)).toBeGreaterThanOrEqual(44);

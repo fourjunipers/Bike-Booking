@@ -274,7 +274,7 @@
     "staleUnit": "This vehicle was changed by someone else while this form was open. Reload the page to see the latest, then make your change again.",
     "invalidCategory": "Choose one of the categories in the list.",
     "categoryFirst": "Choose a category for this model and save it first, then send it.",
-    "unitInUse": "This vehicle has downtime or bookings on record, so it can't be deleted. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept.",
+    "unitInUse": "This vehicle is on bookings, so it can't be deleted: past orders need it. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept.",
     "model_has_active_units": "Retire or sell its vehicles first. A make & model can be retired once none of its vehicles is in the fleet.",
     "model_retired": "This make & model is retired. Restore it first."
   },
@@ -284,8 +284,8 @@
     "searchLabel": "Find a vehicle",
     "searchPlaceholder": "Plate or frame number",
     "noMatch": "No vehicle matches “{query}”.",
-    "empty": "Nothing here yet. Start with “Make & model”, then add your vehicles to the inventory, or import them all from a CSV file.",
-    "addModel": "Make & model",
+    "empty": "Nothing here yet. Start with “New Product”, then add your vehicles to the inventory, or import them all from a CSV file.",
+    "addModel": "New Product",
     "addUnit": "Add to inventory",
     "import": {
       "title": "Import vehicles from CSV",
@@ -415,7 +415,7 @@
       "odometerNow": "Odometer",
       "initialOdometer": "Odometer now ({unit})",
       "delete": "Delete vehicle",
-      "deleteConfirm": "Delete this vehicle? This can't be undone.",
+      "deleteConfirm": "Delete this vehicle for good? This is permanent and can't be undone. Its purchase and sale details, tax and insurance records, downtime and odometer history are erased with it.",
       "readOnly": "You can view this vehicle but not change it.",
       "make": "Make",
       "modelYear": "Model year",
@@ -590,7 +590,7 @@
       "rejectNoReason": "The reviewer left no note. You can change the details and send it again.",
       "approved": "Moto Mangos added this model to its list on {date}.",
       "categoryFirst": "Choose a category for this model in the form on this page, save, and then you can send it to Moto Mangos.",
-      "notOnList": "This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or choose a model from the list to skip the review.",
+      "notOnList": "This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or select the model if already in the list below.",
       "submitAgain": "Send for review again",
       "nextTitle": "What to do next",
       "nextHelp": "Fix the details and send it for review again, or switch to a model that is already on the list.",
@@ -601,13 +601,12 @@
       "useChosen": "Use this model"
     },
     "editModel": "Edit make & model",
-    "addUnitTo": "Add a {name} to inventory",
-    "addUnitRow": "Vehicle",
+    "addUnitRow": "Add product to inventory",
     "listing": {
       "listed": "Listed on Moto Mangos",
       "inReview": "In review",
       "needsChanges": "Needs changes",
-      "notListed": "Not listed",
+      "notListed": "Not on Moto Mangos",
       "retired": "Retired"
     },
     "modelFacts": "About {name}",

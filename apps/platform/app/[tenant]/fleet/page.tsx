@@ -436,12 +436,6 @@ export default async function FleetPage({
       {(result.total > 0 || (manage && fleet.length > 0)) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            {manage && fleet.length > 0 && (
-              <Link href={`${base}/units/new`} className={link("default")}>
-                <Plus aria-hidden />
-                {t("addUnit")}
-              </Link>
-            )}
             {result.total > 0 && (
               <p role="status" className="text-sm text-muted-foreground">
                 {result.shown === result.total
@@ -589,8 +583,8 @@ export default async function FleetPage({
                     // A very light cream on every other row.
                     className="group even:bg-accent/40"
                   >
-                    <summary className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none sm:px-4">
-                      <div className="min-w-0 flex-1">
+                    <summary className="flex min-h-14 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none sm:px-4">
+                      <div className="min-w-0 flex-1 basis-40">
                         <p className="font-medium">{groupTitle(group)}</p>
                         <p className="text-sm text-muted-foreground">
                           {group.count === 0
@@ -613,7 +607,7 @@ export default async function FleetPage({
                           {t("addUnitRow")}
                           <span className="sr-only">
                             {": "}
-                            {t("addUnitTo", { name: section.model.name })}
+                            {section.model.name}
                           </span>
                         </Link>
                       )}

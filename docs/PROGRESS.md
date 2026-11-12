@@ -63,6 +63,20 @@ Fourth round, deleting and retiring (owner, 12 Nov 2026, night):
 - Found on the way: the status choices on a vehicle's page kept showing the old status after a button changed it; they now redraw.
 - Tests: `tests/db/fleet-rework.test.ts` (retire rules, listing off, no vehicles on a retired model, who may and the audit row, refused delete, withdrawn request); a Playwright test for the whole flow; the fleet-view unit test covers where a retired model shows.
 
+Fifth round (owner's click-through, 13 Nov 2026):
+
+- **Deleting a vehicle clears its downtime records.** The owner could not delete DEMO-004 on staging: it had five downtime records that ended days before (left by test runs), and any block, however old, stopped the delete. A `units_clear_downtime` trigger now deletes a vehicle's downtime with it (in the fleet-rework migration, changed in place). Bookings still stop it: an allocation, hold or transfer keeps the foreign key, and the app then offers "Retire instead". Until Phase 3 there are no bookings, so today every vehicle can be deleted.
+- **This supersedes the fourth-round line** "a vehicle can be deleted unless anything on its calendar points at it".
+- **Delete vehicle** is the last thing on the vehicle's page, under Purchase and sale, a solid red button; "Retire instead" appears to its right when a delete is refused. The warning says it is permanent and what is erased (purchase and sale details, tax and insurance, downtime, odometer history).
+- **Buttons renamed:** "+ Make & model" is "+ New Product"; the row's "+ Vehicle" is "+ Add product to inventory"; the separate "+ Add to inventory" button above the Fleet list is gone (the form is still reached from each row and from a model's page). Page titles and other texts still say "make & model" and "Add to inventory".
+- The grey chip reads "Not on Moto Mangos" (was "Not listed", which did not say of what).
+- Text for a model not on the list now ends "Or select the model if already in the list below."
+
+Open, for the owner:
+
+- **Deleting a vehicle that has bookings (from Phase 3).** The owner wants vendors to be able to remove any vehicle for good while past sales history stays. A real delete can't do both: it erases the vehicle's own records and would leave past orders pointing at nothing. Proposed for Phase 3: "Remove for good" marks the vehicle as removed (never shown again, not restorable from the app, plate free to reuse) and keeps the row for past orders and reports. Needs a column and every vehicle query to leave removed ones out.
+- **"Edit" button beside Save on the make & model page:** not built; the page is already an edit form. Waiting for the owner to say what could not be changed.
+
 Known limits and open points:
 
 - **A retired make & model still counts** in the "N makes & models" line at the top of Fleet and still appears in the fleet filters' model dropdown.

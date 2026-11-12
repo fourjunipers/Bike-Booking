@@ -404,3 +404,29 @@ revoke all on function platform_private.models_withdraw_request() from public, a
 create trigger models_withdraw_request
 after delete on platform.models
 for each row execute function platform_private.models_withdraw_request();
+
+-- 7. Deleting a vehicle clears its downtime records (owner, 12 Nov 2026).
+--    A vehicle that had ever been in downtime could not be deleted, because
+--    the old records still pointed at it, even long after they ended. They
+--    are the vehicle's own history and go with it, like its tax, insurance
+--    and odometer records already do. Bookings are different: an allocation,
+--    hold or transfer still stops the delete (the foreign key), because past
+--    orders need the vehicle; such a vehicle is retired instead.
+create function platform_private.units_clear_downtime()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  delete from platform.unit_blocks b
+  where b.unit_id = old.id and b.kind = 'downtime';
+  return old;
+end;
+$$;
+
+revoke all on function platform_private.units_clear_downtime() from public, anon, authenticated;
+
+create trigger units_clear_downtime
+before delete on platform.units
+for each row execute function platform_private.units_clear_downtime();

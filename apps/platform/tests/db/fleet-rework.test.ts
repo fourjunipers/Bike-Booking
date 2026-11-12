@@ -402,7 +402,9 @@ describe("retiring a make & model", () => {
 });
 
 describe("deleting vehicles and models", () => {
-  it("a vehicle with a block on record can't be deleted, but can be retired once the block is over", async () => {
+  const past = (days: number) =>
+    new Date(Date.now() - days * 86_400_000).toISOString();
+  const unitWithBlock = async (kind: string) => {
     const model = await addModel();
     const { data: unit } = await service
       .from("units")
@@ -410,27 +412,70 @@ describe("deleting vehicles and models", () => {
         tenant_id: shop.id,
         model_id: model,
         location_id: shop.locationId,
-        plate: `RW-${tag}-blocked`,
+        plate: `RW-${tag}-${kind}-${++counter}`,
       })
       .select("id")
       .single();
-    const past = (days: number) =>
-      new Date(Date.now() - days * 86_400_000).toISOString();
-    const { error: blockError } = await service.from("unit_blocks").insert({
+    const { error } = await service.from("unit_blocks").insert({
       tenant_id: shop.id,
       unit_id: unit!.id,
-      kind: "downtime",
+      kind,
       period: `[${past(3)},${past(2)})`,
     });
-    expect(blockError).toBeNull();
+    expect(error).toBeNull();
+    return unit!.id;
+  };
+
+  it("a vehicle's old downtime goes with it: it can be deleted (it could not before)", async () => {
+    const unit = await unitWithBlock("downtime");
     const owner = shop.members.owner.db;
-    const deleted = await owner.from("units").delete().eq("id", unit!.id);
+    const { data, error } = await owner
+      .from("units")
+      .delete()
+      .eq("id", unit)
+      .select("id");
+    expect(error).toBeNull();
+    expect(data).toEqual([{ id: unit }]);
+    const { data: left } = await service
+      .from("unit_blocks")
+      .select("id")
+      .eq("unit_id", unit);
+    expect(left).toEqual([]);
+    // Who deleted it is on record.
+    const { data: audit } = await service
+      .from("audit_events")
+      .select("action, actor")
+      .eq("entity", "units")
+      .eq("entity_id", unit)
+      .eq("action", "delete");
+    expect(audit).toEqual([{ action: "delete", actor: shop.members.owner.id }]);
+  });
+
+  it("staff can't delete a vehicle, and its downtime stays", async () => {
+    const unit = await unitWithBlock("downtime");
+    const { data } = await shop.members.staff.db
+      .from("units")
+      .delete()
+      .eq("id", unit)
+      .select("id");
+    expect(data ?? []).toEqual([]);
+    const { data: left } = await service
+      .from("unit_blocks")
+      .select("id")
+      .eq("unit_id", unit);
+    expect(left).toHaveLength(1);
+  });
+
+  it("a vehicle that was on a booking can't be deleted, but can be retired", async () => {
+    const unit = await unitWithBlock("allocation");
+    const owner = shop.members.owner.db;
+    const deleted = await owner.from("units").delete().eq("id", unit);
     // What the app turns into "Retire instead".
     expect(deleted.error?.code).toBe("23503");
     const retired = await owner
       .from("units")
       .update({ status: "retired" })
-      .eq("id", unit!.id)
+      .eq("id", unit)
       .select("status");
     expect(retired.data).toEqual([{ status: "retired" }]);
   });

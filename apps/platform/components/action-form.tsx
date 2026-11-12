@@ -68,7 +68,8 @@ export function ActionForm({
   confirm?: string;
   /** Ask only when this returns a question for what was typed. */
   confirmIf?: (data: FormData) => string | undefined;
-  destructive?: boolean;
+  /** An outlined red button; "solid" fills it (deleting for good). */
+  destructive?: boolean | "solid";
   className?: string;
   /**
    * What to show under the form when the action answers with an `offer`,
@@ -118,10 +119,14 @@ export function ActionForm({
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="submit"
-            variant={destructive ? "outline" : "default"}
+            variant={destructive === true ? "outline" : "default"}
             className={cn(
               "h-11 px-6",
-              destructive && "border-destructive/40 text-destructive",
+              destructive === true && "border-destructive/40 text-destructive",
+              // White on the red: 4.8:1 (light), and the lighter red of the
+              // dark theme takes near-black text.
+              destructive === "solid" &&
+                "bg-destructive text-white hover:bg-destructive/85 dark:text-zinc-950",
             )}
             disabled={pending}
           >
@@ -160,7 +165,7 @@ export function ActionForm({
       </form>
       {/* Outside the form: an offer is usually a form of its own. */}
       {state.offer && !pending && offers?.[state.offer] && (
-        <div className="mt-3">{offers[state.offer]}</div>
+        <div>{offers[state.offer]}</div>
       )}
     </FormContext.Provider>
   );

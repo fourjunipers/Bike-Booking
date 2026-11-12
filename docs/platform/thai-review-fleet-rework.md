@@ -4,13 +4,27 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 
 Thai already used the general word for a vehicle (รถ, counted in คัน) wherever English said “bike”, so the bike-to-vehicle change needed no Thai edits beyond the lines below.
 
+## Fifth round (13 Nov 2026)
+
+Changed: the two button names (“New Product”, “Add product to inventory”), the grey chip (“Not on Moto Mangos”), the end of the not-on-the-list text, the delete warning and the refused-delete message. These lines are also updated where they appear below. Gone: `Fleet.addUnitTo`.
+
+| Key | English | Thai |
+| --- | --- | --- |
+| `Fleet.addModel` | New Product | สินค้าใหม่ |
+| `Fleet.addUnitRow` | Add product to inventory | เพิ่มสินค้าเข้าคลัง |
+| `Fleet.empty` | Nothing here yet. Start with “New Product”, then add your vehicles to the inventory, or import them all from a CSV file. | ยังไม่มีรถ เริ่มที่ “สินค้าใหม่” แล้วเพิ่มรถเข้าคลัง หรือนำเข้าทั้งหมดจากไฟล์ CSV |
+| `Fleet.listing.notListed` | Not on Moto Mangos | ไม่อยู่บน Moto Mangos |
+| `Fleet.motoMangos.notOnList` | This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or select the model if already in the list below. | ยี่ห้อและรุ่นนี้ยังไม่อยู่ในรายการของ Moto Mangos แต่ยังลงประกาศได้: เปิดใช้งานแล้วเราจะตรวจก่อน เพราะเป็นยี่ห้อและรุ่นใหม่ เมื่ออนุมัติแล้วจะขึ้นแสดงทันที หรือเลือกรุ่นจากรายการด้านล่าง หากมีอยู่แล้ว |
+| `Fleet.unit.deleteConfirm` | Delete this vehicle for good? This is permanent and can't be undone. Its purchase and sale details, tax and insurance records, downtime and odometer history are erased with it. | ลบรถคันนี้ถาวรหรือไม่ การลบเป็นการถาวรและไม่สามารถย้อนกลับได้ รายละเอียดการซื้อและการขาย บันทึกภาษีและประกัน ประวัติการหยุดใช้งานและเลขไมล์จะถูกลบไปด้วย |
+| `FormErrors.unitInUse` | This vehicle is on bookings, so it can't be deleted: past orders need it. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept. | รถคันนี้อยู่ในการจอง จึงลบไม่ได้ เพราะคำสั่งเช่าที่ผ่านมายังต้องใช้ข้อมูลรถ คุณปลดระวางแทนได้: รถจะออกจากรายการรถและเช่าไม่ได้ แต่ประวัติยังอยู่ |
+
 ## Fourth round: deleting and retiring (12 Nov 2026, night)
 
 All new: the refused-delete message with “Retire instead”, “Restore”, the confirmations for retiring and selling, and retiring a make & model.
 
 | Key | English | Thai |
 | --- | --- | --- |
-| `FormErrors.unitInUse` | This vehicle has downtime or bookings on record, so it can't be deleted. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept. | รถคันนี้มีประวัติการหยุดใช้งานหรือการจอง จึงลบไม่ได้ คุณปลดระวางแทนได้: รถจะออกจากรายการรถและเช่าไม่ได้ แต่ประวัติยังอยู่ |
+| `FormErrors.unitInUse` | This vehicle is on bookings, so it can't be deleted: past orders need it. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept. | รถคันนี้อยู่ในการจอง จึงลบไม่ได้ เพราะคำสั่งเช่าที่ผ่านมายังต้องใช้ข้อมูลรถ คุณปลดระวางแทนได้: รถจะออกจากรายการรถและเช่าไม่ได้ แต่ประวัติยังอยู่ |
 | `FormErrors.model_has_active_units` | Retire or sell its vehicles first. A make & model can be retired once none of its vehicles is in the fleet. | ปลดระวางหรือขายรถของรุ่นนี้ก่อน ยี่ห้อและรุ่นจะปลดระวางได้เมื่อไม่มีรถคันใดอยู่ในฟลีตแล้ว |
 | `FormErrors.model_retired` | This make & model is retired. Restore it first. | ยี่ห้อและรุ่นนี้ปลดระวางแล้ว กรุณานำกลับมาใช้ก่อน |
 | `Fleet.unit.retireInstead` | Retire instead | ปลดระวางแทน |
@@ -37,9 +51,9 @@ New or changed in the third round: the “Manually enter” button and its quest
 | `Fleet.listing.listed` | Listed on Moto Mangos | ลงประกาศบน Moto Mangos แล้ว |
 | `Fleet.listing.inReview` | In review | กำลังตรวจ |
 | `Fleet.listing.needsChanges` | Needs changes | ต้องแก้ไข |
-| `Fleet.listing.notListed` | Not listed | ยังไม่ลงประกาศ |
+| `Fleet.listing.notListed` | Not on Moto Mangos | ไม่อยู่บน Moto Mangos |
 | `Fleet.modelFacts` | About {name} | เกี่ยวกับ {name} |
-| `Fleet.motoMangos.notOnList` | This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or choose a model from the list to skip the review. | ยี่ห้อและรุ่นนี้ยังไม่อยู่ในรายการของ Moto Mangos แต่ยังลงประกาศได้: เปิดใช้งานแล้วเราจะตรวจก่อน เพราะเป็นยี่ห้อและรุ่นใหม่ เมื่ออนุมัติแล้วจะขึ้นแสดงทันที หรือเลือกรุ่นจากรายการเพื่อข้ามการตรวจ |
+| `Fleet.motoMangos.notOnList` | This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or select the model if already in the list below. | ยี่ห้อและรุ่นนี้ยังไม่อยู่ในรายการของ Moto Mangos แต่ยังลงประกาศได้: เปิดใช้งานแล้วเราจะตรวจก่อน เพราะเป็นยี่ห้อและรุ่นใหม่ เมื่ออนุมัติแล้วจะขึ้นแสดงทันที หรือเลือกรุ่นจากรายการด้านล่าง หากมีอยู่แล้ว |
 | `Fleet.motoMangos.waiting` | Sent to Moto Mangos. It is waiting for review and goes live once approved; you can keep using the model meanwhile. | ส่งให้ Moto Mangos แล้ว กำลังรอตรวจ และจะขึ้นแสดงเมื่ออนุมัติ ระหว่างนี้ใช้งานรุ่นนี้ต่อได้ |
 | `Fleet.motoMangos.submitTitle` | List it on Moto Mangos | ลงประกาศบน Moto Mangos |
 | `Fleet.motoMangos.submit` | Switch on and send for review | เปิดใช้งานและส่งให้ตรวจ |
@@ -58,7 +72,7 @@ New or changed since the first list: the “+ Vehicle” row button, the categor
 
 | Key | English | Thai |
 | --- | --- | --- |
-| `Fleet.addUnitRow` | Vehicle | รถ |
+| `Fleet.addUnitRow` | Add product to inventory | เพิ่มสินค้าเข้าคลัง |
 | `Fleet.view.category` | Category | หมวด |
 | `Fleet.what.typeIt` | Manually enter | กรอกเอง |
 | `Fleet.what.category` | Categories | หมวด |
@@ -74,12 +88,11 @@ New or changed since the first list: the “+ Vehicle” row button, the categor
 
 | Key | English | Thai |
 | --- | --- | --- |
-| `Fleet.addModel` | Make & model | ยี่ห้อและรุ่น |
+| `Fleet.addModel` | New Product | สินค้าใหม่ |
 | `Fleet.addUnit` | Add to inventory | เพิ่มเข้าคลังรถ |
-| `Fleet.addUnitTo` | Add a {name} to inventory | เพิ่ม {name} เข้าคลังรถ |
 | `Fleet.editModel` | Edit make & model | แก้ไขยี่ห้อและรุ่น |
 | `Fleet.intro` | {units, plural, =0 {No vehicles yet} one {# vehicle} other {# vehicles}} in {models, plural, one {# make & model} other {# makes & models}}. | {units, plural, =0 {ยังไม่มีรถ} other {รถ # คัน}} ใน {models, plural, other {# ยี่ห้อและรุ่น}} |
-| `Fleet.empty` | Nothing here yet. Start with “Make & model”, then add your vehicles to the inventory, or import them all from a CSV file. | ยังไม่มีรถ เริ่มที่ “ยี่ห้อและรุ่น” แล้วเพิ่มรถเข้าคลัง หรือนำเข้าทั้งหมดจากไฟล์ CSV |
+| `Fleet.empty` | Nothing here yet. Start with “New Product”, then add your vehicles to the inventory, or import them all from a CSV file. | ยังไม่มีรถ เริ่มที่ “สินค้าใหม่” แล้วเพิ่มรถเข้าคลัง หรือนำเข้าทั้งหมดจากไฟล์ CSV |
 | `Fleet.view.kind` | Kind of vehicle | ประเภทยานพาหนะ |
 
 ## Kinds of vehicle

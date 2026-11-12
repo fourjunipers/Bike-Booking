@@ -449,9 +449,13 @@ describe("selling or retiring a unit", () => {
     expect(allowed.error).toBeNull();
   });
 
-  it("a unit with blocks or a model with units can't be deleted", async () => {
+  it("a unit on a booking or a model with units can't be deleted", async () => {
     const id = await addUnit();
-    await service.from("unit_blocks").insert(block(id, hours(1), hours(2)));
+    // An allocation is a booking. (Downtime goes with the unit since
+    // 20261113000100: tests/db/fleet-rework.test.ts.)
+    await service
+      .from("unit_blocks")
+      .insert(block(id, hours(1), hours(2), "allocation"));
     const unit = await shop.members.owner.db
       .from("units")
       .delete()

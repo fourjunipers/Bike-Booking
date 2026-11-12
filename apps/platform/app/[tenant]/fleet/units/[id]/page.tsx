@@ -524,35 +524,43 @@ export default async function UnitPage({
               {t("sticker.print")}
             </Link>
           </Panel>
-          {manage && (
-            <ActionForm
-              action={deleteUnit}
-              hidden={{ slug, id: unit.id }}
-              submitLabel={tUnit("delete")}
-              confirm={tUnit("deleteConfirm")}
-              destructive
-              // Refused because it has history: offer to retire it, unless
-              // it is out of the fleet already.
-              offers={
-                unit.status === "active" || unit.status === "maintenance"
-                  ? {
-                      retire: (
-                        <SetStatusButton
-                          slug={slug}
-                          id={unit.id}
-                          was={unit.status}
-                          status="retired"
-                          label={tUnit("retireInstead")}
-                          confirm={tUnit("retireConfirm")}
-                        />
-                      ),
-                    }
-                  : undefined
-              }
-            />
-          )}
         </div>
       </div>
+      {/* The very last thing on the page, under the purchase and sale
+          details (owner, 12 Nov 2026). "Retire instead" appears to the
+          right of Delete when the delete is refused. */}
+      {manage && (
+        <section
+          aria-label={tUnit("delete")}
+          className="mt-6 flex flex-wrap items-start gap-3 border-t pt-6"
+        >
+          <ActionForm
+            action={deleteUnit}
+            hidden={{ slug, id: unit.id }}
+            submitLabel={tUnit("delete")}
+            confirm={tUnit("deleteConfirm")}
+            destructive="solid"
+            // Refused because bookings point at it: offer to retire it,
+            // unless it is out of the fleet already.
+            offers={
+              unit.status === "active" || unit.status === "maintenance"
+                ? {
+                    retire: (
+                      <SetStatusButton
+                        slug={slug}
+                        id={unit.id}
+                        was={unit.status}
+                        status="retired"
+                        label={tUnit("retireInstead")}
+                        confirm={tUnit("retireConfirm")}
+                      />
+                    ),
+                  }
+                : undefined
+            }
+          />
+        </section>
+      )}
     </>
   );
 }
