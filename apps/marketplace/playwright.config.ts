@@ -28,6 +28,9 @@ export default defineConfig({
     ? undefined
     : {
         command: `npm run build && npm run start -- --port ${port}`,
+        // Shows the place search; e2e tests answer /api/places/* themselves,
+        // so Google is never called.
+        env: { GOOGLE_PLACES_SERVER_KEY: "e2e-placeholder" },
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

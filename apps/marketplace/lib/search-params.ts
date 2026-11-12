@@ -1,6 +1,6 @@
 /**
  * The customer search lives in the URL so every search has a shareable link:
- * /search?lat=…&lng=…&place=Asok&from=2026-12-01T10:00&to=2026-12-08T10:00&type=…
+ * /search?lat=…&lng=…&place=Asok&from=2026-12-01T10:00&to=2026-12-08T10:00&type=…&type=…
  * Pure parsing and building; invalid values are dropped, not errors.
  */
 
@@ -33,9 +33,10 @@ export type SearchParams = {
   /** Bangkok wall-clock "YYYY-MM-DDTHH:MM". */
   from?: string;
   to?: string;
-  /** Get your bike now (walk-ins). */
+  /** Ride today: only bikes the shop marked ready now (walk-ins). */
   now: boolean;
-  type?: BikeType;
+  /** Bike types to show; empty means any type. Repeated `type=` in the URL. */
+  types: BikeType[];
   transmission?: Transmission;
   ccMin?: number;
   ccMax?: number;
@@ -62,9 +63,42 @@ function num(raw: Raw, key: string, min: number, max: number) {
   return Number.isFinite(n) && n >= min && n <= max ? n : undefined;
 }
 
+/** Every valid value of a repeatable key, once each, in `values` order. */
+function manyOf<T extends string>(raw: Raw, key: string, values: readonly T[]) {
+  const v = raw[key];
+  const given = new Set(Array.isArray(v) ? v : v === undefined ? [] : [v]);
+  return values.filter((x) => given.has(x));
+}
+
 function oneOf<T extends string>(raw: Raw, key: string, values: readonly T[]) {
   const v = first(raw, key);
   return (values as readonly string[]).includes(v ?? "") ? (v as T) : undefined;
+}
+
+/** Pickup and return times in the form: 00:00 to 23:30 in 30-minute steps. */
+export const TIME_OPTIONS: readonly string[] = Array.from(
+  { length: 48 },
+  (_, i) =>
+    `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`,
+);
+
+/** Default pickup and return time when the search has none. */
+export const DEFAULT_TIME = "10:00";
+
+/** The time choices, plus `current` when a shared link carries an odd time. */
+export function timeOptions(current?: string): string[] {
+  return current &&
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(current) &&
+    !TIME_OPTIONS.includes(current)
+    ? [...TIME_OPTIONS, current].sort()
+    : [...TIME_OPTIONS];
+}
+
+/** "YYYY-MM-DD" plus whole days (calendar arithmetic, no time zone). */
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 const LOCAL = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/;
@@ -98,7 +132,7 @@ export function parseSearchParams(raw: Raw): SearchParams {
     from,
     to,
     now: first(raw, "now") === "1",
-    type: oneOf(raw, "type", BIKE_TYPES),
+    types: manyOf(raw, "type", BIKE_TYPES),
     transmission: oneOf(raw, "transmission", TRANSMISSIONS),
     ccMin: num(raw, "ccMin", 50, 2500),
     ccMax: num(raw, "ccMax", 50, 2500),
@@ -128,7 +162,8 @@ export function searchQuery(
     q.set("to", v.to);
   }
   if (v.now) q.set("now", "1");
-  if (v.type) q.set("type", v.type);
+  for (const type of BIKE_TYPES)
+    if (v.types?.includes(type)) q.append("type", type);
   if (v.transmission) q.set("transmission", v.transmission);
   if (v.ccMin !== undefined) q.set("ccMin", String(v.ccMin));
   if (v.ccMax !== undefined) q.set("ccMax", String(v.ccMax));

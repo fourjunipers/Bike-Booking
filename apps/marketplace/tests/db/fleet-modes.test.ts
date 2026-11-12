@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   anonClient,
+  bangkokDay,
   seed,
   serviceClient,
   signedInClient,
@@ -93,29 +94,31 @@ describe("repair entries", () => {
   });
 
   it("report bookings that no longer fit", async () => {
-    // The seeded booking holds BSR's only PCX from 3 to 17 November.
+    // The seeded booking holds BSR's only PCX from 2 days ago to 12 days on.
     const conflicts = async () =>
       (
         await bsrOwner.rpc("repair_conflicts", {
           p_bike_model_id: seed.bsrPcx,
-          p_from: "2026-11-05",
+          p_from: bangkokDay(0),
         })
       ).data?.map((c) => c.code);
     expect(await conflicts()).toEqual([]);
 
-    await service
-      .from("bike_model_downtime")
-      .insert({ bike_model_id: seed.bsrPcx, units: 1, back_on: "2026-11-20" });
+    await service.from("bike_model_downtime").insert({
+      bike_model_id: seed.bsrPcx,
+      units: 1,
+      back_on: bangkokDay(15),
+    });
     expect(await conflicts()).toEqual(["K7Q4ZP"]);
 
-    // Back before the booking starts on a later day: still clashes from 5 Nov.
+    // Back tomorrow, while the booking still runs: still clashes from today.
     await service
       .from("bike_model_downtime")
       .delete()
       .eq("bike_model_id", seed.bsrPcx);
     await service
       .from("bike_model_downtime")
-      .insert({ bike_model_id: seed.bsrPcx, units: 1, back_on: "2026-11-06" });
+      .insert({ bike_model_id: seed.bsrPcx, units: 1, back_on: bangkokDay(1) });
     expect(await conflicts()).toEqual(["K7Q4ZP"]);
   });
 });

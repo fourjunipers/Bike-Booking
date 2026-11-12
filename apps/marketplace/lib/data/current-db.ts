@@ -246,7 +246,8 @@ export async function searchOffers(q: SearchQuery): Promise<Offer[]> {
     p_lat: q.near?.lat,
     p_lng: q.near?.lng,
     p_radius_km: q.radiusKm,
-    p_type: q.type,
+    // The RPC takes one type; several are filtered below.
+    p_type: q.types?.length === 1 ? q.types[0] : undefined,
     p_transmission: q.transmission,
     p_cc_min: q.ccMin,
     p_cc_max: q.ccMax,
@@ -256,7 +257,11 @@ export async function searchOffers(q: SearchQuery): Promise<Offer[]> {
     p_shop_id: q.shopId,
   });
   if (error) throw new Error(`Search failed: ${error.message}`);
-  return ((data ?? []) as unknown as SearchRow[]).map((r) => {
+  const types = q.types?.length ? new Set(q.types) : null;
+  const rows = ((data ?? []) as unknown as SearchRow[]).filter(
+    (r) => !types || types.has(r.type),
+  );
+  return rows.map((r) => {
     const stock = url(PHOTO_BUCKETS.catalog, r.stock_photo, BIKE_PLACEHOLDER);
     return {
       listingId: r.bike_model_id,

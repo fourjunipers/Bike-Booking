@@ -86,8 +86,9 @@ Query:
 | `near {lat, lng}` | Search location; distance is measured from here |
 | `radiusKm` | Only shops within this distance (marketplace sends 15 km, or none for "show further") |
 | `start`, `end` | Advance booking dates; both or neither |
-| `now` | Walk-ins: bikes ready to ride away now (§4.5); `end` may set the length |
-| `type`, `transmission`, `ccMin`, `ccMax` | Catalog filters |
+| `now` | Walk-ins: bikes ready to ride away now (§4.5, "Ride today" on the site); `end` may set the length |
+| `types` | Any of these catalog types; empty or omitted means any type |
+| `transmission`, `ccMin`, `ccMax` | Catalog filters |
 | `maxPricePerDay` | `ceil(total / days)` at most this |
 | `passportNotHeld` | Only listings whose passport policy is "copy only" |
 | `catalogId`, `shopId` | One model (model page) or one shop (shop and listing pages) |

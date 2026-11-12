@@ -67,7 +67,7 @@ test.describe("with a Thai browser", () => {
     await expect(offer).toBeHidden();
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "Motorbike rental in Bangkok" }),
+      page.getByRole("heading", { name: "Motorbike rental in Thailand" }),
     ).toBeVisible();
     await expect(offer).toBeHidden();
   });

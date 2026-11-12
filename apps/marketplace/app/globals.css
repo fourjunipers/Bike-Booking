@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-nunito), var(--font-geist-sans), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -40,6 +40,18 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-section: var(--section);
+  --color-mango: var(--mango);
+  --color-mango-strong: var(--mango-strong);
+  --color-mango-soft: var(--mango-soft);
+  --color-sun: var(--sun);
+  --color-leaf: var(--leaf);
+  --color-leaf-bright: var(--leaf-bright);
+  --color-leaf-soft: var(--leaf-soft);
+  --color-leaf-ink: var(--leaf-ink);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-cream: var(--cream);
+  --color-link: var(--link);
   --color-section-foreground: var(--section-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -50,31 +62,51 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Moto Mangos design tokens, taken from the logo (public/logo.png): mango
+ * orange, near-black for text, leaf green as the accent, on white and warm
+ * cream. Hex values so lib/design-tokens.test.ts can check contrast. White
+ * text on mango fails WCAG, so mango buttons carry near-black text, and
+ * mango-coloured text uses --link (dark mango).
+ */
 :root {
-  --background: oklch(0.972 0.008 190);
-  --foreground: oklch(0.2 0.02 220);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 220);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 220);
-  --primary: oklch(0.47 0.09 192);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.02 190);
-  --secondary-foreground: oklch(0.3 0.05 200);
-  --muted: oklch(0.955 0.01 190);
-  --muted-foreground: oklch(0.48 0.02 210);
-  --accent: oklch(0.94 0.03 190);
-  --accent-foreground: oklch(0.3 0.06 195);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.89 0.015 195);
-  --input: oklch(0.84 0.02 195);
-  --ring: oklch(0.6 0.1 192);
+  --mango: #f8920a;
+  --mango-strong: #e67e00;
+  --mango-soft: #fff1dc;
+  --sun: #ffc94d;
+  --leaf: #3f7f00;
+  --leaf-bright: #68a800;
+  --leaf-soft: #edf6e0;
+  --leaf-ink: #2e6200;
+  --ink: #0b1220;
+  --ink-soft: #2a2f3a;
+  --cream: #fff8ec;
+  --link: #9a4600;
+
+  --background: var(--cream);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--mango);
+  --primary-foreground: var(--ink);
+  --secondary: var(--mango-soft);
+  --secondary-foreground: var(--ink);
+  --muted: #f7efe0;
+  --muted-foreground: #5b5650;
+  --accent: var(--leaf-soft);
+  --accent-foreground: var(--leaf-ink);
+  --destructive: #c62828;
+  --border: #eadcc2;
+  --input: #8f7b58;
+  --ring: #d97800;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.875rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -83,8 +115,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --section: oklch(0.95 0.03 190);
-  --section-foreground: oklch(0.32 0.06 196);
+  --section: var(--mango-soft);
+  --section-foreground: var(--ink);
 }
 
 .dark {
@@ -132,5 +164,13 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Bold, rounded headings (Nunito; Thai falls back to the system font). */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    letter-spacing: -0.01em;
   }
 }

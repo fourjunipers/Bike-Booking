@@ -57,14 +57,14 @@ export default async function CustomerLayout({
         >
           {children}
         </AreaShell>
-        <footer className="border-t bg-card">
+        <footer className="border-t-4 border-mango bg-ink text-white">
           <nav
             aria-label={tp("link")}
             className="mx-auto flex max-w-6xl gap-4 px-4 py-4 text-sm"
           >
             <Link
               href={localePath(locale, "/privacy")}
-              className="text-muted-foreground underline-offset-4 hover:underline"
+              className="inline-flex min-h-11 items-center text-white/90 underline-offset-4 hover:text-sun hover:underline"
             >
               {tp("link")}
             </Link>
