@@ -27,7 +27,7 @@ export async function runSearch(
     start: localToInstant(p.from),
     end: localToInstant(p.to),
     now: p.now,
-    type: p.type,
+    types: p.types,
     transmission: p.transmission,
     ccMin: p.ccMin,
     ccMax: p.ccMax,
