@@ -9,7 +9,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
-| Database | 48 migrations on `main`, **all 48 on live since 12 Nov 2026** (see below); a 49th (`20261112000100`, no default grants) is on the branch `platform/no-default-grants`, on local only. Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
+| Database | 49 migrations on `main`, **all 49 on live since 12 Nov 2026** (see below), and on staging. Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
@@ -37,7 +37,10 @@ Live no longer exposes new tables automatically, but local and CI databases stil
 - **Rule from now on:** a migration that creates a table in `public` grants on purpose, to service_role too (`grant select on public.thing to anon, authenticated; grant all on public.thing to service_role;`). In root `CLAUDE.md`.
 - **Test** `apps/platform/tests/db/default-grants.test.ts` (runs in CI's "RLS + Playwright" job): the defaults give the API roles nothing; a new table or sequence is closed until granted; every table in `public` or `platform` that anon or authenticated can reach has a `grant` statement in a migration (the 23 marketplace tables from before the switch are a closed list); no function in `public` or `platform` is executable by everyone (the 35 marketplace functions from before the switch are a closed list). Shown to fail on a table granted outside a migration and on an open function, and to pass again when they are removed.
 - **Functions, known limit:** Postgres lets PUBLIC execute every new function, on live too, and that default can only be removed for all schemas at once, which would also hit extensions. So functions keep the existing rule (`revoke all on function ... from public, anon`, then grant), now enforced by the test above instead of by a default.
-- This migration is **not on live**; it goes with the next push from `main`.
+- **On live since 12 Nov 2026** (PR #9 merged; pushed from `main` at `b6fc97c` with `npx supabase db push --linked`, the dry run listing only this migration). Live records 49 of 49.
+  - Grants fingerprint (C6) before and after the push: identical (anon/public 135, authenticated/platform 45, authenticated/public 135, same hashes). No existing grant changed.
+  - C1 to C5 again: identical to the earlier runs.
+  - Live's defaults for what `postgres` creates in `public` are now empty for anon, authenticated and service_role on tables, sequences and functions (only `postgres` itself is listed). `platform` keeps its defaults for service_role only.
 
 ## Go-live runbook for the platform migrations (12 Nov 2026)
 
