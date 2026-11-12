@@ -20,8 +20,12 @@ export default async function AdminStationsPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Stations</h1>
         <p className="text-muted-foreground">
-          {stations?.length ?? 0} stations. Customers pick one as their search
-          location. Positions are latitude/longitude, e.g. from Google Maps
+          {stations?.length ?? 0} stations. Customers can pick one as their
+          search location. The list refreshes from OpenStreetMap on the 1st of
+          each month: new stations are added, stations OpenStreetMap no longer
+          has are switched off, and names and positions of linked stations are
+          taken from OpenStreetMap (fix them there). Stations you switch off
+          here stay off. Positions are latitude/longitude, e.g. from Google Maps
           (right-click a spot → copy the numbers).
         </p>
       </header>

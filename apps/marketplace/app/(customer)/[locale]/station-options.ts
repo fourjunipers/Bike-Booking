@@ -12,6 +12,11 @@ const LINE_LABELS: Record<string, string> = {
   ARL: "ARL",
   SRT_DARK_RED: "SRT Red",
   SRT_LIGHT_RED: "SRT Red",
+  // Stations added by the monthly OpenStreetMap refresh (lib/stations/osm.ts).
+  BTS: "BTS",
+  MRT: "MRT",
+  SRT: "SRT",
+  RAIL: "Rail",
 };
 
 /** Station choices in the customer's language: "Asok (BTS)", "อโศก (BTS)". */
