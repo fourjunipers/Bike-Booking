@@ -104,13 +104,11 @@ describe("repair entries", () => {
       ).data?.map((c) => c.code);
     expect(await conflicts()).toEqual([]);
 
-    await service
-      .from("bike_model_downtime")
-      .insert({
-        bike_model_id: seed.bsrPcx,
-        units: 1,
-        back_on: bangkokDay(15),
-      });
+    await service.from("bike_model_downtime").insert({
+      bike_model_id: seed.bsrPcx,
+      units: 1,
+      back_on: bangkokDay(15),
+    });
     expect(await conflicts()).toEqual(["K7Q4ZP"]);
 
     // Back tomorrow, while the booking still runs: still clashes from today.
