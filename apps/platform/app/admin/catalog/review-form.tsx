@@ -30,8 +30,12 @@ export function ReviewForm({
         name="notes"
         maxLength={500}
         placeholder={t("notes")}
+        aria-describedby={`notes-help-${id}`}
         className={inputClass}
       />
+      <p id={`notes-help-${id}`} className="text-xs text-muted-foreground">
+        {t("notesHelp")}
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
