@@ -11,7 +11,7 @@ const css = readFileSync(join(__dirname, "..", "app", "globals.css"), "utf8");
 const root = css.slice(css.indexOf(":root {"), css.indexOf(".dark {"));
 
 function token(name: string): string {
-  const m = new RegExp(`--${name}:\s*([^;]+);`).exec(root);
+  const m = new RegExp(`--${name}:\\s*([^;]+);`).exec(root);
   if (!m) throw new Error(`no --${name}`);
   const value = m[1].trim();
   const ref = /^var\(--([\w-]+)\)$/.exec(value);
@@ -35,7 +35,7 @@ function contrast(a: string, b: string): number {
 
 describe("design tokens", () => {
   it("are hex colours", () => {
-    for (const name of ["mango", "leaf", "navy", "cream", "link", "input"])
+    for (const name of ["mango", "leaf", "ink", "cream", "link", "input"])
       expect(token(name)).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
@@ -53,18 +53,35 @@ describe("design tokens", () => {
     ["link", "background"],
     ["link", "mango-soft"],
     ["destructive", "card"],
-    ["navy", "sun"],
+    ["ink", "sun"],
     ["leaf-ink", "leaf-soft"],
+    // Search tabs: Ride today (mango) and Book ahead (leaf), filled and tinted.
+    ["ink", "mango"],
+    ["card", "leaf"],
+    ["ink", "mango-soft"],
+    ["ink", "leaf-soft"],
+    ["muted-foreground", "mango-soft"],
+    ["muted-foreground", "leaf-soft"],
+    ["link", "leaf-soft"],
+    ["leaf-ink", "card"],
   ])("text %s on %s is at least 4.5:1", (fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("white text on mango would fail, so buttons use navy", () => {
-    expect(token("primary-foreground")).toBe(token("navy"));
+  it("white text on mango would fail, so buttons use near-black", () => {
+    expect(token("primary-foreground")).toBe(token("ink"));
+    expect(contrast("card", "mango")).toBeLessThan(4.5);
+  });
+
+  it("is the logo's palette, without the old navy", () => {
+    expect(token("mango")).toBe("#f8920a");
+    expect(root).not.toMatch(/navy|#14213d/i);
   });
 
   it("input borders stand out at least 3:1", () => {
     expect(contrast("input", "card")).toBeGreaterThanOrEqual(3);
     expect(contrast("input", "background")).toBeGreaterThanOrEqual(3);
+    expect(contrast("input", "mango-soft")).toBeGreaterThanOrEqual(3);
+    expect(contrast("input", "leaf-soft")).toBeGreaterThanOrEqual(3);
   });
 });

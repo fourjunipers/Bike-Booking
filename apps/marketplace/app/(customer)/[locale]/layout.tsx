@@ -57,7 +57,7 @@ export default async function CustomerLayout({
         >
           {children}
         </AreaShell>
-        <footer className="border-t-4 border-mango bg-navy text-white">
+        <footer className="border-t-4 border-mango bg-ink text-white">
           <nav
             aria-label={tp("link")}
             className="mx-auto flex max-w-6xl gap-4 px-4 py-4 text-sm"
