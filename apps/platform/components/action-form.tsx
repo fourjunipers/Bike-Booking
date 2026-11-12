@@ -23,6 +23,8 @@ export type FormState = {
   errors?: Record<string, string>;
   /** "Did you mean…": links offered with an error, e.g. matching presets. */
   suggestions?: { label: string; href: string }[];
+  /** Another way to get it done, offered with an error, e.g. "retire". */
+  offer?: string;
 };
 
 export type FormAction = (
@@ -54,6 +56,7 @@ export function ActionForm({
   confirmIf,
   destructive,
   className,
+  offers,
   children,
 }: {
   action: FormAction;
@@ -67,6 +70,11 @@ export function ActionForm({
   confirmIf?: (data: FormData) => string | undefined;
   destructive?: boolean;
   className?: string;
+  /**
+   * What to show under the form when the action answers with an `offer`,
+   * by its name: usually a button for the other way ("Retire instead").
+   */
+  offers?: Record<string, ReactNode>;
   children?: ReactNode;
 }) {
   const t = useTranslations("FormErrors");
@@ -150,6 +158,10 @@ export function ActionForm({
           </div>
         )}
       </form>
+      {/* Outside the form: an offer is usually a form of its own. */}
+      {state.offer && !pending && offers?.[state.offer] && (
+        <div className="mt-3">{offers[state.offer]}</div>
+      )}
     </FormContext.Provider>
   );
 }

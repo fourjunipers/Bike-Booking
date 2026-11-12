@@ -4,6 +4,28 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 
 Thai already used the general word for a vehicle (รถ, counted in คัน) wherever English said “bike”, so the bike-to-vehicle change needed no Thai edits beyond the lines below.
 
+## Fourth round: deleting and retiring (12 Nov 2026, night)
+
+All new: the refused-delete message with “Retire instead”, “Restore”, the confirmations for retiring and selling, and retiring a make & model.
+
+| Key | English | Thai |
+| --- | --- | --- |
+| `FormErrors.unitInUse` | This vehicle has downtime or bookings on record, so it can't be deleted. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept. | รถคันนี้มีประวัติการหยุดใช้งานหรือการจอง จึงลบไม่ได้ คุณปลดระวางแทนได้: รถจะออกจากรายการรถและเช่าไม่ได้ แต่ประวัติยังอยู่ |
+| `FormErrors.model_has_active_units` | Retire or sell its vehicles first. A make & model can be retired once none of its vehicles is in the fleet. | ปลดระวางหรือขายรถของรุ่นนี้ก่อน ยี่ห้อและรุ่นจะปลดระวางได้เมื่อไม่มีรถคันใดอยู่ในฟลีตแล้ว |
+| `FormErrors.model_retired` | This make & model is retired. Restore it first. | ยี่ห้อและรุ่นนี้ปลดระวางแล้ว กรุณานำกลับมาใช้ก่อน |
+| `Fleet.unit.retireInstead` | Retire instead | ปลดระวางแทน |
+| `Fleet.unit.restore` | Restore | นำกลับมาใช้ |
+| `Fleet.unit.restoreHelp` | Retired vehicles are out of the fleet. Restore puts this one back as active. | รถที่ปลดระวางแล้วไม่อยู่ในฟลีต การนำกลับมาใช้จะทำให้รถคันนี้กลับเป็นพร้อมใช้งาน |
+| `Fleet.unit.retireConfirm` | Retire this vehicle? It leaves the fleet list and can't be rented or booked. Its history is kept, and you can restore it later. | ปลดระวางรถคันนี้หรือไม่ รถจะออกจากรายการรถ และเช่าหรือจองไม่ได้ ประวัติยังอยู่ และนำกลับมาใช้ภายหลังได้ |
+| `Fleet.unit.sellConfirm` | Mark this vehicle as sold? It leaves the fleet list and can't be rented or booked. Its history is kept. You fill in the sale details next. | ทำเครื่องหมายว่ารถคันนี้ขายแล้วหรือไม่ รถจะออกจากรายการรถ และเช่าหรือจองไม่ได้ ประวัติยังอยู่ จากนั้นกรอกรายละเอียดการขาย |
+| `Fleet.model.retire` | Retire make & model | ปลดระวางยี่ห้อและรุ่น |
+| `Fleet.model.retireConfirm` | Retire this make & model? It leaves the fleet list and the “Add to inventory” form, and comes off Moto Mangos. Its vehicles and their history are kept, and you can restore it later. | ปลดระวางยี่ห้อและรุ่นนี้หรือไม่ จะออกจากรายการรถและฟอร์ม “เพิ่มเข้าคลังรถ” และออกจาก Moto Mangos รถและประวัติยังอยู่ และนำกลับมาใช้ภายหลังได้ |
+| `Fleet.model.retiredTitle` | Retired | ปลดระวางแล้ว |
+| `Fleet.model.retiredOn` | Retired on {date}. It is hidden from the fleet list and from “Add to inventory”, and is not listed on Moto Mangos. Find it under Show: Sold and retired. | ปลดระวางเมื่อ {date} ถูกซ่อนจากรายการรถและจาก “เพิ่มเข้าคลังรถ” และไม่ได้ลงประกาศบน Moto Mangos ดูได้ที่ แสดง: ขายแล้วและปลดระวาง |
+| `Fleet.model.restore` | Restore make & model | นำยี่ห้อและรุ่นกลับมาใช้ |
+| `Fleet.model.deleteConfirmWaiting` | Delete this model? This can't be undone. Its Moto Mangos review request will be withdrawn. | ลบรุ่นนี้หรือไม่ การลบไม่สามารถย้อนกลับได้ คำขอตรวจกับ Moto Mangos จะถูกถอน |
+| `Fleet.listing.retired` | Retired | ปลดระวางแล้ว |
+
 ## Third round (12 Nov 2026, late)
 
 New or changed in the third round: the “Manually enter” button and its question, the Moto Mangos chips on the Fleet list, the new text for a model that isn’t on the list, and “what to do next” for a model that was not added. Gone: `Fleet.what.listHelp`, `Fleet.motoMangos.submitHelp` and the two `Fleet.reviewNews.*` lines.

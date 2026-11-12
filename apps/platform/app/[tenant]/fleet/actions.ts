@@ -217,6 +217,32 @@ export async function saveModel(
   return { ok: true };
 }
 
+/**
+ * Retires a make & model, or restores it. The database refuses to retire one
+ * that still has a vehicle in the fleet, and takes a retired one off Moto
+ * Mangos; the audit trail records who did it.
+ */
+export async function setModelRetired(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { slug, tenant, role, supabase } = await context(formData);
+  if (!canManageFleet(role)) return notAllowed;
+  const { data, error } = await supabase
+    .from("models")
+    .update({
+      retired_at:
+        field(formData, "retired") === "1" ? new Date().toISOString() : null,
+    })
+    .eq("tenant_id", tenant.id)
+    .eq("id", field(formData, "id"))
+    .select("id");
+  if (error || data.length !== 1)
+    return { errors: { form: dbErrorKey(error) } };
+  refresh(slug);
+  return { ok: true };
+}
+
 export async function deleteModel(
   _prev: FormState,
   formData: FormData,
@@ -449,8 +475,15 @@ export async function setUnitStatus(
     .eq("tenant_id", tenant.id)
     .eq("id", id)
     .select("id");
+  // The status form shows a refusal under its choices; a lone button
+  // (Restore, Retire instead) has no such field and shows it beside itself.
   if (error || data.length !== 1)
-    return { errors: { status: dbErrorKey(error) } };
+    return {
+      errors: {
+        [field(formData, "button") === "1" ? "form" : "status"]:
+          dbErrorKey(error),
+      },
+    };
   refresh(slug);
   if (status === "sold" && field(formData, "was") !== "sold")
     redirect(`/${slug}/fleet/units/${id}?sold=1#purchase-sale`);
@@ -469,6 +502,10 @@ export async function deleteUnit(
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");
+  // A vehicle with downtime or bookings on record can't be deleted (they
+  // point at it): say so, and offer to retire it instead.
+  if (error?.code === "23503")
+    return { errors: { form: "unitInUse" }, offer: "retire" };
   if (error || data.length !== 1)
     return { errors: { form: dbErrorKey(error) } };
   refresh(slug);

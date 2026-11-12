@@ -58,6 +58,8 @@ export type ViewModel = {
   kind?: string;
   /** Its categories (lib/vehicle-kinds): a model can have several. */
   categories?: readonly string[];
+  /** Retired: out of the current fleet, with the sold and retired vehicles. */
+  retired?: boolean;
 };
 
 export type ViewBand = { model_id: string; year_from: number; year_to: number };
@@ -396,12 +398,12 @@ export function buildFleetView(
     // With no filters on (or only the kind of vehicle and the category), a
     // make & model that has no vehicles yet is still listed, so it can be
     // given some.
-    if (
-      activeFilterCount({ ...view, kind: "", category: "" }) === 0 &&
-      view.scope !== "past"
-    ) {
+    if (activeFilterCount({ ...view, kind: "", category: "" }) === 0) {
       for (const model of data.models) {
         if (byModel.has(model.id)) continue;
+        // A retired make & model is with the past fleet, and only there.
+        if (view.scope === "current" && model.retired) continue;
+        if (view.scope === "past" && !model.retired) continue;
         if (view.kind && (model.kind ?? "motorbike") !== view.kind) continue;
         if (view.category && !model.categories?.includes(view.category))
           continue;

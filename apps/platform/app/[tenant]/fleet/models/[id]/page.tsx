@@ -26,7 +26,7 @@ import { canManageFleet } from "@/lib/roles";
 import { humanizeKey, reviewNews } from "@/lib/vehicle-kinds";
 import { formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
-import { deleteModel } from "../../actions";
+import { deleteModel, setModelRetired } from "../../actions";
 import {
   ListingForm,
   ChoosePresetForm,
@@ -89,6 +89,10 @@ export default async function ModelPage({
   const own = !model.catalog_id;
   const matches = own ? suggestCatalog(model.make, model.model, catalog) : [];
   const base = `/${slug}/fleet`;
+  // Once none of its vehicles is in the fleet (or it has none).
+  const canRetire = units.every(
+    (unit) => unit.status === "sold" || unit.status === "retired",
+  );
 
   return (
     <>
@@ -398,12 +402,42 @@ export default async function ModelPage({
               </div>
             )}
           </Panel>
+          {/* Out of use: retire it (kept, hidden) once none of its vehicles
+              is in the fleet; delete it when it has no vehicles at all. */}
+          {manage && model.retired_at && (
+            <Panel title={t("retiredTitle")}>
+              <p className="mb-3 text-sm">
+                {t("retiredOn", {
+                  date: formatInstant(
+                    new Date(model.retired_at),
+                    tenant.timezone,
+                    locale,
+                  ),
+                })}
+              </p>
+              <ActionForm
+                action={setModelRetired}
+                hidden={{ slug, id: model.id, retired: "0" }}
+                submitLabel={t("restore")}
+                className="space-y-1"
+              />
+            </Panel>
+          )}
+          {manage && !model.retired_at && canRetire && (
+            <ActionForm
+              action={setModelRetired}
+              hidden={{ slug, id: model.id, retired: "1" }}
+              submitLabel={t("retire")}
+              confirm={t("retireConfirm")}
+              destructive
+            />
+          )}
           {manage && units.length === 0 && (
             <ActionForm
               action={deleteModel}
               hidden={{ slug, id: model.id }}
               submitLabel={t("delete")}
-              confirm={t("deleteConfirm")}
+              confirm={t(waiting ? "deleteConfirmWaiting" : "deleteConfirm")}
               destructive
             />
           )}

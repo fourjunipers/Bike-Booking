@@ -38,7 +38,10 @@ export default async function NewUnitPage({
     getFleet(tenant.id),
     getLocations(tenant.id),
   ]);
-  const models = inventoryModelOptions(fleet);
+  // A retired make & model takes no new vehicles until it is restored.
+  const models = inventoryModelOptions(
+    fleet.filter((model) => model.retired_at === null),
+  );
   // Arriving from a model's row or page, or from adding a make & model.
   const wanted = typeof query.model === "string" ? `model:${query.model}` : "";
   const addModelHref = `/${slug}/fleet/models/new?then=inventory`;

@@ -288,3 +288,119 @@ begin
   return jsonb_build_object('models', v_models, 'units', v_units);
 end;
 $$;
+
+-- Retiring a make & model, and withdrawing a request (owner, 12 Nov 2026) ----------
+--
+-- 5. platform.models.retired_at: a make & model the shop no longer rents out.
+--    It is kept, with its vehicles and their history, but leaves the fleet
+--    list and the "Add to inventory" form until it is restored. A model can
+--    be retired once every one of its vehicles is sold or retired. Retiring
+--    takes it off Moto Mangos (marketplace_listed goes off) and it can't be
+--    listed, or given a vehicle that is in the fleet, while it is retired.
+-- 6. Deleting a model that is waiting for a Moto Mangos review withdraws the
+--    request, so the reviewer isn't left with a request that has no model.
+--
+-- Who did it: models_audit and units_audit (20261110000500) already record
+-- every insert, update and delete with the signed-in person.
+
+alter table platform.models add column retired_at timestamptz;
+
+create function platform_private.models_retire_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.retired_at is null then
+    return new;
+  end if;
+  if tg_op = 'INSERT' or old.retired_at is null then
+    -- Being retired now.
+    if exists (
+      select 1 from platform.units u
+      where u.model_id = new.id and u.status not in ('sold', 'retired')
+    ) then
+      raise exception 'model_has_active_units' using errcode = 'P0001';
+    end if;
+    new.marketplace_listed := false;
+    new.instant_units := 0;
+    new.request_units := 0;
+    new.ready_now := 0;
+  elsif new.marketplace_listed then
+    -- Still retired: restore it before listing it.
+    raise exception 'model_retired' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function platform_private.models_retire_guard() from public, anon, authenticated;
+
+create trigger models_retire_guard
+before insert or update on platform.models
+for each row execute function platform_private.models_retire_guard();
+
+-- A retired model takes no vehicle that is in the fleet: not a new one, not
+-- one restored from sold or retired, not one moved over from another model.
+create function platform_private.units_model_not_retired()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_retired_at timestamptz;
+begin
+  if new.status in ('active', 'maintenance') and (
+    tg_op = 'INSERT'
+    or old.status in ('sold', 'retired')
+    or new.model_id <> old.model_id
+  ) then
+    -- FOR SHARE: someone retiring the model at this instant waits for this
+    -- vehicle, and this vehicle waits for them, so one sees the other.
+    select m.retired_at into v_retired_at
+    from platform.models m
+    where m.id = new.model_id
+    for share;
+    if v_retired_at is not null then
+      raise exception 'model_retired' using errcode = 'P0001';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function platform_private.units_model_not_retired() from public, anon, authenticated;
+
+create trigger units_model_not_retired
+before insert or update of status, model_id on platform.units
+for each row execute function platform_private.units_model_not_retired();
+
+-- The model is gone: its own request, if nobody else's model is on it and it
+-- is still waiting, is closed with a note for the reviewer's records.
+create function platform_private.models_withdraw_request()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if old.catalog_id is not null then
+    update public.bike_catalog c
+    set status = 'rejected',
+        review_notes = 'Withdrawn: the shop deleted the model.',
+        reviewed_at = now()
+    where c.id = old.catalog_id
+      and c.status = 'requested'
+      and not exists (select 1 from platform.models m where m.catalog_id = c.id);
+  end if;
+  return old;
+end;
+$$;
+
+revoke all on function platform_private.models_withdraw_request() from public, anon, authenticated;
+
+create trigger models_withdraw_request
+after delete on platform.models
+for each row execute function platform_private.models_withdraw_request();

@@ -51,8 +51,22 @@ Third round (owner's second click-through, 12 Nov 2026, late):
 - **Fleet list look.** Each make & model is one card: a header row in the light mango tint (dark text, AA) with a kind icon in a fixed 44 px box (a photo instead when the model has one with a web address; none do until Phase 3 uploads them), the title and pencil, then chips: Moto Mangos status for owners and managers (green Listed on Moto Mangos, amber In review, red Needs changes, grey Not listed; motorbikes only), the categories, and a dark count badge. Rows under it alternate with a very light cream. The old "Added / Not added to Moto Mangos" markers are replaced by the chips; the dashboard block is unchanged.
 - Staging: the first second-round version of the migration was taken back by hand again and the new one pushed (see the report).
 
+Fourth round, deleting and retiring (owner, 12 Nov 2026, night):
+
+- **What was already there:** a vehicle can be deleted by an owner or manager unless anything on its calendar points at it (downtime now, bookings from Phase 3); sold and retired vehicles leave the default list ("Show: Sold and retired" brings them back); a make & model can be deleted when it has no vehicles; every insert, update and delete is in the audit trail with who did it.
+- **Retire instead.** When deleting a vehicle is refused, the message says why and shows a "Retire instead" button (not for one that is already sold or retired). It is refused in turn while the vehicle has a block still to come.
+- **Restore.** A retired vehicle has a plain "Restore" button (back to active).
+- **Confirmations.** Choosing Retired or Sold in the status form asks first and says what will happen. Deleting already asked.
+- **Retiring a make & model.** New `platform.models.retired_at`. "Retire make & model" shows on its page once none of its vehicles is in the fleet (all sold or retired, or it has none); it asks first. A retired model leaves the fleet list (it is under "Show: Sold and retired", with a "Retired" chip) and the "Add to inventory" form, comes off Moto Mangos (`marketplace_listed` goes off and can't be switched on), and takes no vehicle that is in the fleet, new or restored, until "Restore make & model". The database enforces all of it (`models_retire_guard`, `units_model_not_retired`).
+- **Deleting a model that waits for review withdraws the request** (owner's decision): the request is closed as rejected with the note "Withdrawn: the shop deleted the model." (`models_withdraw_request`). A model on an approved list entry leaves the entry alone.
+- All of this is in `20261113000100_platform_fleet_rework`, changed in place again (not on `main` or live); nothing from `20261112000400` was touched. No new table or API-reachable function, so no new grants.
+- Found on the way: the status choices on a vehicle's page kept showing the old status after a button changed it; they now redraw.
+- Tests: `tests/db/fleet-rework.test.ts` (retire rules, listing off, no vehicles on a retired model, who may and the audit row, refused delete, withdrawn request); a Playwright test for the whole flow; the fleet-view unit test covers where a retired model shows.
+
 Known limits and open points:
 
+- **A retired make & model still counts** in the "N makes & models" line at the top of Fleet and still appears in the fleet filters' model dropdown.
+- **Sold vehicles have no Restore button** (only retired ones, as asked); the status form can still set one back to active.
 - **Moto Mangos files a motorbike under one type.** A model with several categories is sent with the first one in the list's order (Scooter, Touring, Adventure, Sport, Classic, Off-road), so "Adventure and Touring" goes as Touring. Phase 3 (or the owner) should decide whether the shop picks the main one or Moto Mangos takes several.
 - A motorbike on a list entry can be given a category different from the list's. Nothing uses the difference yet; Phase 3 should decide which one Moto Mangos search reads.
 - Removing a category from the list leaves models that have it unchanged; the form then asks for a new one on the next save.

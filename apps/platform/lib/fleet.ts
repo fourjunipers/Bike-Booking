@@ -371,6 +371,8 @@ export function dbErrorKey(
     "merge_target_not_approved",
     "only_owner_or_manager",
     "currency_locked",
+    "model_has_active_units",
+    "model_retired",
   ])
     if (message.includes(known)) return known;
   if (message.includes("time zone")) return "timezoneOwnerOnly";

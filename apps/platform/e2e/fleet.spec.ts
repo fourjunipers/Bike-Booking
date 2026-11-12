@@ -673,6 +673,12 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   const status = panel(page, "Status");
   await expect(status.getByRole("radio")).toHaveCount(4);
   await status.getByRole("radio", { name: /^Sold/ }).check();
+  // Selling asks first, saying what will happen.
+  let sellQuestion = "";
+  page.once("dialog", (dialog) => {
+    sellQuestion = dialog.message();
+    void dialog.accept();
+  });
   await status.getByRole("button", { name: "Save" }).click();
   await expect(
     status.getByText(/still has a block that ends in the future/),
@@ -680,8 +686,13 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   await page.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByText("No downtime now or planned.")).toBeVisible();
 
+  expect(sellQuestion).toBe(
+    "Mark this vehicle as sold? It leaves the fleet list and can't be rented or booked. Its history is kept. You fill in the sale details next.",
+  );
+
   // Sold only changes the status, then sends you to the one money section.
   await status.getByRole("radio", { name: /^Sold/ }).check();
+  page.once("dialog", (dialog) => void dialog.accept());
   await status.getByRole("button", { name: "Save" }).click();
   await expect(page).toHaveURL(/sold=1#purchase-sale$/);
   const money = panel(page, "Purchase and sale");
@@ -1051,6 +1062,143 @@ test("my own make and model: added with no approval, no duplicates, then matched
 
   // Clean up: the bike, then the model.
   await page.goto(bikeUrl);
+  await page.getByRole("button", { name: "Delete vehicle" }).click();
+  await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
+  await page.goto(modelUrl);
+  await page.getByRole("button", { name: "Delete model" }).click();
+  await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
+});
+
+test("removing things: Retire instead when a delete is refused, Restore, and retiring a make & model", async ({
+  page,
+}) => {
+  test.slow();
+  await signIn(page, demo.bsrOwner);
+  const make = `Retmake${Date.now().toString(36)}`;
+  const name = `${make} Old 110`;
+  await page.goto("/bsr/fleet/models/new");
+  await page.getByRole("button", { name: "Manually enter" }).click();
+  await page.getByLabel("Make", { exact: true }).fill(make);
+  await page.getByLabel("Model", { exact: true }).fill("Old 110");
+  await page.getByLabel("Engine size (cc)").fill("110");
+  await page.getByLabel("Transmission").selectOption("automatic");
+  await tick(page, "Scooter");
+  await page.getByRole("button", { name: "Save make & model" }).click();
+  await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
+  const modelUrl = page.url().replace(/\?.*$/, "");
+
+  // One vehicle, with a downtime booked for later.
+  await page.getByRole("link", { name: "Add to inventory" }).click();
+  const plate = freshPlate();
+  await page.getByLabel("Plate", { exact: true }).fill(plate);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(
+    page.getByRole("heading", { name: plate, level: 1 }),
+  ).toBeVisible();
+  const unitUrl = page.url();
+  await page.getByLabel("From", { exact: true }).fill("2032-05-01T09:00");
+  await page.getByLabel("Until", { exact: true }).fill("2032-05-02T09:00");
+  await page.getByRole("button", { name: "Add downtime" }).click();
+  await expect(page.getByRole("button", { name: "Remove" })).toBeVisible();
+
+  // While a vehicle is in the fleet its make & model can't be retired.
+  await page.goto(modelUrl);
+  await expect(
+    page.getByRole("button", { name: "Retire make & model" }),
+  ).toHaveCount(0);
+  await page.goto(unitUrl);
+
+  // Deleting is refused (the downtime points at it): the message says why
+  // and offers to retire it instead. Every step asks first.
+  const questions: string[] = [];
+  page.on("dialog", (dialog) => {
+    questions.push(dialog.message());
+    void dialog.accept();
+  });
+  await page.getByRole("button", { name: "Delete vehicle" }).click();
+  await expect(
+    page.getByText(
+      "This vehicle has downtime or bookings on record, so it can't be deleted. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept.",
+    ),
+  ).toBeVisible();
+  const retireInstead = page.getByRole("button", { name: "Retire instead" });
+  expect(
+    Math.round((await retireInstead.boundingBox())!.height),
+  ).toBeGreaterThanOrEqual(44);
+  // Not while the downtime is still to come.
+  await retireInstead.click();
+  await expect(
+    page.getByText(/still has a block that ends in the future/),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Remove" }).click();
+  await expect(page.getByText("No downtime now or planned.")).toBeVisible();
+  await retireInstead.click();
+  const status = panel(page, "Status");
+  await expect(status.getByRole("radio", { name: /^Retired/ })).toBeChecked();
+  expect(questions).toContain(
+    "Retire this vehicle? It leaves the fleet list and can't be rented or booked. Its history is kept, and you can restore it later.",
+  );
+
+  // A retired vehicle is with the sold and retired ones, and has Restore.
+  await page.goto(`/bsr/fleet?q=${plate}`);
+  await expect(page.getByText(`No vehicle matches “${plate}”.`)).toBeVisible();
+  await page.goto(`/bsr/fleet?scope=past&q=${plate}`);
+  await expect(
+    page.getByRole("link", { name: new RegExp(plate) }),
+  ).toBeVisible();
+
+  // Now the make & model can be retired: it leaves the list and the
+  // inventory form, and says so on its page.
+  await page.goto(modelUrl);
+  await page.getByRole("button", { name: "Retire make & model" }).click();
+  await expect(
+    page.getByText(/^Retired on .+\. It is hidden from/),
+  ).toBeVisible();
+  expect(questions).toContain(
+    "Retire this make & model? It leaves the fleet list and the “Add to inventory” form, and comes off Moto Mangos. Its vehicles and their history are kept, and you can restore it later.",
+  );
+  // (reset=1: the default view, not the one remembered from the line above.)
+  await page.goto("/bsr/fleet?reset=1");
+  await expect(
+    page.getByRole("link", { name: "Honda PCX 160", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name, exact: true })).toHaveCount(0);
+  await page.goto("/bsr/fleet?scope=past");
+  const retired = page.locator("section", {
+    has: page.getByRole("link", { name, exact: true }),
+  });
+  await expect(
+    retired
+      .getByRole("list", { name: `About ${name}` })
+      .getByText("Retired", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    retired.getByRole("link", { name: `Add a ${name} to inventory` }),
+  ).toHaveCount(0);
+  await page.goto("/bsr/fleet/units/new");
+  await expect(
+    page
+      .getByLabel("Make", { exact: true })
+      .locator("option", { hasText: make }),
+  ).toHaveCount(0);
+
+  // Its vehicle can't come back before it does.
+  await page.goto(unitUrl);
+  await status.getByRole("button", { name: "Restore" }).click();
+  await expect(
+    status.getByText("This make & model is retired. Restore it first."),
+  ).toBeVisible();
+  await page.goto(modelUrl);
+  await page.getByRole("button", { name: "Restore make & model" }).click();
+  await expect(
+    page.getByRole("button", { name: "Restore make & model" }),
+  ).toHaveCount(0);
+  await page.goto(unitUrl);
+  await status.getByRole("button", { name: "Restore" }).click();
+  await expect(status.getByRole("radio", { name: /^Active/ })).toBeChecked();
+  await expect(status.getByRole("button", { name: "Restore" })).toHaveCount(0);
+
+  // Clean up: the vehicle (no history left), then the model.
   await page.getByRole("button", { name: "Delete vehicle" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
   await page.goto(modelUrl);

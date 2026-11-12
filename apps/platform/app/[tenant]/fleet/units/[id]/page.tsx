@@ -42,6 +42,7 @@ import {
   FinancialsForm,
   OdometerForm,
   RenewalForm,
+  SetStatusButton,
   StatusForm,
   UnitForm,
 } from "../../unit-forms";
@@ -226,12 +227,28 @@ export default async function UnitPage({
 
           <Panel title={tUnit("status")} intro={tUnit("statusIntro")}>
             {work ? (
-              <StatusForm
-                slug={slug}
-                id={unit.id}
-                status={unit.status}
-                canRetireOrSell={manage}
-              />
+              <>
+                <StatusForm
+                  slug={slug}
+                  id={unit.id}
+                  status={unit.status}
+                  canRetireOrSell={manage}
+                />
+                {manage && unit.status === "retired" && (
+                  <div className="mt-5 border-t pt-5">
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      {tUnit("restoreHelp")}
+                    </p>
+                    <SetStatusButton
+                      slug={slug}
+                      id={unit.id}
+                      was={unit.status}
+                      status="active"
+                      label={tUnit("restore")}
+                    />
+                  </div>
+                )}
+              </>
             ) : (
               <p>
                 <StatusBadge status={unit.status} />{" "}
@@ -514,6 +531,24 @@ export default async function UnitPage({
               submitLabel={tUnit("delete")}
               confirm={tUnit("deleteConfirm")}
               destructive
+              // Refused because it has history: offer to retire it, unless
+              // it is out of the fleet already.
+              offers={
+                unit.status === "active" || unit.status === "maintenance"
+                  ? {
+                      retire: (
+                        <SetStatusButton
+                          slug={slug}
+                          id={unit.id}
+                          was={unit.status}
+                          status="retired"
+                          label={tUnit("retireInstead")}
+                          confirm={tUnit("retireConfirm")}
+                        />
+                      ),
+                    }
+                  : undefined
+              }
             />
           )}
         </div>

@@ -232,8 +232,24 @@ export function StatusForm({
     ? unitStatuses
     : workStatuses;
   return (
-    <ActionForm action={setUnitStatus} hidden={{ slug, id, was: status }}>
+    <ActionForm
+      action={setUnitStatus}
+      hidden={{ slug, id, was: status }}
+      // Retiring or selling takes the vehicle out of the fleet: ask first,
+      // saying what will happen.
+      confirmIf={(data) => {
+        const next = data.get("status");
+        if (next === status) return undefined;
+        if (next === "retired") return t("unit.retireConfirm");
+        if (next === "sold") return t("unit.sellConfirm");
+        return undefined;
+      }}
+    >
       <RadioList
+        // Redrawn when a button elsewhere (Restore, Retire instead) changes
+        // the status, so the choices show what is saved. The form around it
+        // stays, with its "Saved" note.
+        key={status}
         name="status"
         legend={t("unit.status")}
         defaultValue={status}
@@ -248,6 +264,36 @@ export function StatusForm({
           }))}
       />
     </ActionForm>
+  );
+}
+
+/**
+ * One button that sets a vehicle's status: "Restore" on a retired vehicle
+ * (back to active), "Retire instead" when deleting was refused.
+ */
+export function SetStatusButton({
+  slug,
+  id,
+  was,
+  status,
+  label,
+  confirm,
+}: {
+  slug: string;
+  id: string;
+  was: string;
+  status: "active" | "retired";
+  label: string;
+  confirm?: string;
+}) {
+  return (
+    <ActionForm
+      action={setUnitStatus}
+      hidden={{ slug, id, was, status, button: "1" }}
+      submitLabel={label}
+      confirm={confirm}
+      className="space-y-1"
+    />
   );
 }
 

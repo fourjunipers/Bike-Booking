@@ -362,6 +362,21 @@ describe("fleet list: the kind filter", () => {
     // A make & model with no vehicles yet still shows.
     expect(names("pickup")).toEqual(["Fortuner"]);
     expect(names("sport")).toEqual([]);
+    // A retired make & model with no vehicles shows with the past fleet only.
+    const withRetired = {
+      ...data,
+      models: [
+        ...data.models,
+        { ...data.models[2], id: "m-old", name: "Old one", retired: true },
+      ],
+    };
+    const shown = (scope: "current" | "past" | "all") =>
+      buildFleetView(withRetired as never, { ...defaultView, scope })
+        .sections.map((s) => s.model?.name)
+        .sort();
+    expect(shown("current")).not.toContain("Old one");
+    expect(shown("past")).toEqual(["Old one"]);
+    expect(shown("all")).toContain("Old one");
     // The sections carry every category, for the list to show.
     const all = buildFleetView(data as never, defaultView);
     expect(

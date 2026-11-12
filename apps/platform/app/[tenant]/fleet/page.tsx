@@ -133,6 +133,7 @@ export default async function FleetPage({
         transmission: model.catalog?.transmission ?? null,
         kind: model.vehicle_type,
         categories: model.categories,
+        retired: model.retired_at !== null,
       })),
     },
     view,
@@ -549,7 +550,12 @@ export default async function FleetPage({
                     aria-label={t("modelFacts", { name: section.model.name })}
                     className="flex flex-wrap items-center gap-1.5"
                   >
-                    {status && (
+                    {section.model.retired && (
+                      <li className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {t("listing.retired")}
+                      </li>
+                    )}
+                    {status && !section.model.retired && (
                       <li
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
@@ -592,7 +598,7 @@ export default async function FleetPage({
                             : `${t("unitCount", { count: group.count })}: ${breakdown(group.statusCounts)}`}
                         </p>
                       </div>
-                      {manage && section.model && (
+                      {manage && section.model && !section.model.retired && (
                         // A labelled button, not a bare plus (owner, 12 Nov
                         // 2026). Its name starts with what is on it.
                         <Link

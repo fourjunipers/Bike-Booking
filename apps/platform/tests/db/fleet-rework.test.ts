@@ -1,6 +1,7 @@
 /**
  * Fleet rework (migration 20261113000100): categories on every model, the
- * approval date for the shop, and the CSV import carrying categories.
+ * approval date for the shop, the CSV import carrying categories, retiring a
+ * make & model, and withdrawing a request when its model is deleted.
  */
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -279,5 +280,195 @@ describe("CSV import", () => {
     expect(data).toMatchObject({ models: 2, units: 1 });
     expect((await row(carId)).categories).toEqual(["suv", "pickup"]);
     expect((await row(listedId)).categories).toEqual(["city_scooter"]);
+  });
+});
+
+describe("retiring a make & model", () => {
+  const owner = () => shop.members.owner.db;
+  const addUnit = async (modelId: string, status = "active") => {
+    const { data, error } = await service
+      .from("units")
+      .insert({
+        tenant_id: shop.id,
+        model_id: modelId,
+        location_id: shop.locationId,
+        plate: `RW-${tag}-${++counter}`,
+        status,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return data.id;
+  };
+  const retire = (id: string, on = true) =>
+    owner()
+      .from("models")
+      .update({ retired_at: on ? new Date().toISOString() : null })
+      .eq("id", id)
+      .select("retired_at, marketplace_listed");
+  const setStatus = (unit: string, status: string) =>
+    owner().from("units").update({ status }).eq("id", unit).select("status");
+
+  it("is refused while one of its vehicles is in the fleet, and allowed once they are all retired or sold", async () => {
+    const model = await addModel();
+    const first = await addUnit(model);
+    const second = await addUnit(model, "maintenance");
+    expect((await retire(model)).error?.message).toContain(
+      "model_has_active_units",
+    );
+    await setStatus(first, "retired");
+    expect((await retire(model)).error?.message).toContain(
+      "model_has_active_units",
+    );
+    await setStatus(second, "sold");
+    const done = await retire(model);
+    expect(done.error).toBeNull();
+    expect(done.data?.[0].retired_at).not.toBeNull();
+  });
+
+  it("takes the model off Moto Mangos, and it can't be listed while retired", async () => {
+    const model = await addModel({
+      catalog_id: presetId,
+      marketplace_listed: true,
+    });
+    expect((await row(model)).marketplace_listed).toBe(true);
+    const done = await retire(model);
+    expect(done.error).toBeNull();
+    expect(done.data?.[0].marketplace_listed).toBe(false);
+    const listed = await owner()
+      .from("models")
+      .update({ marketplace_listed: true })
+      .eq("id", model)
+      .select("id");
+    expect(listed.error?.message).toContain("model_retired");
+    // Restored, it can be listed again.
+    expect((await retire(model, false)).error).toBeNull();
+    const again = await owner()
+      .from("models")
+      .update({ marketplace_listed: true })
+      .eq("id", model)
+      .select("marketplace_listed");
+    expect(again.data).toEqual([{ marketplace_listed: true }]);
+  });
+
+  it("a retired model takes no vehicle that is in the fleet until it is restored", async () => {
+    const model = await addModel();
+    const unit = await addUnit(model, "retired");
+    expect((await retire(model)).error).toBeNull();
+    // Not a new one...
+    const added = await owner()
+      .from("units")
+      .insert({
+        tenant_id: shop.id,
+        model_id: model,
+        location_id: shop.locationId,
+        plate: `RW-${tag}-new`,
+      });
+    expect(added.error?.message).toContain("model_retired");
+    // ...and not its own vehicle restored.
+    expect((await setStatus(unit, "active")).error?.message).toContain(
+      "model_retired",
+    );
+    expect((await retire(model, false)).error).toBeNull();
+    expect((await setStatus(unit, "active")).data).toEqual([
+      { status: "active" },
+    ]);
+  });
+
+  it("only an owner or a manager can retire one, and the audit trail says who", async () => {
+    const model = await addModel();
+    const staff = await shop.members.staff.db
+      .from("models")
+      .update({ retired_at: new Date().toISOString() })
+      .eq("id", model)
+      .select("id");
+    expect(staff.data ?? []).toEqual([]);
+    expect((await retire(model)).error).toBeNull();
+    const { data: audit } = await service
+      .from("audit_events")
+      .select("action, actor, after")
+      .eq("entity", "models")
+      .eq("entity_id", model)
+      .order("id", { ascending: false })
+      .limit(1);
+    expect(audit?.[0]).toMatchObject({
+      action: "update",
+      actor: shop.members.owner.id,
+    });
+    expect(
+      (audit?.[0].after as { retired_at?: string }).retired_at,
+    ).toBeTruthy();
+  });
+});
+
+describe("deleting vehicles and models", () => {
+  it("a vehicle with a block on record can't be deleted, but can be retired once the block is over", async () => {
+    const model = await addModel();
+    const { data: unit } = await service
+      .from("units")
+      .insert({
+        tenant_id: shop.id,
+        model_id: model,
+        location_id: shop.locationId,
+        plate: `RW-${tag}-blocked`,
+      })
+      .select("id")
+      .single();
+    const past = (days: number) =>
+      new Date(Date.now() - days * 86_400_000).toISOString();
+    const { error: blockError } = await service.from("unit_blocks").insert({
+      tenant_id: shop.id,
+      unit_id: unit!.id,
+      kind: "downtime",
+      period: `[${past(3)},${past(2)})`,
+    });
+    expect(blockError).toBeNull();
+    const owner = shop.members.owner.db;
+    const deleted = await owner.from("units").delete().eq("id", unit!.id);
+    // What the app turns into "Retire instead".
+    expect(deleted.error?.code).toBe("23503");
+    const retired = await owner
+      .from("units")
+      .update({ status: "retired" })
+      .eq("id", unit!.id)
+      .select("status");
+    expect(retired.data).toEqual([{ status: "retired" }]);
+  });
+
+  it("deleting a model that waits for review withdraws its request", async () => {
+    const model = await addModel();
+    const entry = await submit(model);
+    const { error } = await shop.members.owner.db
+      .from("models")
+      .delete()
+      .eq("id", model);
+    expect(error).toBeNull();
+    const { data } = await service
+      .schema("public")
+      .from("bike_catalog")
+      .select("status, review_notes, reviewed_at")
+      .eq("id", entry)
+      .single();
+    expect(data).toMatchObject({
+      status: "rejected",
+      review_notes: "Withdrawn: the shop deleted the model.",
+    });
+    expect(data?.reviewed_at).not.toBeNull();
+  });
+
+  it("deleting a model on the list leaves the list entry alone", async () => {
+    const model = await addModel({ catalog_id: presetId });
+    await shop.members.owner.db
+      .from("models")
+      .delete()
+      .eq("id", model)
+      .throwOnError();
+    const { data } = await service
+      .schema("public")
+      .from("bike_catalog")
+      .select("status")
+      .eq("id", presetId)
+      .single();
+    expect(data?.status).toBe("approved");
   });
 });

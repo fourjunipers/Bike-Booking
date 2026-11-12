@@ -273,7 +273,10 @@
     "ccRange": "Enter an engine size from 1 to 20000 cc.",
     "staleUnit": "This vehicle was changed by someone else while this form was open. Reload the page to see the latest, then make your change again.",
     "invalidCategory": "Choose one of the categories in the list.",
-    "categoryFirst": "Choose a category for this model and save it first, then send it."
+    "categoryFirst": "Choose a category for this model and save it first, then send it.",
+    "unitInUse": "This vehicle has downtime or bookings on record, so it can't be deleted. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept.",
+    "model_has_active_units": "Retire or sell its vehicles first. A make & model can be retired once none of its vehicles is in the fleet.",
+    "model_retired": "This make & model is retired. Restore it first."
   },
   "Fleet": {
     "title": "Fleet",
@@ -387,7 +390,13 @@
       "newIntro": "A kind of vehicle you rent out, like a Honda Click 160. Add the vehicles themselves afterwards, with “Add to inventory”.",
       "nameHelpNew": "Optional. Your own name for it; blank uses the make and model.",
       "saveNew": "Save make & model",
-      "saveThenInventory": "Save and add a vehicle"
+      "saveThenInventory": "Save and add a vehicle",
+      "retire": "Retire make & model",
+      "retireConfirm": "Retire this make & model? It leaves the fleet list and the “Add to inventory” form, and comes off Moto Mangos. Its vehicles and their history are kept, and you can restore it later.",
+      "retiredTitle": "Retired",
+      "retiredOn": "Retired on {date}. It is hidden from the fleet list and from “Add to inventory”, and is not listed on Moto Mangos. Find it under Show: Sold and retired.",
+      "restore": "Restore make & model",
+      "deleteConfirmWaiting": "Delete this model? This can't be undone. Its Moto Mangos review request will be withdrawn."
     },
     "unit": {
       "newTitle": "Add to inventory",
@@ -417,7 +426,12 @@
       "odometerHelp": "A lower reading asks you to confirm.",
       "newIntro": "One vehicle of a make & model you already have.",
       "modelHelp": "Only your own makes & models are listed.",
-      "noModelsYet": "Add a make & model first. Then come back to add the vehicles you have of it."
+      "noModelsYet": "Add a make & model first. Then come back to add the vehicles you have of it.",
+      "retireInstead": "Retire instead",
+      "restore": "Restore",
+      "restoreHelp": "Retired vehicles are out of the fleet. Restore puts this one back as active.",
+      "retireConfirm": "Retire this vehicle? It leaves the fleet list and can't be rented or booked. Its history is kept, and you can restore it later.",
+      "sellConfirm": "Mark this vehicle as sold? It leaves the fleet list and can't be rented or booked. Its history is kept. You fill in the sale details next."
     },
     "downtime": {
       "title": "Downtime",
@@ -593,7 +607,8 @@
       "listed": "Listed on Moto Mangos",
       "inReview": "In review",
       "needsChanges": "Needs changes",
-      "notListed": "Not listed"
+      "notListed": "Not listed",
+      "retired": "Retired"
     },
     "modelFacts": "About {name}",
     "kind": {
