@@ -3,8 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 
-/** Local Supabase test inbox (supabase start). */
-const MAILPIT = "http://127.0.0.1:54324/api/v1";
+/**
+ * Local Supabase test inbox (supabase start). MAILPIT_URL points elsewhere
+ * when a second local stack runs on other ports (a git worktree).
+ */
+const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324/api/v1";
 
 /** Signs in through the real magic-link flow, reading the email from Mailpit. */
 export async function signInByEmail(page: Page, email: string, next: string) {

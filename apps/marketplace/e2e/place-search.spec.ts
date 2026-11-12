@@ -39,6 +39,8 @@ const form = (page: Page) =>
   page.locator("form").filter({ hasText: "When do you want to ride?" });
 const placeBox = (page: Page) =>
   form(page).getByRole("combobox", { name: "City, area, landmark or airport" });
+/** The place suggestions (not the language picker's options). */
+const suggestions = (page: Page) => page.getByRole("listbox");
 const param = (r: Request, key: string) =>
   new URL(r.url()).searchParams.get(key);
 
@@ -54,7 +56,7 @@ test("waits for 3 characters and a pause, then one request per pause", async ({
   // Typed quickly: one request after the pause, not one per key.
   await placeBox(page).pressSequentially("iang Mai", { delay: 40 });
   await expect(
-    page.getByRole("option", { name: /Chiang Mai International/ }),
+    suggestions(page).getByRole("option", { name: /Chiang Mai International/ }),
   ).toBeVisible();
   expect(calls).toHaveLength(1);
   expect(param(calls[0], "q")).toBe("Chiang Mai");
@@ -71,9 +73,12 @@ test("a chosen place goes in the link, one session per search", async ({
   });
   await page.goto("/");
   await placeBox(page).fill("Chiang");
-  await expect(page.getByRole("option").first()).toBeVisible();
+  await expect(suggestions(page).getByRole("option").first()).toBeVisible();
   await placeBox(page).fill("Chiang Mai");
-  await page.getByRole("option", { name: /Chiang Mai International/ }).click();
+  await expect.poll(() => calls.length).toBe(2);
+  await suggestions(page)
+    .getByRole("option", { name: /Chiang Mai International/ })
+    .click();
 
   await expect(
     form(page).getByText("Near Chiang Mai International Airport"),
