@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mango/db/database.types";
@@ -225,4 +225,42 @@ export function sqlAs(userId: string, statement: string) {
       "commit;",
     ].join("\n"),
   );
+}
+
+/**
+ * Like sql(), but doesn't wait: for a second session that must run while
+ * another holds a transaction open. Resolves when psql exits.
+ */
+export function sqlBackground(
+  statements: string,
+): Promise<{ out: string; failed: string }> {
+  const container = execFileSync(
+    "docker",
+    ["ps", "--filter", "name=supabase_db_", "--format", "{{.Names}}"],
+    { encoding: "utf8" },
+  )
+    .trim()
+    .split("\n")[0];
+  if (!container) throw new Error("The local Supabase database isn't running");
+  return new Promise((resolve) => {
+    const child = spawn("docker", [
+      "exec",
+      "-i",
+      container,
+      "psql",
+      "-U",
+      "postgres",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+    ]);
+    let out = "";
+    let err = "";
+    child.stdout.on("data", (chunk) => (out += chunk));
+    child.stderr.on("data", (chunk) => (err += chunk));
+    child.on("close", (code) =>
+      resolve({ out: out.trim(), failed: code === 0 ? "" : err }),
+    );
+    child.stdin.end(statements);
+  });
 }
