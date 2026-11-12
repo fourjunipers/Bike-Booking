@@ -217,7 +217,6 @@ export default async function ModelPage({
                 <p className="text-sm">{tFleet("motoMangos.bikesOnly")}</p>
               ) : (
                 <>
-                  <p className="text-sm">{tFleet("motoMangos.own")}</p>
                   {matches.length > 0 && (
                     <div className="mt-4">
                       <p className="mb-2 font-medium">

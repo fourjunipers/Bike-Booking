@@ -780,7 +780,14 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await expect(page).toHaveURL(/\/fleet\/models\/[0-9a-f-]{36}$/);
   const modelUrl = page.url();
   await expect(
-    mangos.getByText("This is your own make and model."),
+    mangos.getByText(
+      "An online marketplace where you can list your rental bikes to be seen by renters in your area.",
+    ),
+  ).toBeVisible();
+  await expect(
+    mangos.getByRole("heading", {
+      name: "Don't see your model? Send it to Moto Mangos",
+    }),
   ).toBeVisible();
   await expect(mangos.getByText("Did you mean:")).toHaveCount(0);
   // Not listable until it is on their list.

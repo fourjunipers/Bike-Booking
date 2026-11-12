@@ -562,24 +562,24 @@
     },
     "motoMangos": {
       "title": "Moto Mangos",
-      "intro": "Moto Mangos keeps one entry per bike, so renters see one Honda PCX, not three spellings.",
+      "intro": "An online marketplace where you can list your rental bikes to be seen by renters in your area.",
       "ready": "On the Moto Mangos list as {name}.",
       "list": "List this model on Moto Mangos",
       "later": "Listing takes effect when Moto Mangos starts reading from this system.",
       "waiting": "Sent to Moto Mangos. It is waiting for review; you can keep using the model meanwhile.",
       "bikesOnly": "Moto Mangos lists motorbikes only, for now. This model is yours to use here.",
-      "own": "This is your own make and model. To list it on Moto Mangos it has to match an entry on their list.",
       "didYouMean": "Did you mean:",
       "use": "Use {name}",
-      "submitTitle": "None of these? Send it to Moto Mangos",
-      "submitHelp": "We check it, then add it to the list for every shop or match it to an existing entry.",
+      "submitTitle": "Don't see your model? Send it to Moto Mangos",
+      "submitHelp": "We check it, add it to our database, and make it viewable on the Moto Mangos marketplace.",
       "submit": "Send to Moto Mangos",
       "bikeType": "Bike type",
       "yearFrom": "First model year",
       "yearTo": "Last model year",
       "note": "Note for the reviewer",
       "rejectedLinked": "Moto Mangos didn't add this model, so it can't be listed. It is still tied to that request because you have another model of your own with the same make and model, and a shop can't have two."
-    }
+    },
+    "editModel": "Edit model"
   },
   "Locations": {
     "title": "Locations",

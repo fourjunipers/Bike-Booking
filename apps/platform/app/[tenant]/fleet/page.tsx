@@ -3,7 +3,14 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { ChevronDown, FileUp, Plus, Printer, Search } from "lucide-react";
+import {
+  ChevronDown,
+  FileUp,
+  Pencil,
+  Plus,
+  Printer,
+  Search,
+} from "lucide-react";
 import { MakeModelPicker } from "@/components/fleet/make-model-picker";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { Field, inputClass } from "@/components/form";
@@ -406,17 +413,28 @@ export default async function FleetPage({
           <section key={section.key} aria-labelledby={`section-${section.key}`}>
             {section.model && (
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
-                <h2
-                  id={`section-${section.key}`}
-                  className="text-lg font-semibold"
-                >
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                  <h2
+                    id={`section-${section.key}`}
+                    className="text-lg font-semibold"
+                  >
+                    <Link
+                      href={`${base}/models/${section.model.id}`}
+                      className="underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-current"
+                    >
+                      {section.model.name}
+                    </Link>
+                  </h2>
+                  {/* The name is a link; this makes it look like one. */}
                   <Link
                     href={`${base}/models/${section.model.id}`}
-                    className="hover:underline"
+                    aria-label={`${t("editModel")}: ${section.model.name}`}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-md border bg-card px-3 text-sm font-medium hover:bg-accent"
                   >
-                    {section.model.name}
+                    <Pencil aria-hidden className="size-3.5" />
+                    {t("editModel")}
                   </Link>
-                </h2>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {[
                     section.model.cc ? `${section.model.cc} cc` : null,
