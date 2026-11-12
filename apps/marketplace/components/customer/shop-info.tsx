@@ -38,7 +38,7 @@ export async function ShopInfo({
               href={directions}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-primary underline underline-offset-4"
+              className="font-medium text-link underline underline-offset-4"
             >
               {t("directions")}
             </a>

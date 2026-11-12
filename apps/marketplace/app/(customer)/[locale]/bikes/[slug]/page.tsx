@@ -97,7 +97,7 @@ async function Model({
     <div className="space-y-8">
       <Link
         href={`${localePath(locale, "/search")}${query}`}
-        className="text-sm font-medium text-primary underline underline-offset-4"
+        className="text-sm font-medium text-link underline underline-offset-4"
       >
         {t("backToSearch")}
       </Link>

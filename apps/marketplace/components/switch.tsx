@@ -33,7 +33,7 @@ export function Switch({
       />
       <span
         aria-hidden
-        className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-600 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring after:absolute after:left-1 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
+        className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-slate-300 transition-colors peer-checked:bg-leaf peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring after:absolute after:left-1 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
       />
       {label && <span className="font-medium">{label}</span>}
     </label>

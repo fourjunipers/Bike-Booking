@@ -13,9 +13,9 @@ export function Badge({
   children: React.ReactNode;
 }) {
   const tones = {
-    instant: "bg-emerald-100 text-emerald-900",
+    instant: "bg-leaf-soft text-leaf-ink",
     request: "bg-sky-100 text-sky-900",
-    now: "bg-amber-100 text-amber-900",
+    now: "bg-mango-soft text-link",
     featured: "bg-violet-100 text-violet-900",
   };
   return (
@@ -84,7 +84,7 @@ export async function ModelCardView({
               <span className="text-sm text-muted-foreground">
                 {t("from")}{" "}
               </span>
-              <span className="text-xl font-bold text-primary">
+              <span className="text-xl font-bold text-link">
                 {formatBaht(card.fromPerDay)}
               </span>
               <span className="text-sm text-muted-foreground">
@@ -169,7 +169,7 @@ export async function OfferCard({
           )}
         </div>
         <div className="text-right">
-          <p className="text-xl font-bold text-primary">
+          <p className="text-xl font-bold text-link">
             {formatBaht(offer.total)}
           </p>
           <p className="text-sm text-muted-foreground">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { Leaf, SpeedLines } from "@/components/brand/logo";
 import { SearchForm } from "@/components/customer/search-form";
 import { isCustomerLocale, localePath } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
@@ -36,26 +37,31 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
 
   return (
     <div className="space-y-10">
-      <section className="space-y-6 rounded-2xl bg-primary px-5 py-8 text-primary-foreground md:px-10 md:py-12">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold md:text-4xl">{t("title")}</h1>
-          <p className="max-w-2xl text-lg text-primary-foreground/90">
-            {t("intro")}
-          </p>
+      <section className="relative space-y-6 overflow-hidden rounded-3xl bg-linear-to-br from-sun via-mango to-mango-strong px-5 py-8 text-navy md:px-10 md:py-12">
+        {/* Decorative: a big soft sun and a leaf in the corner. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-white/20"
+        />
+        <Leaf className="pointer-events-none absolute top-5 right-5 size-12 rotate-12 md:size-16" />
+        <div className="relative max-w-2xl space-y-3">
+          <SpeedLines className="h-5 w-10 [&_path]:stroke-navy" />
+          <h1 className="text-3xl font-black md:text-5xl">{t("title")}</h1>
+          <p className="text-lg font-medium text-navy/90">{t("intro")}</p>
         </div>
-        <div className="rounded-xl bg-card p-4 text-card-foreground shadow-lg md:p-6">
+        <div className="relative rounded-2xl bg-card p-4 text-card-foreground shadow-xl md:p-6">
           <SearchForm stations={stationOptions(stations, locale)} />
         </div>
       </section>
 
       {featured.length > 0 && (
         <section className="space-y-4">
-          <h2 className="text-2xl font-semibold">{ts("featuredShops")}</h2>
+          <SectionHeading>{ts("featuredShops")}</SectionHeading>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featured.map((shop) => (
               <li
                 key={shop.slug}
-                className="overflow-hidden rounded-xl border bg-card shadow-sm"
+                className="overflow-hidden rounded-2xl border bg-card shadow-sm transition-shadow hover:shadow-md"
               >
                 <Link
                   href={localePath(locale, `/shops/${shop.slug}`)}
@@ -86,11 +92,12 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-2xl font-semibold">{ts("areas")}</h2>
+        <SectionHeading>{ts("areas")}</SectionHeading>
         <ul className="flex flex-wrap gap-2">
           {AREAS.map((area) => (
             <li key={area}>
-              <span className="inline-flex min-h-11 items-center rounded-full border bg-card px-4 text-sm text-muted-foreground">
+              <span className="inline-flex min-h-11 items-center gap-2 rounded-full border bg-card px-4 text-sm font-medium text-muted-foreground">
+                <Leaf className="size-4" />
                 {area}
               </span>
             </li>
@@ -99,5 +106,14 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         <p className="text-sm text-muted-foreground">{ts("areasSoon")}</p>
       </section>
     </div>
+  );
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-2 text-2xl">
+      <SpeedLines className="h-4 w-7 shrink-0" />
+      {children}
+    </h2>
   );
 }

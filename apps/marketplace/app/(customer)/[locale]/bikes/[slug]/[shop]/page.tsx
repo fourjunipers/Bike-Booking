@@ -102,7 +102,7 @@ async function Listing({
     <div className="space-y-8">
       <Link
         href={`${localePath(locale, `/bikes/${entry.slug}`)}${searchQuery(p)}`}
-        className="text-sm font-medium text-primary underline underline-offset-4"
+        className="text-sm font-medium text-link underline underline-offset-4"
       >
         {t("allShops", { name })}
       </Link>
@@ -112,7 +112,7 @@ async function Listing({
         <p className="text-lg">
           <Link
             href={localePath(locale, `/shops/${shop.slug}`)}
-            className="font-medium text-primary underline underline-offset-4"
+            className="font-medium text-link underline underline-offset-4"
           >
             {shop.name}
           </Link>
@@ -179,7 +179,7 @@ async function Listing({
                     )}
                     {e.terms && (
                       <details className="text-sm">
-                        <summary className="cursor-pointer text-primary">
+                        <summary className="cursor-pointer text-link">
                           {t("terms")}
                         </summary>
                         <p className="mt-1 whitespace-pre-line">{e.terms}</p>
@@ -213,7 +213,7 @@ async function Listing({
                     <Badge tone="request">{ts("request")}</Badge>
                   )}
                 </div>
-                <p className="text-3xl font-bold text-primary">
+                <p className="text-3xl font-bold text-link">
                   {formatBaht(offer.total)}
                 </p>
                 <p className="text-sm text-muted-foreground">
