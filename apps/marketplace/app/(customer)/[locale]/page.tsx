@@ -7,6 +7,7 @@ import { SearchForm } from "@/components/customer/search-form";
 import { isCustomerLocale, localePath } from "@/i18n/config";
 import { languageAlternates } from "@/i18n/metadata";
 import { listFeaturedShops, listStations } from "@/lib/data";
+import { placeSearchEnabled } from "@/lib/places-server";
 import { stationOptions } from "./station-options";
 
 export async function generateMetadata({
@@ -50,7 +51,10 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
           <p className="text-lg font-medium text-navy/90">{t("intro")}</p>
         </div>
         <div className="relative rounded-2xl bg-card p-4 text-card-foreground shadow-xl md:p-6">
-          <SearchForm stations={stationOptions(stations, locale)} />
+          <SearchForm
+            stations={stationOptions(stations, locale)}
+            placeSearch={placeSearchEnabled()}
+          />
         </div>
       </section>
 

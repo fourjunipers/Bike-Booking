@@ -16,6 +16,7 @@ import {
 import { languageAlternates } from "@/i18n/metadata";
 import { listStations } from "@/lib/data";
 import { runSearch } from "@/lib/marketplace-search";
+import { placeSearchEnabled } from "@/lib/places-server";
 import { groupOffers, sortCards } from "@/lib/search";
 import {
   BIKE_TYPES,
@@ -100,6 +101,7 @@ async function Results({
           <div className="mt-3">
             <SearchForm
               stations={stationOptions(stations, locale)}
+              placeSearch={placeSearchEnabled()}
               initial={p}
               stacked
             />

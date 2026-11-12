@@ -1,13 +1,11 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Google's untyped objects */
-
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { inputClass } from "@/components/form-kit";
 import { Button } from "@/components/ui/button";
 import { localePath, type CustomerLocale } from "@/i18n/config";
-import { loadGoogleMaps } from "@/lib/google-maps";
+import { PlaceSearch } from "./place-search";
 import {
   addDays,
   BIKE_TYPES,
@@ -16,8 +14,6 @@ import {
   type BikeType,
   type SearchParams,
 } from "@/lib/search-params";
-
-const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 export type StationOption = {
   id: string;
@@ -29,18 +25,22 @@ export type StationOption = {
 type Point = { lat: number; lng: number; place: string };
 
 /**
- * Home and search form (SPEC "Customer screens"): where (GPS, a BTS/MRT
- * station, or an address when Google Places is set up), when (Book ahead with
+ * Home and search form (SPEC "Customer screens"): where (a place search with
+ * suggestions when Google Places is set up, GPS, or optionally a train
+ * station), when (Book ahead with
  * dates, or Ride today for bikes ready now), and bike types (any number).
  * A plain GET form, so every search is a shareable /search URL.
  */
 export function SearchForm({
   stations,
+  placeSearch,
   initial,
   compact = false,
   stacked = false,
 }: {
   stations: StationOption[];
+  /** The server has a Places key: show the place search. */
+  placeSearch: boolean;
   initial?: Partial<SearchParams>;
   compact?: boolean;
   /** One column, for the narrow sidebar on the search page. */
@@ -64,39 +64,9 @@ export function SearchForm({
   const [toDate, toTime] = (initial?.to ?? `T${DEFAULT_TIME}`).split("T");
   const [from, setFrom] = useState({ date: fromDate, time: fromTime });
   const [to, setTo] = useState({ date: toDate, time: toTime });
-  const addressRef = useRef<HTMLDivElement>(null);
-
-  // Address search with Google Places, when a key is configured.
-  useEffect(() => {
-    if (!apiKey || !addressRef.current) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const maps = await loadGoogleMaps(apiKey);
-        const places = await maps.importLibrary("places");
-        if (cancelled || !addressRef.current) return;
-        const box = new places.PlaceAutocompleteElement({
-          includedRegionCodes: ["th"],
-        });
-        box.style.width = "100%";
-        addressRef.current.replaceChildren(box);
-        box.addEventListener("gmp-select", async ({ placePrediction }: any) => {
-          const found = placePrediction.toPlace();
-          await found.fetchFields({ fields: ["displayName", "location"] });
-          setPoint({
-            lat: found.location.lat(),
-            lng: found.location.lng(),
-            place: String(found.displayName ?? ""),
-          });
-        });
-      } catch {
-        // Without Places, the station list and GPS still work.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [placesFailed, setPlacesFailed] = useState(false);
+  const onPlacesFail = useCallback(() => setPlacesFailed(true), []);
+  const showPlaceSearch = placeSearch && !placesFailed;
 
   function useGps() {
     if (!navigator.geolocation) {
@@ -157,26 +127,16 @@ export function SearchForm({
         <div
           className={`grid gap-2 ${stacked ? "" : "sm:grid-cols-[1fr_auto]"}`}
         >
-          <label className="block">
-            <span className="sr-only">{t("station")}</span>
-            <select
+          {showPlaceSearch ? (
+            <PlaceSearch onChoose={setPoint} onFail={onPlacesFail} />
+          ) : (
+            <StationSelect
+              stations={stations}
               value={stationValue}
-              onChange={(e) => {
-                const s = stations.find((x) => x.id === e.target.value);
-                setPoint(s ? { lat: s.lat, lng: s.lng, place: s.name } : null);
-              }}
-              className={inputClass}
-            >
-              <option value="">
-                {point && !stationValue ? point.place : t("chooseStation")}
-              </option>
-              {stations.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              point={point}
+              onChange={setPoint}
+            />
+          )}
           <Button
             type="button"
             variant="outline"
@@ -187,11 +147,48 @@ export function SearchForm({
             {gpsState === "busy" ? t("locating") : t("useMyLocation")}
           </Button>
         </div>
-        {apiKey && <div ref={addressRef} aria-label={t("address")} />}
+        {placesFailed && (
+          <p role="alert" className="text-sm text-destructive">
+            {t("placeUnavailable")}
+          </p>
+        )}
         {gpsState === "failed" && (
           <p role="alert" className="text-sm text-destructive">
             {t("gpsFailed")}
           </p>
+        )}
+        {point && (
+          <p className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded-full bg-leaf-soft px-3 py-1 font-medium text-leaf-ink">
+              {t("placeChosen", { place: point.place })}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPoint(null)}
+              className="min-h-11 px-2 font-medium text-link underline underline-offset-4"
+            >
+              {t("clearPlace")}
+            </button>
+          </p>
+        )}
+        {/* Optional when the place search works; the main picker otherwise. */}
+        {showPlaceSearch && (
+          <details
+            className="rounded-xl border bg-muted/40 px-3"
+            open={stationValue !== ""}
+          >
+            <summary className="min-h-11 cursor-pointer content-center text-sm font-medium">
+              {t("stationFilter")}
+            </summary>
+            <div className="pb-3">
+              <StationSelect
+                stations={stations}
+                value={stationValue}
+                point={point}
+                onChange={setPoint}
+              />
+            </div>
+          </details>
         )}
         <p className="text-xs text-muted-foreground">{t("stationsCredit")}</p>
       </fieldset>
@@ -298,6 +295,43 @@ export function SearchForm({
         {t("search")}
       </Button>
     </form>
+  );
+}
+
+/** Train stations: the optional filter, and the fallback when Places fails. */
+function StationSelect({
+  stations,
+  value,
+  point,
+  onChange,
+}: {
+  stations: StationOption[];
+  value: string;
+  point: Point | null;
+  onChange: (p: Point | null) => void;
+}) {
+  const t = useTranslations("Search");
+  return (
+    <label className="block">
+      <span className="sr-only">{t("station")}</span>
+      <select
+        value={value}
+        onChange={(e) => {
+          const s = stations.find((x) => x.id === e.target.value);
+          onChange(s ? { lat: s.lat, lng: s.lng, place: s.name } : null);
+        }}
+        className={inputClass}
+      >
+        <option value="">
+          {point && !value ? point.place : t("chooseStation")}
+        </option>
+        {stations.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
