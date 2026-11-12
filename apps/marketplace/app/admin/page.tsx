@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SignOutButton } from "@/components/sign-out-button";
+import { catalogRequestQueue } from "@/lib/admin-queue";
 import { requireAdmin } from "@/lib/auth/session";
 import { catalogLabel } from "@/lib/catalog";
 import { createAdminClient } from "@mango/db/admin";
@@ -32,13 +33,7 @@ export default async function AdminPage() {
       )
       .eq("flagged_for_review", true)
       .eq("shop.status", "live"),
-    db
-      .from("bike_catalog")
-      .select(
-        "id, make, model, year_from, year_to, cc, created_at, shop:shops (name)",
-      )
-      .eq("status", "requested")
-      .order("created_at"),
+    catalogRequestQueue(db),
   ]);
 
   // Live shops with flagged edits, from either the shop or its models.

@@ -577,7 +577,10 @@
       "yearFrom": "First model year",
       "yearTo": "Last model year",
       "note": "Note for the reviewer",
-      "rejectedLinked": "Moto Mangos didn't add this model, so it can't be listed. It is still tied to that request because you have another model of your own with the same make and model, and a shop can't have two."
+      "rejectedLinked": "Moto Mangos didn't add this model, so it can't be listed. It is still tied to that request because you have another model of your own with the same make and model, and a shop can't have two.",
+      "rejected": "Moto Mangos reviewed this model on {date} and didn't add it.",
+      "rejectReason": "The reviewer's note:",
+      "rejectNoReason": "The reviewer left no note. You can change the details and send it again."
     },
     "editModel": "Edit model"
   },
@@ -630,6 +633,7 @@
     "failed": "That didn't work. Please try again.",
     "mergeInto": "It is the same bike as",
     "merge": "Merge",
-    "keptLinked": "Rejected. {count, plural, one {One model stays} other {# models stay}} linked to the rejected entry, unlisted: while waiting, the shop added the same make and model again as its own, and it can't have two."
+    "keptLinked": "Rejected. {count, plural, one {One model stays} other {# models stay}} linked to the rejected entry, unlisted: while waiting, the shop added the same make and model again as its own, and it can't have two.",
+    "notesHelp": "If you reject, the shop sees this note on its model."
   }
 }
