@@ -9,7 +9,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
 | Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
-| Database | 49 migrations on `main`, **all 49 on live since 12 Nov 2026** (see below), and on staging. Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
+| Database | 53 migrations on `main`, **all 53 on live since 12 Nov 2026** (see below). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
@@ -55,9 +55,31 @@ Google Cloud checklist (owner; keys set in Netlify on 12 Nov 2026, kept for refe
 5. Budget with alerts at e.g. 50%, 90%, 100% of a small monthly amount. Budgets only alert; the daily quotas are what stop spending.
 6. Put the key in Netlify → Site configuration → Environment variables only (scopes: Builds and Functions; the home page is built ahead, so redeploy after setting it). Never in the repo or chat.
 
+## Live at 53 of 53 migrations (12 Nov 2026, evening)
+
+Asked: push PR #12's one migration (`20261112100000_marketplace_station_osm_refresh`) to live. The dry run listed four, because **PR #11's three migrations had merged to `main` but had never been pushed to live**. Stopped, reported, and on the owner's go pushed all four together, in order.
+
+| Migration | On live it |
+| --- | --- |
+| `20261112000200_platform_lock_strength` | Replaces three platform functions (no data) |
+| `20261112000300_marketplace_catalog_requester_private` | Makes `requested_by_shop_id` unreadable to the public: 21 readable catalog columns, was 22 |
+| `20261112000400_platform_reject_reason` | Adds two columns and a trigger on `platform.models` (no rows) |
+| `20261112100000_marketplace_station_osm_refresh` | Adds `osm_id`, `osm_last_seen_at`, `osm_missing_since` to `public.stations` and a unique index on `osm_id` |
+
+- **From** `main` at `f0f7f19`, with `npx supabase db push --linked`, after a fresh backup (`C:\Users\markw\mango-live-backups\2026-11-12_1738`: roles, schema, data) and a dry run listing exactly these four. No errors.
+- **Live records 53 of 53.**
+- **Runbook checks (read-only):** row counts of all 24 `public` tables identical before and after (A1/B2); catalog defaults 25 of 25 (B3); private catalog columns readable by the public 0, now checking all four (B4); readable catalog columns **21** for anon and for authenticated (B5); platform still empty (B6); vehicle types and the hourly job unchanged (B7, B8); C1 to C5 identical to the earlier runs; grants fingerprint (C6) identical before and after.
+- **No-default-grants expectations on live:** defaults for new `public` tables, sequences and functions are still empty for anon, authenticated and service_role; 39 tables reachable by anon or authenticated, the same set as before (no new table); no function in `public` or `platform` is executable by everyone beyond the closed list; no table without RLS.
+- **Through live's API as the public (anon key, reads only):** 37 of 38 queries answer 200 and the private-column probe is refused, as before. 35 of the 36 dry-run queries are byte-identical to the dry-run answers. The one that differs is `stations` read with every column: the same 182 rows, now with the three new columns (all empty until the first refresh runs).
+- **Station list:** `station_list()` returns the same answer as before, byte for byte (182 stations). The marketplace home page and `/search` return 200.
+- **New station columns exist:** `osm_id text`, `osm_last_seen_at timestamptz`, `osm_missing_since timestamptz`, all nullable; 0 of 182 rows have an `osm_id` yet.
+- Not done here: nothing on Netlify or Google was touched, and whether the scheduled station refresh runs was not checked. PR #13's migration (`20261113000100`) is not on `main` and not on live.
+- `checks.sql` still says "22" for B5 with a note that it is 21 once `20261112000300` is applied; that is now the case on live.
+- The runbook's `rollback.sql` undoes the first 21 platform migrations only. It would not have been the way back for these four; a failure here would have needed a forward fix or the backup.
+
 ## Re-check follow-ups (branch `platform/recheck-followups`, 12 Nov 2026)
 
-Four follow-ups from the second look at the Phase 1a review. Three migrations, on local and staging; **not on live** (they go with the next push from `main`, after this merges).
+Four follow-ups from the second look at the Phase 1a review. Three migrations. They merged with PR #11 but **were not on live until the push of 12 Nov 2026 recorded below** (live stayed at 49 in between).
 
 | # | What | Migration | Test |
 | --- | --- | --- | --- |
