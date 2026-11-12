@@ -56,7 +56,9 @@ test("fleet: grouped by model, expand and collapse, group by make, search, and t
   await expect(
     page.getByRole("heading", { name: "Fleet", level: 1 }),
   ).toBeVisible();
-  await expect(page.getByText(/\d+ bikes in \d+ models\./)).toBeVisible();
+  await expect(
+    page.getByText(/\d+ vehicles in \d+ makes & models\./),
+  ).toBeVisible();
 
   // Grouped by model: a heading per model, a closed group underneath.
   await expect(
@@ -65,7 +67,7 @@ test("fleet: grouped by model, expand and collapse, group by make, search, and t
   const pcx = page.locator("details[data-fleet-group]", {
     hasText: "Honda PCX 160 · All years",
   });
-  await expect(pcx.getByText(/^\d bikes: \d active/)).toBeVisible();
+  await expect(pcx.getByText(/^\d vehicles: \d active/)).toBeVisible();
   await expect(page.getByRole("link", { name: /DEMO-001/ })).toBeHidden();
   await page.getByRole("button", { name: "Expand all" }).click();
   for (const plate of ["DEMO-001", "DEMO-010", "DEMO-019"])
@@ -89,8 +91,8 @@ test("fleet: grouped by model, expand and collapse, group by make, search, and t
     page
       .locator("details[data-fleet-group]")
       .filter({ has: page.getByText(make, { exact: true }) });
-  await expect(makeGroup("Honda")).toContainText(/\d+ bikes: \d+ active/);
-  await expect(makeGroup("Yamaha")).toContainText("5 bikes: ");
+  await expect(makeGroup("Honda")).toContainText(/\d+ vehicles: \d+ active/);
+  await expect(makeGroup("Yamaha")).toContainText("5 vehicles: ");
 
   // Opening Fleet again brings that view back; Reset forgets it. (The view is
   // noted on the device a moment after the page draws.)
@@ -107,19 +109,19 @@ test("fleet: grouped by model, expand and collapse, group by make, search, and t
   await expect(page).toHaveURL(/\/bsr\/fleet$/);
 
   // Search opens the matching group.
-  await page.getByLabel("Find a bike").fill("demo-019");
-  await page.getByLabel("Find a bike").press("Enter");
+  await page.getByLabel("Find a vehicle").fill("demo-019");
+  await page.getByLabel("Find a vehicle").press("Enter");
   await expect(page).toHaveURL(/q=demo-019/);
   await expect(page.getByRole("link", { name: /DEMO-019/ })).toBeVisible();
   await expect(page.getByText("Showing 1 of ")).toBeVisible();
   await page.goto("/bsr/fleet?q=no-such-plate");
   await expect(
-    page.getByText("No bike matches “no-such-plate”."),
+    page.getByText("No vehicle matches “no-such-plate”."),
   ).toBeVisible();
 
   // Filters: only Yamaha automatics.
   await page.goto("/bsr/fleet?make=Yamaha&transmission=automatic&group=none");
-  await expect(page.getByText(/Showing 5 of \d+ bikes/)).toBeVisible();
+  await expect(page.getByText(/Showing 5 of \d+ vehicles/)).toBeVisible();
   await expect(page.getByText("Filters (2)")).toBeVisible();
 });
 
@@ -131,7 +133,9 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
   await page.goto("/big-fleet/fleet?reset=1");
   // The working fleet: the demo's 5 retired bikes are kept, one link away.
   // About 145 in 5 models; people trying the demo may have added their own.
-  await expect(page.getByText(/1\d\d bikes in \d+ models\./)).toBeVisible();
+  await expect(
+    page.getByText(/1\d\d vehicles in \d+ makes & models\./),
+  ).toBeVisible();
   await expect(
     page.getByRole("link", { name: /^\d+ sold or retired$/ }),
   ).toBeVisible();
@@ -141,7 +145,7 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
     has: page.getByRole("heading", { name: "Honda PCX 160", exact: true }),
   });
   await expect(
-    section.getByText(/160 cc · Automatic · (29|30) bikes/),
+    section.getByText(/160 cc · Automatic · (29|30) vehicles/),
   ).toBeVisible();
   const groups = section.locator("details summary p:first-child");
   await expect(groups).toHaveText([
@@ -155,7 +159,7 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
     section
       .locator("details[data-fleet-group]")
       .first()
-      .getByText(/^\d+ bikes: \d+ active/),
+      .getByText(/^\d+ vehicles: \d+ active/),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Expand all" }).click();
@@ -169,14 +173,14 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
     page
       .locator("details[data-fleet-group]")
       .filter({ has: page.getByText("Maintenance", { exact: true }) }),
-  ).toContainText(/\d+ bikes: \d+ maintenance/);
+  ).toContainText(/\d+ vehicles: \d+ maintenance/);
   await page.goto("/big-fleet/fleet?group=location&sort=count");
   await expect(page.locator("details summary p:first-child")).toHaveText([
     "Big Fleet Demo",
     "Airport desk",
   ]);
   await page.goto("/big-fleet/fleet?year=2024&group=none");
-  await expect(page.getByText(/Showing \d+ of 1\d\d bikes/)).toBeVisible();
+  await expect(page.getByText(/Showing \d+ of 1\d\d vehicles/)).toBeVisible();
   // Sold and retired bikes: out of the way, not gone.
   await page.goto("/big-fleet/fleet?reset=1");
   await page.getByRole("link", { name: /^\d+ sold or retired$/ }).click();
@@ -186,7 +190,7 @@ test("a 150-bike fleet: year bands newest first, unknown year last, and it stays
   await expect(page.getByRole("link", { name: /BIG-001/ })).toHaveCount(0);
   await page.getByLabel("Show").selectOption("all");
   await page.getByRole("button", { name: "Apply" }).click();
-  await expect(page.getByText(/^1\d\d bikes$/)).toBeVisible();
+  await expect(page.getByText(/^1\d\d vehicles$/)).toBeVisible();
   await page.goto("/big-fleet/fleet?reset=1");
 
   // Generous: a preview's functions are far from its database.
@@ -224,7 +228,7 @@ test("purchase and sale sit in one section, for owners and managers only", async
     await expect(other.getByText("Purchase and sale")).toHaveCount(0);
     await expect(other.getByText("94000")).toHaveCount(0);
     await expect(
-      other.getByRole("button", { name: "Delete bike" }),
+      other.getByRole("button", { name: "Delete vehicle" }),
     ).toHaveCount(0);
     // Everyone sees the frame number, the dates and the sticker.
     await expect(other.getByText("DEMOFRAME0001")).toBeVisible();
@@ -241,11 +245,13 @@ test("purchase and sale sit in one section, for owners and managers only", async
 test("a driver reads a bike but can't change it", async ({ page }) => {
   await signIn(page, demo.bsrDriver);
   await page.goto("/bsr/fleet");
-  await expect(page.getByRole("link", { name: "Add bike" })).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Add to inventory" }),
+  ).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Import CSV" })).toHaveCount(0);
   await openBike(page, "DEMO-004");
   await expect(
-    page.getByText("You can view this bike but not change it."),
+    page.getByText("You can view this vehicle but not change it."),
   ).toBeVisible();
   await expect(page.getByLabel(/^Odometer \(/)).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(0);
@@ -351,7 +357,7 @@ test("a mechanic: one status control, the odometer with a confirmation when lowe
   await expect(page.getByText("Downtime: E2E tyre change")).toBeVisible();
   await add();
   await expect(
-    page.getByText("This bike is already blocked for part of that time."),
+    page.getByText("This vehicle is already blocked for part of that time."),
   ).toBeVisible();
   await expect(page.getByText("Downtime: E2E tyre change")).toHaveCount(1);
   await page.getByRole("button", { name: "Remove" }).click();
@@ -398,12 +404,19 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
   await signIn(page, demo.bsrManager);
   await page.goto("/bsr/fleet/import");
   await expect(
-    page.getByRole("heading", { name: "Import bikes from CSV" }),
+    page.getByRole("heading", { name: "Import vehicles from CSV" }),
   ).toBeVisible();
   await expect(
     page.getByText(/make, model, model_year, name, plate/),
   ).toBeVisible();
   await expect(page.getByText("first_registered")).toHaveCount(0);
+  // The category column, and what to write in it for each kind of vehicle.
+  await expect(page.getByText(/vehicle_type, category, cc/)).toBeVisible();
+  const categories = panel(page, "Categories");
+  await expect(
+    categories.getByText("sedan, suv, pickup, van, hatchback, convertible"),
+  ).toBeVisible();
+  await expect(categories.getByText("atv, utv", { exact: true })).toBeVisible();
   const plate = freshPlate();
 
   await page
@@ -419,11 +432,11 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
     );
   await page.getByRole("button", { name: "Check and import" }).click();
   await expect(
-    page.getByText("5 problems found. Nothing was imported."),
+    page.getByText("6 problems found. Nothing was imported."),
   ).toBeVisible();
   const problems = page.getByRole("table").first();
   await expect(
-    problems.getByText("A bike in your fleet already has this plate."),
+    problems.getByText("A vehicle in your fleet already has this plate."),
   ).toBeVisible();
   await expect(
     // Once for the engine size, once for the transmission.
@@ -431,10 +444,13 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
       .getByText(/isn't in the list, so it will be one of your own/)
       .first(),
   ).toBeVisible();
+  await expect(
+    problems.getByText("A new motorbike or car needs a “category”."),
+  ).toBeVisible();
   // The pasted rows are still there to fix.
   await expect(page.getByLabel("Or paste the rows here")).toHaveValue(/Hodna/);
   await page.goto(`/bsr/fleet?q=${plate}`);
-  await expect(page.getByText(`No bike matches “${plate}”.`)).toBeVisible();
+  await expect(page.getByText(`No vehicle matches “${plate}”.`)).toBeVisible();
 
   await page.goto("/bsr/fleet/import");
   await page
@@ -447,7 +463,7 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
     );
   await page.getByRole("button", { name: "Check and import" }).click();
   await expect(
-    page.getByText("Imported 1 bike and no new models."),
+    page.getByText("Imported 1 vehicle and no new models."),
   ).toBeVisible();
 
   await openBike(page, plate);
@@ -494,7 +510,7 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
 
   // Clean up (its records go with it).
   page.once("dialog", (dialog) => void dialog.accept());
-  await page.getByRole("button", { name: "Delete bike" }).click();
+  await page.getByRole("button", { name: "Delete vehicle" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
   await page.goto("/bsr/dashboard?view=upcoming");
   await expect(due).toHaveCount(0);
@@ -529,9 +545,16 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   const models = page.getByLabel("Model", { exact: true });
   await expect(models.locator("option", { hasText: "NMAX" })).toHaveCount(0);
   await models.selectOption({ label: "Forza 350" });
+  // Filed the way the list files it, and the card says it is on the list.
+  await expect(page.getByLabel("Category")).not.toHaveValue("");
+  await expect(
+    page
+      .getByRole("complementary", { name: "Moto Mangos" })
+      .getByText(/This model is on the Moto Mangos list\./),
+  ).toBeVisible();
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Deposit (THB)").fill("5000");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save make & model" }).click();
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
   await expect(page.getByLabel("Deposit (THB)")).toHaveValue("5000.00");
   const modelUrl = page.url();
@@ -540,7 +563,7 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   await page.getByLabel("Instant units").fill("1");
   await page.getByRole("button", { name: "Save" }).first().click();
   await expect(
-    page.getByText(/can't be more than the model's active bikes/),
+    page.getByText(/can't be more than the model's active vehicles/),
   ).toBeVisible();
 
   // The shop's own year bands for this model.
@@ -558,8 +581,14 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   ).toBeVisible();
 
   // A bike of it: the model is already chosen.
-  await page.getByRole("link", { name: "Add bike" }).click();
+  await page.getByRole("link", { name: "Add to inventory" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Add to inventory", level: 1 }),
+  ).toBeVisible();
   await expect(page.getByLabel("Make", { exact: true })).toHaveValue("Honda");
+  await expect(page.getByLabel("Model", { exact: true })).toHaveValue(
+    /^model:/,
+  );
   await page.getByLabel("Model year").fill("2021");
   await page.getByLabel("Frame (chassis) number").fill(frame);
   await page.getByRole("button", { name: "Save" }).click();
@@ -575,7 +604,7 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   ).toBeVisible();
   await expect(
     page.getByText(
-      "This bike has no plate yet. Staff are warned before check-out.",
+      "This vehicle has no plate yet. Staff are warned before check-out.",
     ),
   ).toBeVisible();
 
@@ -609,7 +638,7 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
     page.locator("details[data-fleet-group]", {
       hasText: "Honda Forza 350 · 2020–2023",
     }),
-  ).toContainText("1 bike: 1 active");
+  ).toContainText("1 vehicle: 1 active");
   await page.getByRole("link", { name: /No plate/ }).click();
 
   // Sold is refused while the bike has a block in the future.
@@ -651,14 +680,14 @@ test("a manager adds a model with make and model dropdowns, year bands, a bike, 
   // A sold bike leaves the everyday Fleet list but is still on file.
   const soldUrl = page.url();
   await page.goto(`/bsr/fleet?q=${frame}`);
-  await expect(page.getByText(`No bike matches “${frame}”.`)).toBeVisible();
+  await expect(page.getByText(`No vehicle matches “${frame}”.`)).toBeVisible();
   await page.goto(`/bsr/fleet?scope=past&q=${frame}`);
   await expect(page.getByRole("link", { name: /No plate/ })).toBeVisible();
   await page.goto(soldUrl);
 
   // Clean up: the bike, then the model (its bands go with it).
   page.on("dialog", (dialog) => void dialog.accept());
-  await page.getByRole("button", { name: "Delete bike" }).click();
+  await page.getByRole("button", { name: "Delete vehicle" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
   await page.goto(modelUrl);
   await page.getByRole("button", { name: "Delete model" }).click();
@@ -673,11 +702,34 @@ test("my own make and model: added with no approval, no duplicates, then matched
   test.slow();
   await signIn(page, demo.bsrOwner);
   const make = `E2emake${Date.now().toString(36)}`;
+  // "+ Add to inventory" only offers what the shop has; the link under the
+  // dropdowns goes to "+ Make & model" and comes back.
   await page.goto("/bsr/fleet/units/new");
-  // The dropdowns are the main path; "add my own" is the link under them.
-  await page.getByRole("link", { name: "Not in the list? Add my own" }).click();
   await expect(
-    page.getByRole("heading", { name: "Add my own make or model" }),
+    page.getByRole("heading", { name: "Add to inventory", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Only your own makes & models are listed."),
+  ).toBeVisible();
+  await page
+    .getByRole("link", { name: "Make & model not here? Add it first" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Add a make & model", level: 1 }),
+  ).toBeVisible();
+  // The kind comes first; a motorbike starts on the Moto Mangos list.
+  await expect(page.getByText("What kind of vehicle is it?")).toBeVisible();
+  const card = page.getByRole("complementary", { name: "Moto Mangos" });
+  await expect(
+    card.getByText(
+      "Pick a model above to see whether it is on the Moto Mangos list.",
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Not in the list? Type it in" })
+    .click();
+  await expect(
+    card.getByText(/Not on the Moto Mangos list yet\./),
   ).toBeVisible();
 
   // Something already in the list is pointed at, not added again.
@@ -685,7 +737,8 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await page.getByLabel("Model", { exact: true }).fill("pcx  160");
   await page.getByLabel("Engine size (cc)").fill("160");
   await page.getByLabel("Transmission").selectOption("automatic");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByLabel("Category").selectOption({ label: "Scooter" });
+  await page.getByRole("button", { name: "Save and add a vehicle" }).click();
   await expect(
     page.getByText("This make and model is already in the list."),
   ).toBeVisible();
@@ -694,16 +747,19 @@ test("my own make and model: added with no approval, no duplicates, then matched
     page.getByRole("link", { name: /^Honda PCX 160/ }).first(),
   ).toBeVisible();
 
-  // A motorbike needs its engine size and transmission.
+  // A motorbike needs its engine size, transmission and category.
+  await expect(page.getByLabel("Engine size (cc)")).toHaveAttribute(
+    "required",
+    "",
+  );
+  await expect(page.getByLabel("Transmission")).toHaveAttribute("required", "");
+  await expect(page.getByLabel("Category")).toHaveAttribute("required", "");
   await page.getByLabel("Make", { exact: true }).fill(make);
   await page.getByLabel("Model", { exact: true }).fill("Tester 125");
-  await page.getByLabel("Engine size (cc)").fill("");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByText("Required.").first()).toBeVisible();
   await page.getByLabel("Engine size (cc)").fill("125");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Save and add a vehicle" }).click();
 
-  // Saved at once: back on "Add a bike" with it chosen.
+  // Saved at once: back on "Add to inventory" with it chosen.
   await expect(page).toHaveURL(/\/fleet\/units\/new\?model=/);
   await expect(page.getByLabel("Make", { exact: true })).toHaveValue(make);
   const plate = freshPlate();
@@ -715,44 +771,65 @@ test("my own make and model: added with no approval, no duplicates, then matched
   const bikeUrl = page.url();
 
   // The same make and model again, in other letters and spacing: refused.
-  await page.goto("/bsr/fleet/own-model");
+  await page.goto("/bsr/fleet/models/new");
+  await page
+    .getByRole("button", { name: "Not in the list? Type it in" })
+    .click();
   await page.getByLabel("Make", { exact: true }).fill(make.toUpperCase());
   await page.getByLabel("Model", { exact: true }).fill("tester125");
   await page.getByLabel("Engine size (cc)").fill("125");
   await page.getByLabel("Transmission").selectOption("automatic");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByLabel("Category").selectOption({ label: "Scooter" });
+  await page.getByRole("button", { name: "Save make & model" }).click();
   await expect(
     page.getByText("You already have this make and model."),
   ).toBeVisible();
 
-  // Any vehicle. A boat needs neither engine size nor transmission.
+  // Any vehicle. A boat needs no engine size or transmission, its category
+  // is optional, and it has no Moto Mangos card.
   const boatModel = `Boat ${Date.now().toString(36)}`;
+  await page.getByText("Boat or jet ski", { exact: true }).click();
+  await expect(card).toHaveCount(0);
   await page.getByLabel("Make", { exact: true }).fill("Yamaha");
   await page.getByLabel("Model", { exact: true }).fill(boatModel);
-  await page.getByLabel("Vehicle type").selectOption("boat");
   await page.getByLabel("Engine size (cc)").fill("");
   await page.getByLabel("Transmission").selectOption("");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByLabel("Category").locator("option")).toHaveText([
+    "—",
+    "Jet ski",
+    "Speedboat",
+    "Pontoon",
+  ]);
+  await page.getByLabel("Category").selectOption({ label: "Jet ski" });
+  await page.getByRole("button", { name: "Save make & model" }).click();
+  // No name was typed: it is named after its make and model.
   await expect(
     page.getByRole("heading", { name: `Yamaha ${boatModel}`, level: 1 }),
   ).toBeVisible();
+  await expect(page.getByText(/Boat or jet ski · Jet ski/)).toBeVisible();
   page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Delete model" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
 
-  // A car needs neither: engine size and transmission are for a shop to add
-  // if it wants. Close to a preset in name, so its model page offers the match.
-  await page.goto("/bsr/fleet/own-model");
-  await expect(
-    page.getByText("Required for motorbikes. Optional for everything else."),
-  ).toHaveCount(2);
+  // A car: engine size and transmission are optional, a category is not.
+  // Close to a list entry in name, so its page offers the match later.
+  await page.goto("/bsr/fleet/models/new");
+  await page.getByText("Car", { exact: true }).click();
+  await expect(page.getByText("Optional.", { exact: true })).toHaveCount(2);
+  await expect(page.getByLabel("Category").locator("option")).toHaveText([
+    "—",
+    "Sedan",
+    "SUV",
+    "Pickup",
+    "Van",
+    "Hatchback",
+    "Convertible",
+  ]);
   const carModel = `Forza 350 ${Date.now().toString(36)}`;
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByLabel("Model", { exact: true }).fill(carModel);
-  await page.getByLabel("Vehicle type").selectOption("car");
-  await page.getByLabel("Engine size (cc)").fill("");
-  await page.getByLabel("Transmission").selectOption("");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByLabel("Category").selectOption({ label: "SUV" });
+  await page.getByRole("button", { name: "Save make & model" }).click();
   await expect(
     page.getByRole("heading", { name: `Honda ${carModel}`, level: 1 }),
   ).toBeVisible();
@@ -760,10 +837,13 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await expect(
     mangos.getByText("Moto Mangos lists motorbikes only, for now."),
   ).toBeVisible();
-  // As a motorbike, it gets "Did you mean" and can take the preset.
-  await page.getByLabel("Vehicle type").selectOption("motorbike");
+  // As a motorbike, it gets "Did you mean" and can take the list entry. A
+  // car's category doesn't carry over to a motorbike.
+  await page.getByText("Motorbike", { exact: true }).click();
+  await expect(page.getByLabel("Category")).toHaveValue("");
   await page.getByLabel("Engine size (cc)").fill("330");
   await page.getByLabel("Transmission").selectOption("automatic");
+  await page.getByLabel("Category").selectOption({ label: "Touring" });
   await page.getByRole("button", { name: "Save" }).first().click();
   await expect(mangos.getByText("Did you mean:")).toBeVisible();
   await mangos.getByRole("button", { name: "Use Honda Forza 350" }).click();
@@ -810,9 +890,22 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await reviewer.context().close();
   await page.goto(modelUrl);
   await expect(
-    mangos.getByText(/Moto Mangos reviewed this model on .+ and didn't add it\./),
+    mangos.getByText(
+      /Moto Mangos reviewed this model on .+ and didn't add it\./,
+    ),
   ).toBeVisible();
   await expect(mangos.getByText("E2E: add the model years")).toBeVisible();
+  // The dashboard and the Fleet list say so too, until it is dealt with.
+  await page.goto("/bsr/dashboard");
+  const news = page.getByRole("region", { name: "Moto Mangos reviews" });
+  await expect(
+    news.getByRole("link", { name: `${make} Tester 125` }),
+  ).toContainText("Not added: see why");
+  await page.goto(`/bsr/fleet?q=${plate}`);
+  await expect(
+    page.getByRole("link", { name: "Not added to Moto Mangos" }),
+  ).toBeVisible();
+  await page.goto(modelUrl);
   // Sent again: the old outcome goes.
   await mangos.getByRole("button", { name: "Send to Moto Mangos" }).click();
   await expect(mangos.getByText(/Sent to Moto Mangos\./)).toBeVisible();
@@ -831,8 +924,25 @@ test("my own make and model: added with no approval, no duplicates, then matched
   await expect(request).toHaveCount(0);
   await admin.context().close();
 
-  // The shop's model now sits on that preset and can be listed.
+  // The shop's model now sits on that preset and can be listed. The shop is
+  // told on the model, the Fleet list and the dashboard.
+  await page.goto(`/bsr/fleet?q=${plate}`);
+  await expect(
+    page.getByRole("link", { name: "Added to Moto Mangos", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Not added to Moto Mangos" }),
+  ).toHaveCount(0);
+  await page.goto("/bsr/dashboard");
+  await expect(
+    page
+      .getByRole("region", { name: "Moto Mangos reviews" })
+      .getByRole("link", { name: `${make} Tester 125` }),
+  ).toContainText("Added to the Moto Mangos list");
   await page.goto(modelUrl);
+  await expect(
+    mangos.getByText(/Moto Mangos added this model to its list on /),
+  ).toBeVisible();
   await expect(
     mangos.getByText("On the Moto Mangos list as Honda Forza 350."),
   ).toBeVisible();
@@ -842,11 +952,59 @@ test("my own make and model: added with no approval, no duplicates, then matched
 
   // Clean up: the bike, then the model.
   await page.goto(bikeUrl);
-  await page.getByRole("button", { name: "Delete bike" }).click();
+  await page.getByRole("button", { name: "Delete vehicle" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
   await page.goto(modelUrl);
   await page.getByRole("button", { name: "Delete model" }).click();
   await expect(page).toHaveURL(/\/bsr\/fleet(\?.*)?$/);
+});
+
+test("fleet: one button adds a make & model, another adds to the inventory, a + on each row, and a kind filter", async ({
+  page,
+}) => {
+  await signIn(page, demo.bsrManager);
+  await page.goto("/bsr/fleet");
+  // The two jobs have one button each, and nothing says "bike".
+  await expect(
+    page.getByRole("link", { name: "Make & model", exact: true }),
+  ).toHaveAttribute("href", "/bsr/fleet/models/new");
+  await expect(
+    page.getByRole("link", { name: "Add to inventory", exact: true }),
+  ).toHaveAttribute("href", "/bsr/fleet/units/new");
+  await expect(page.getByRole("link", { name: /add bike/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /add model/i })).toHaveCount(0);
+
+  // The + on a model's row adds a vehicle of that make & model.
+  const plus = page
+    .getByRole("link", { name: "Add a Honda PCX 160 to inventory" })
+    .first();
+  const box = await plus.boundingBox();
+  expect(Math.round(box!.width)).toBeGreaterThanOrEqual(44);
+  expect(Math.round(box!.height)).toBeGreaterThanOrEqual(44);
+  await plus.click();
+  await expect(page).toHaveURL(
+    /\/bsr\/fleet\/units\/new\?model=[0-9a-f-]{36}$/,
+  );
+  await expect(page.getByLabel("Make", { exact: true })).toHaveValue("Honda");
+  // Only the shop's own makes & models: nothing from the Moto Mangos list
+  // that the shop doesn't have.
+  const offered = page.getByLabel("Model", { exact: true }).locator("option");
+  await expect(offered.filter({ hasText: "PCX 160" })).toHaveCount(1);
+  await expect(offered.filter({ hasText: "Wave" })).toHaveCount(0);
+
+  // The kind filter: this shop has motorbikes only.
+  await page.goto("/bsr/fleet?kind=car");
+  await expect(
+    page.getByText("No vehicles match these filters."),
+  ).toBeVisible();
+  await expect(page.getByLabel("Kind of vehicle")).toHaveValue("car");
+  await page.getByLabel("Kind of vehicle").selectOption({ label: "Motorbike" });
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page).toHaveURL(/kind=motorbike/);
+  await expect(
+    page.getByRole("link", { name: "Honda PCX 160", exact: true }),
+  ).toBeVisible();
+  await noSidewaysScroll(page);
 });
 
 test("print stickers: tick bikes or select all for the filter; the code opens the bike only for its shop", async ({

@@ -13,6 +13,32 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Fleet rework: Make & model, Add to inventory, kinds and categories (branch `platform/fleet-rework`, 12 Nov 2026)
+
+Owner's request after the click-through: "Add model" and "Add bike" did the same job and read alike. Built to the owner's instruction in chat; `docs/platform/SPEC.md` in the repo does not have this text yet (the owner maintains it).
+
+- **Two buttons, one job each.** "+ Make & model" (top of Fleet) adds a kind of vehicle. "+ Add to inventory" (just above the list) adds one vehicle of a make & model the shop already has, and **never creates a make & model**: its dropdowns list the shop's own only, with a link to "+ Make & model" that comes back afterwards. Each model row has a + (44 px) left of the arrow that opens the inventory form with that model chosen.
+- **The old "Add my own" page is gone** (`/fleet/own-model`): typing a make and model in is part of the Make & model form.
+- **Kind first.** The form starts with Motorbike, Car, Off-road, Boat or jet ski, Other, and reshapes: a motorbike is picked from the Moto Mangos list or typed in; everything else is typed in; engine size and transmission are required for motorbikes only (unchanged rule). The kinds are the database's vehicle types (`atv` reads "Off-road", `boat` reads "Boat or jet ski"). Dirt bikes are motorbikes, category off-road.
+- **Categories: one list in the code**, `apps/platform/lib/vehicle-kinds.ts`, changeable with no migration (the database only checks the key's shape). First guesses: motorbike scooter, touring, adventure, sport, classic, off-road; car sedan, SUV, pickup, van, hatchback, convertible; off-road ATV, UTV; boat jet ski, speedboat, pontoon. Required for motorbikes and cars, optional for the rest, none for Other. Labels are in the messages; a key with no label shows as the key made readable.
+- **Category is stored on the model** (`platform.models.category`). Motorbike keys are the types Moto Mangos files a bike under, so "Send to Moto Mangos" no longer asks for the type. A model on a list entry takes the entry's type unless the shop picks another; existing models were filled that way. A typed-in motorbike with no category is asked for one before it can be sent.
+- **Moto Mangos card** on the add form, motorbikes only: the logo (the mark from the marketplace refresh, copied in as an inline SVG), one line, and a status ("on the list" / "not on the list yet"). No toggle there: listing stays on the model page, and does nothing until Moto Mangos reads from the platform (after Phase 3).
+- **Review results reach the shop.** New `platform.models.catalog_approved_at`, set by `review_catalog_request()` on approve and merge (the shop can't write it). The dashboard shows a "Moto Mangos reviews" block for owners and managers, the Fleet list a marker beside the model, and the model page a line: "not added" for as long as the rejection stands, "added" for 14 days (`reviewNewsDays`). No email or LINE yet (Phases 3 and 6).
+- **"Bike" is "vehicle"** in every platform text except the Moto Mangos panel and the catalog admin (Moto Mangos lists motorbikes). Thai already used the general word (รถ), so only new lines changed there: `docs/platform/thai-review-fleet-rework.md` lists them for the owner's approval.
+- **CSV import:** new optional `category` column (required for a new motorbike or car that isn't on the list); `vehicle_type` also accepts "Off-road", "jet ski" and the like; the page lists each kind's categories from the code. The import still creates makes & models: it is the bulk path.
+- **Fleet list:** a "Kind of vehicle" filter. A make & model with no vehicles yet still shows when only that filter is on.
+- **Pencil** beside a model's name: a plain 44 px icon button, no box, soft tint on hover, focus ring.
+- **Migration `20261113000100_platform_fleet_rework`:** the two columns, a trigger that defaults the category from the list entry, the review function and `import_fleet()` replaced in place. No new table or API-reachable function, so no new grants; `default-grants.test.ts` passes. On local and staging; **not on live**.
+- **Tests:** `lib/vehicle-kinds.test.ts` (kinds, categories, labels in both languages, CSV category, kind filter, review news); `tests/db/fleet-rework.test.ts` (9); the fleet Playwright tests follow the new flow, plus a new one for the two buttons, the row +, and the kind filter.
+- **Test helper:** database tests now pick this checkout's own database container (by `project_id`), because a second checkout of the repo can run its own beside it.
+
+Known limits and open points:
+
+- A motorbike on a list entry can be given a category different from the list's. Nothing uses the difference yet; Phase 3 should decide which one Moto Mangos search reads.
+- Removing a category from the list leaves models that have it unchanged; the form then asks for a new one on the next save.
+- The review block has no "dismiss": a rejection shows until the model is sent again or put on a list entry.
+- The local dev server (`next dev`) is too slow for the long Playwright tests; they were run against a local production build, as CI does.
+
 ## Re-check follow-ups (branch `platform/recheck-followups`, 12 Nov 2026)
 
 Four follow-ups from the second look at the Phase 1a review. Three migrations, on local and staging; **not on live** (they go with the next push from `main`, after this merges).
