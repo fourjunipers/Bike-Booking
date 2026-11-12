@@ -58,7 +58,8 @@ test("an owner gets all four tabs and the admin pages", async ({
   await expect(page.getByRole("heading", { name: "Team" })).toBeVisible();
   await expect(page.getByText(demo.bsrMechanic)).toBeVisible();
   await page.goto("/bsr/settings");
-  await expect(page.getByLabel("Time zone")).toHaveValue("Asia/Bangkok");
+  // The time zone moved to the location in Phase 1a.
+  await expect(page.getByLabel("Distances")).toHaveValue("km");
 });
 
 test("a mechanic opens on Maintenance and sees only its tabs", async ({
@@ -67,7 +68,12 @@ test("a mechanic opens on Maintenance and sees only its tabs", async ({
   await signIn(page, demo.bsrMechanic);
   await expect(page).toHaveURL(/\/bsr\/maintenance$/);
   const nav = mainNav(page, isPhone(info.project.name));
-  await expect(nav.getByRole("link")).toHaveText(["Dashboard", "Maintenance"]);
+  // The sidebar also lists Fleet, which every role can read (Phase 1a).
+  await expect(nav.getByRole("link")).toHaveText(
+    isPhone(info.project.name)
+      ? ["Dashboard", "Maintenance"]
+      : ["Dashboard", "Maintenance", "Fleet"],
+  );
 
   // A tab the role doesn't have sends it home; admin pages don't exist for it.
   await page.goto("/bsr/new-order");
@@ -87,7 +93,11 @@ test("a driver gets Dashboard and Orders", async ({ page }, info) => {
   await expect(page).toHaveURL(/\/bsr\/dashboard$/);
   await expect(
     mainNav(page, isPhone(info.project.name)).getByRole("link"),
-  ).toHaveText(["Dashboard", "Orders"]);
+  ).toHaveText(
+    isPhone(info.project.name)
+      ? ["Dashboard", "Orders"]
+      : ["Dashboard", "Orders", "Fleet"],
+  );
 });
 
 test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
@@ -97,25 +107,27 @@ test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
   await expect(page).toHaveURL(/\/bsr\/dashboard$/);
   const tabs = page.getByRole("tablist", { name: "When" }).getByRole("tab");
   await expect(tabs).toHaveText([
-    /^Today\s*0/,
-    /^Tomorrow\s*0/,
-    /^Upcoming\s*0/,
-    /^Late\s*0/,
+    // Counts depend on the demo renewals and the day the seed ran.
+    /^Today\s*\d+/,
+    /^Tomorrow\s*\d+/,
+    /^Upcoming\s*\d+/,
+    /^Late\s*\d+/,
   ]);
+  // The panel being shown. While tabs switch, the outgoing panel stays in the
+  // page for a moment, marked inert, so "the tabpanel" alone can match two.
+  const panel = page.locator('[role="tabpanel"]:not([inert])');
   const today = page.getByRole("tab", { name: /^Today/ });
   await expect(today).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel")).toContainText("Pickups");
+  await expect(panel).toContainText("Pickups");
 
   // Late: its own sections, and the choice survives a reload.
   await page.getByRole("tab", { name: /^Late/ }).click();
   await expect(page).toHaveURL(/\?view=late$/);
-  await expect(page.getByRole("tabpanel")).toContainText("Overdue bikes");
-  await expect(page.getByRole("tabpanel")).toContainText(
+  await expect(panel).toContainText("Overdue bikes");
+  await expect(panel).toContainText(
     "Missed pickups, deliveries and collections",
   );
-  await expect(page.getByRole("tabpanel")).toContainText(
-    "Unpaid past deadline",
-  );
+  await expect(panel).toContainText("Unpaid past deadline");
   await page.reload();
   await expect(page.getByRole("tab", { name: /^Late/ })).toHaveAttribute(
     "aria-selected",
@@ -127,7 +139,7 @@ test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByRole("tab", { name: /^Upcoming/ })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("tabpanel")).toContainText("Next 7 days");
+  await expect(panel).toContainText("Next 7 days");
 });
 
 test("the look: grey page, white panels, orange accent", async ({

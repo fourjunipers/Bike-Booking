@@ -11,7 +11,7 @@ const valid = {
   name: "  BSR Bike Shop ",
   country: "th",
   currency: "thb",
-  timezone: "Asia/Bangkok",
+  distance_unit: "km",
   locale: "th-th",
 };
 
@@ -21,7 +21,7 @@ describe("tenantSettingsSchema", () => {
       name: "BSR Bike Shop",
       country: "TH",
       currency: "THB",
-      timezone: "Asia/Bangkok",
+      distance_unit: "km",
       locale: "th-TH",
     });
   });
@@ -31,14 +31,15 @@ describe("tenantSettingsSchema", () => {
       {
         country: "VN",
         currency: "VND",
-        timezone: "Asia/Ho_Chi_Minh",
+        distance_unit: "km",
         locale: "vi-VN",
       },
-      { country: "JP", currency: "JPY", timezone: "Asia/Tokyo", locale: "ja" },
+      { country: "JP", currency: "JPY", distance_unit: "km", locale: "ja" },
+      { country: "US", currency: "USD", distance_unit: "mi", locale: "en-US" },
       {
         country: "GB",
         currency: "GBP",
-        timezone: "Europe/London",
+        distance_unit: "km",
         locale: "en-GB",
       },
     ];
@@ -58,7 +59,9 @@ describe("tenantSettingsSchema", () => {
     expect(errors({ country: "EU" })).toEqual(["invalidCountry"]);
     expect(errors({ currency: "BAHT" })).toEqual(["invalidCurrency"]);
     expect(errors({ currency: "ZZZ" })).toEqual(["invalidCurrency"]);
-    expect(errors({ timezone: "Asia/Atlantis" })).toEqual(["invalidTimezone"]);
+    expect(errors({ distance_unit: "furlongs" })).toEqual([
+      "invalidDistanceUnit",
+    ]);
     expect(errors({ locale: "not a locale" })).toEqual(["invalidLocale"]);
   });
 });

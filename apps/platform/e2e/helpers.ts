@@ -9,6 +9,8 @@ export const demo = {
   bsrDriver: "driver@bsr.demo.test",
   saigonOwner: "owner@saigon.demo.test",
   both: "both@demo.test",
+  bigOwner: "owner@big.demo.test",
+  admin: "admin@mangoworks.demo.test",
 } as const;
 
 export function demoPassword(): string {

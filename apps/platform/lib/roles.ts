@@ -1,7 +1,7 @@
 import type { Database } from "@mango/db/database.types";
 
 /** Staff roles (SPEC › Data model, memberships). */
-export type Role = Database["public"]["Enums"]["platform_role"];
+export type Role = Database["platform"]["Enums"]["platform_role"];
 
 export const roles = [
   "owner",
@@ -21,7 +21,15 @@ export const staffTabs = [
 export type StaffTab = (typeof staffTabs)[number];
 
 /** Desktop-admin areas beside the tabs. */
-export type AdminArea = "team" | "settings";
+export type AdminArea = "fleet" | "locations" | "team" | "settings";
+
+/** Shop areas in menu order. */
+export const adminAreas = [
+  "fleet",
+  "locations",
+  "team",
+  "settings",
+] as const satisfies readonly AdminArea[];
 
 const tabsByRole: Record<Role, readonly StaffTab[]> = {
   owner: staffTabs,
@@ -47,10 +55,27 @@ export function canSeeTab(role: Role, tab: string): tab is StaffTab {
   return (tabsByRole[role] as readonly string[]).includes(tab);
 }
 
-/** Team and shop settings: owners and managers (SPEC › Who uses it). */
+/**
+ * Fleet: every role reads it (drivers read-only). Locations, team and shop
+ * settings: owners and managers (SPEC › Who uses it).
+ */
 export function canSeeArea(role: Role, area: AdminArea): boolean {
-  void area;
+  if (area === "fleet") return true;
   return role === "owner" || role === "manager";
+}
+
+/** Owners and managers set up the fleet: models, units, import, money. */
+export function canManageFleet(role: Role): boolean {
+  return role === "owner" || role === "manager";
+}
+
+/**
+ * Owners, managers, staff and mechanics add or end downtime, update the
+ * odometer and switch a unit between active and maintenance. Drivers only read.
+ * The database enforces both (units_guard, unit_blocks policies).
+ */
+export function canWorkOnUnits(role: Role): boolean {
+  return role !== "driver";
 }
 
 /**

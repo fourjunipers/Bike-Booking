@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@mango/db/server";
+import { createClient } from "@mango/db/platform-server";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();

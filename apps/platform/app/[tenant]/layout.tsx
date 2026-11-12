@@ -7,7 +7,7 @@ import { SidebarLink, TabLink } from "@/components/shell/nav-link";
 import type { NavItem } from "@/components/shell/nav";
 import { SignOutButton } from "@/components/sign-out-button";
 import { parseTabBar, tabBarCookie } from "@/lib/preferences";
-import { canSeeArea, tabsFor, type AdminArea } from "@/lib/roles";
+import { adminAreas, canSeeArea, tabsFor } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +36,7 @@ export default async function TenantLayout({
     href: `${base}/${tab}`,
     label: t(tab),
   }));
-  const areas: NavItem[] = (["team", "settings"] as AdminArea[])
+  const areas: NavItem[] = adminAreas
     .filter((area) => canSeeArea(role, area))
     .map((area) => ({ key: area, href: `${base}/${area}`, label: t(area) }));
   const me: NavItem = { key: "me", href: `${base}/me`, label: t("me") };
@@ -45,7 +45,7 @@ export default async function TenantLayout({
     <nav
       aria-label={t("tabs")}
       className={cn(
-        "z-20 flex border-border bg-card/95 backdrop-blur lg:hidden",
+        "z-20 flex border-border bg-card/95 backdrop-blur lg:hidden print:hidden",
         tabBar === "top"
           ? "sticky top-14 border-b"
           : "fixed inset-x-0 bottom-0 border-t pb-safe",
@@ -59,8 +59,8 @@ export default async function TenantLayout({
 
   return (
     <NextIntlClientProvider timeZone={tenant.timezone}>
-      <div className="min-h-svh lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="sticky top-0 hidden h-svh flex-col gap-6 border-r bg-card px-3 py-5 lg:flex">
+      <div className="min-h-svh lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] print:block">
+        <aside className="sticky top-0 hidden h-svh flex-col gap-6 border-r bg-card px-3 py-5 lg:flex print:hidden">
           <div className="px-3">
             <p className="truncate text-lg font-semibold">{tenant.name}</p>
             {memberships.length > 1 && (
@@ -106,7 +106,7 @@ export default async function TenantLayout({
         </aside>
 
         <div className="flex min-h-svh flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur lg:hidden">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur lg:hidden print:hidden">
             <div className="min-w-0">
               <p className="truncate font-semibold">{tenant.name}</p>
             </div>

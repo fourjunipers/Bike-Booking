@@ -43,7 +43,13 @@ function HeaderBones({ action = false }: { action?: boolean }) {
   );
 }
 
-function CardBones({ count, className }: { count: number; className?: string }) {
+function CardBones({
+  count,
+  className,
+}: {
+  count: number;
+  className?: string;
+}) {
   return (
     <div className={cn("grid gap-3 sm:grid-cols-2", className)}>
       {Array.from({ length: count }, (_, i) => (

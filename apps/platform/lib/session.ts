@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@mango/db/server";
+import { createClient } from "@mango/db/platform-server";
 import type { Role } from "./roles";
 
 export type TenantSummary = {
@@ -10,8 +10,10 @@ export type TenantSummary = {
   slug: string;
   country: string;
   currency: string;
-  timezone: string;
   locale: string;
+  distanceUnit: "km" | "mi";
+  /** The default location's time zone (time zones belong to locations). */
+  timezone: string;
 };
 
 export type Membership = {
@@ -46,12 +48,28 @@ export const getMemberships = cache(async (): Promise<Membership[]> => {
   const { data, error } = await supabase
     .from("memberships")
     .select(
-      "id, role, tenant:tenants!inner(id, name, slug, country, currency, timezone, locale)",
+      "id, role, tenant:tenants!inner(id, name, slug, country, currency, locale, distance_unit, locations(timezone, is_default))",
     )
     .eq("user_id", user.id);
   if (error) throw error;
   return (data ?? [])
-    .map((m) => ({ id: m.id, role: m.role, tenant: m.tenant }))
+    .map((m) => {
+      const { locations, distance_unit, ...tenant } = m.tenant;
+      return {
+        id: m.id,
+        role: m.role,
+        tenant: {
+          ...tenant,
+          distanceUnit:
+            distance_unit === "mi" ? ("mi" as const) : ("km" as const),
+          // Every tenant has a default location (the database enforces it).
+          timezone:
+            locations.find((l) => l.is_default)?.timezone ??
+            locations[0]?.timezone ??
+            "UTC",
+        },
+      };
+    })
     .sort((a, b) => a.tenant.name.localeCompare(b.tenant.name));
 });
 

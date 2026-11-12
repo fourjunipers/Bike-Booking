@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { roles } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
-import { createClient } from "@mango/db/server";
+import { createClient } from "@mango/db/platform-server";
 
 export type TeamActionState = {
   error?: "errorLastOwner" | "errorNotAllowed" | "errorGeneric";

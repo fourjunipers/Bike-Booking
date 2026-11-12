@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+import { writeFakeCamera } from "./e2e/fake-camera";
 
 // DEMO_PASSWORD and the Supabase keys come from .env.local locally, from the
 // workflow's environment in CI.
@@ -21,13 +22,23 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   ...(remote && {
     workers: 2,
-    timeout: 60_000,
+    // The longest click-throughs make 40+ requests at about 1.5 s each.
+    timeout: 150_000,
     // Also covers waits like "left the login page" after signing in.
     expect: { timeout: 15_000 },
   }),
   use: {
     baseURL,
     trace: "on-first-retry",
+    // A stand-in camera, so the QR scan button can be tested: Chromium plays
+    // a file showing a QR sticker instead of asking for a real camera.
+    launchOptions: {
+      args: [
+        "--use-fake-ui-for-media-stream",
+        "--use-fake-device-for-media-stream",
+        `--use-file-for-fake-video-capture=${writeFakeCamera()}`,
+      ],
+    },
     ...(remote && { navigationTimeout: 15_000 }),
   },
   // Every staff screen works on a phone and fully on desktop (SPEC › Staff app).

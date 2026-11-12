@@ -14,12 +14,7 @@ export const upcomingDays = 7;
 
 /** Things due on a date: in Today, Tomorrow or Upcoming, or Late once past. */
 export type ScheduledKind =
-  | "pickup"
-  | "return"
-  | "delivery"
-  | "collection"
-  | "service"
-  | "renewal";
+  "pickup" | "return" | "delivery" | "collection" | "service" | "renewal";
 /** Things that are late by nature, whatever their date. */
 export type LateKind = "overdueBike" | "failedCharge" | "unpaid";
 
@@ -128,6 +123,11 @@ export function placeItem(
     return { tab: "tomorrow", section };
   if (compareDates(item.date, upcomingRange(today).to) <= 0)
     return { tab: "upcoming", section };
+  // A renewal is on the dashboard from the shop's first reminder day (45 days
+  // before expiry by default), which is further out than the 7 days of
+  // Upcoming. Callers pass only renewals inside that window; they are listed
+  // under Upcoming with their date.
+  if (item.kind === "renewal") return { tab: "upcoming", section };
   return null;
 }
 
@@ -149,7 +149,10 @@ function scheduledSection(kind: ScheduledKind): DashboardSection {
 
 export type DashboardBoard = Record<
   DashboardTab,
-  { count: number; sections: Partial<Record<DashboardSection, DashboardItem[]>> }
+  {
+    count: number;
+    sections: Partial<Record<DashboardSection, DashboardItem[]>>;
+  }
 >;
 
 /**

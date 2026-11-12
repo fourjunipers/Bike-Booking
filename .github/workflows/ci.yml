@@ -66,7 +66,10 @@ jobs:
       - name: Demo seed
         run: npm run seed -w @mango/platform
       - name: Install Playwright's Chromium
-        run: npx playwright install --with-deps chromium
+        # --with-deps adds system packages (mostly fonts) from Ubuntu's servers.
+        # When those can't be reached (11 Nov 2026: hours of failed lookups
+        # from the runners), carry on with what the runner image already has.
+        run: npx playwright install --with-deps chromium || npx playwright install chromium
         working-directory: apps/platform
       - name: Playwright (phone and desktop)
         run: npm run test:e2e -w @mango/platform

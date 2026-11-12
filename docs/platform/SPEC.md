@@ -445,6 +445,42 @@ This is general information, not legal advice. Have a Thai lawyer review the pri
 - Platform admin: tenants, plans, usage, impersonate-with-consent for support, feature flags.
 - SaaS billing: plans and trials via Stripe Billing; limits per plan (vehicles, seats, locations).
 
+## Review decisions (10 Nov 2026)
+
+These came from an independent review of the plan after Phase 0. They are binding and override anything earlier in this spec that disagrees. Items marked for a later phase are settled when that phase is prepared.
+
+**Build order.** 0 → 1a → 2 → 3 → 3M → 1b → 4 onward. Phase 1 is split in two:
+
+- **1a Fleet core:** locations, catalog link, models, units, CSV import, QR stickers, unit blocks (downtime), the audit table, and the legacy-table mapping.
+- **1b Fleet care:** maintenance log, service schedules, odometer alerts, tax and insurance renewals, keys, GPS, unit timeline, profit per vehicle. It runs after Phase 3, because profit needs orders and payments.
+- **3M Marketplace switch:** a named phase for the adapter switch (marketplace\_api functions, createBooking, markets table, baht to minor units, dropping legacy tables). Accept: search results identical before and after on a seeded dataset; two parallel marketplace bookings for the last bike give one success.
+- **Phase 3 also gets** the basic customer record, the payments ledger with cash and transfer recording, and the jobs + outbox + email plumbing. Phase 4 keeps KYC, Phase 6 templates and LINE, Phase 7 card payments.
+- **Before Gate A** (pulled forward from Phase 11): team invites, enforced 2FA for owners, managers and anyone with document access, and a session list. Website templates and the public API move past Gate B.
+
+**Data model and isolation (Phase 1a onward).**
+
+- **One unit\_blocks table** (kind = allocation, downtime, hold, transfer) with one exclusion constraint on tstzrange \[start, end). No separate downtime table. Before Phase 2: every reserved booking gets a real unit block at once (auto-picked, swappable by staff); a bike still out past its end keeps blocking; a 10–15 minute hold while a renter pays; check + insert inside one function under a per-location-and-model advisory lock.
+- **Locations.** Time zone, opening hours, closures, market, address and cash drawer belong to a location, not the tenant. Every tenant gets a default location at creation. Availability, ready-now counts and search filter by location from Phase 2.
+- **Legacy mapping.** Phase 1a writes docs/platform/MAPPING.md, column by column, and gets owner approval before its migrations: marketplace shop → tenant + location (keep UUID and slug so links and reviews survive); shop\_members → memberships; bike\_models → models; bike\_catalog stays the one vehicle catalog (no second catalog; add a path for cars); bike\_model\_downtime → unit\_blocks; price\_days → price structures (Phase 2); bookings → orders (3M).
+- **Names.** Platform tables must not collide with marketplace tables in the shared database; Phase 1a proposes a platform schema or a name prefix in its summary.
+- **Tenant keys.** Every child table carries tenant\_id and references its parent by (tenant\_id, id), so a row can't point at another shop's parent. No policy grants the authenticated role 'using (true)': that role includes every Moto Mangos sign-up. Security-definer functions, views and storage policies each get their own cross-tenant test. RLS uses the set form tenant\_id = any((select my\_tenant\_ids())).
+- **Isolation tests.** Every tenant-scoped table ships with a fixture row per tenant (the test fails if one is missing) and is tested for cross-tenant read, insert, update and delete, plus role limits (e.g. a mechanic can't read purchase prices).
+- **Money.** Amounts are bigint in minor units. A tenant's currency is locked once any money row exists; changing time zone is owner-only, with a warning. Purchase and sale prices and costs live in unit\_financials, readable by owner and manager only.
+- **Audit.** The audit table and helper are created in Phase 1a. Before Phase 4: passport numbers, addresses and phone numbers are never copied into audit snapshots (record 'changed' only), and audit rows get their own retention.
+
+**Pricing (settle before Phase 2).** Never charge more for fewer days: in price-per-day mode each total is capped at the next tier's lowest total, and in table mode totals never fall as days rise. Days count in the shop's local wall-clock time. TypeScript quote() is the only pricer; the marketplace's SQL pricing copy is retired at 3M. Orders store a quote snapshot. Tax is stored per order line; rounding step is a setting with a default per currency. Worked examples for season rules, extensions, early returns and rentals past 30 days go in the spec before Phase 2 and become its tests.
+
+**Payments.** Provider-neutral from the start of the schema (before Phase 3): payment\_accounts (tenant, provider, external id, capabilities) and payments.provider + provider\_ref, an append-only payments ledger, and a webhook\_events table unique on provider + event id. Features switch on capabilities (hold, save card, partial refund, platform fee). Goal: support the major payment providers in each country; Stripe and PromptPay first for Thailand. The Moto Mangos booking fee is charged fee-only on Moto Mangos' own account (as in INTEGRATION), not as a Connect platform fee. Stripe's written answers on Thai Connect limits come before Phase 2. Tap to Pay moves to Later (needs a native app; Stripe Terminal doesn't serve Thailand).
+
+**Hosting and data.**
+
+- Functions stay on Netlify Personal (US East) while building; tests allow for the slower preview. Move functions to Singapore (Netlify Pro) before Phase 4 stores real passports, or before Gate A if that comes first.
+- Before Gate A or the first real marketplace booking on the platform: live Supabase on a paid plan with backups and point-in-time recovery, and a restore drill.
+- The repo is private (10 Nov 2026).
+- The shop Google Drive document option is deferred until after Gate B. A 'download all my files' export covers data ownership instead.
+
+**Kickoff prompt additions.** Each phase lists any acceptance check it could not truly test, ships a fixture row per tenant for every new table, and records server response time per page in PROGRESS.
+
 ## Build plan
 
 There are 13 phases, each ending in something you can click through. Gate A (after Phase 10): BSR runs on it alongside Booqable. Gate B (after Phase 12): BSR leaves Booqable and other shops can sign up. Each phase is a branch and a PR. A phase is done when its acceptance checks pass in CI and you have tried it on your phone.
@@ -456,11 +492,11 @@ Read the phases left to right, band by band. Nothing reaches other shops until B
 **Step R (before Phase 0): monorepo restructure.** Moves Bike-Booking into apps/marketplace and extracts the shared packages, with no behaviour or database change. Plan and checks are in Repository and database.
 
 0. **Foundations.** apps/platform scaffold (Next.js) on the shared Supabase project and its own Netlify site, auth (email, Google, LINE), tenants, memberships, roles, RLS on every table, app shell (sidebar, EN/TH switch, light/dark), installable staff app with its 4 tabs (each later phase fills in its tab), CI with tests, Sentry, seed script with a demo shop.
-   - Accept: two demo tenants; a user of one cannot read any row of the other (automated test); deploy preview on every PR.
+   - Accept: two demo tenants; a user of one cannot read or change any row of the other (automated test); deploy preview on every PR.
 1. **Fleet.** Vehicle types, models, units, QR stickers, the vehicle record (ownership, profit, odometer log, maintenance log, service schedules, tax and insurance log), due/expiry alerts on the dashboard (LINE alerts added in Phase 6), downtime, unit timeline.
-   - Accept: create 20 BSR bikes from CSV; insurance expiring in 30 days shows on the dashboard; a check-in that crosses the oil interval raises a service-due alert; a maintenance job blocks the unit; selling a unit with future bookings is refused.
+   - Accept: create 20 BSR bikes from CSV; insurance expiring in 30 days shows on the dashboard; an odometer reading that crosses the oil interval raises a service-due alert; a maintenance job blocks the unit; selling a unit with future bookings is refused (tested here with a future block on the unit, and again with real bookings in Phase 3).
 2. **Pricing + availability engine.** Price structures, rules, extras, coupons, VAT, deposits; `quote()` function; availability function; exclusion constraint.
-   - Accept: 50+ unit tests on pricing (tiers, season, weekend, VAT inclusive/exclusive); a concurrency test where two parallel bookings for the last unit results in one success.
+   - Accept: 50+ unit tests on pricing (tiers, season, weekend, VAT inclusive/exclusive); a concurrency test where two parallel bookings for the last unit results in one success, through the staff path and the online model-level path; a booking that overlaps a downtime block is refused; in both pricing modes the total never falls as days rise; the tests include one tenant in a daylight-saving time zone and one in a zero-decimal currency.
 3. **Orders + calendar.** Order editor, status workflow with revert, allocations, shortage flag, today board, unit timeline (drag to reassign/extend), order list with filters, end-of-rental email, overdue alert schedule, audit events.
    - Accept: full new → returned lifecycle in Playwright; drag-extend re-prices; an overlap is refused with a clear message.
 4. **Customers + KYC.** Customer profiles, documents with expiry, blacklist, privacy notice, document storage on the platform or the shop's Google Drive, access logging, retention purge job.
@@ -543,6 +579,7 @@ This log tracks your additions and removals. Each one is already worked into the
 
 | # | Request | Type | Where in the spec | Phase |
 | --- | --- | --- | --- | --- |
+| 45 | Review decisions after Phase 0: split Phase 1 (1a/1b), new order 1a → 2 → 3 → 3M → 1b, unit\_blocks, locations, legacy mapping, tenant keys, bigint money, provider-neutral payments, private repo, Drive option deferred | Decision | Review decisions (10 Nov 2026) | 1a onward |
 | 44 | Look: light grey background, white sidebar and cards, orange accent; instant loading state on every tap | Change | Staff app | 0 |
 | 43 | Dashboard tabs: Today, Tomorrow, Upcoming, Late; each item shown once | Change | Staff app | 0, then each phase |
 | 42 | Moto Mangos search by transmission and cc; both required on every model through its catalog entry | Add | Built for any country › Moto Mangos; Fleet | 1, marketplace |

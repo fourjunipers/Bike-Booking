@@ -2,16 +2,248 @@
 
 What's done, open decisions and known issues, across both apps. Update this at the end of every session so the next one starts clean.
 
-## Status (9 Nov 2026)
+## Status (11 Nov 2026)
 
 | Track | Where it stands |
 | --- | --- |
 | Repo | **Step R** merged to `main` (PR #5). GitHub repo renamed to `fourjunipers/mango-works`; Netlify site `bike-booking-th` relinked to it |
 | Marketplace (Moto Mangos, `apps/marketplace`) | Customer search and pages live on the `lib/data` adapter (Phase 3). Booking fee, fee lifecycle and the `BOOKING_ENABLED` flag merged to `main` (step 2, PR #6). Nothing uses them yet |
-| Platform (`apps/platform`) | **Phase 0** (foundations) on `platform/phase-0-foundations`, PR open: auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. Phase 1 (fleet) is next |
-| Database | 30 migrations in `supabase/migrations` (27 + 3 platform on the Phase 0 branch). Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore); see Phase 0 for what's pushed |
+| Platform (`apps/platform`) | **Phase 0** (foundations) merged to `main` (PR #7, 10 Nov 2026) and deployed on the Netlify site `mango-works-platform` (staging data): auth, tenants, memberships, roles, RLS, app shell, staff app with its 4 tabs (placeholders), demo seed, CI. **Phase 1a** (fleet core) is built on `platform/phase-1a-fleet-core`, PR open |
+| Database | 48 migrations in `supabase/migrations` (27 + 3 platform on `main`, 18 more on the Phase 1a branch). Platform tables live in the `platform` schema from Phase 1a. Live = today's Bike-Booking project (migrations only from `main`). Staging = Supabase project `mango-works-staging` (Singapore), with all 48 and the demo seed |
 
-## Platform Phase 0: foundations (branch `platform/phase-0-foundations`, 9 Nov 2026)
+Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
+
+## Platform Phase 1a: independent review fixes (same branch and PR #8, 11 Nov 2026)
+
+An independent review of Phase 1a found six things that had to be fixed and three small ones. All nine are fixed. Each has a database test in `apps/platform/tests/db/review-fixes.test.ts` that was run against the database before the fix (it failed, including the real races: a shop left with no owner, a sold bike with a future block, two admins both deciding one request) and after (it passes).
+
+| # | Finding | Fix | Migration |
+| --- | --- | --- | --- |
+| 1 | An approved catalog entry is public, but a shop's request note, which shop asked, and the admin's review note could be read on it by anyone | Signed-out visitors and signed-in users may select a list of columns that leaves those three out. Approving clears the note and the shop from the entry (the audit row keeps them). Platform admins read waiting requests, with the note and the shop's name, through `platform.catalog_requests()` | `20261111000700_platform_catalog_private_fields`, `20261111001100_platform_review_gaps` |
+| 2 | `platform_private.audit()` wrote a row for any tenant it was handed | It refuses unless the caller is the service role or a database job, a member of that tenant, or a platform admin | `20261111000800_platform_audit_caller_check` |
+| 3 | Two owners demoting or removing each other at the same instant left a shop with no owner | Team changes for one shop queue behind a lock on the tenant's row; the membership is read again after the lock | `20261111000900_platform_owner_lock` |
+| 4 | A bike could be sold at the same instant someone added a block to it; a block could be moved onto a sold bike or stretched into the future on one | Selling or retiring takes the same per-bike lock as block writes, then checks. The "bike is in the fleet" check runs when a block is changed too: on a sold or retired bike a block may only be shortened | `20261111001000_platform_sold_units_blocks` |
+| 5 | `review_catalog_request` also decided marketplace shops' requests; two admins could both decide one request; a reject failed with a raw error when the shop had re-added the same make and model | It takes only a platform shop's request and locks it while deciding. On reject, a model whose return would make a duplicate stays linked (unlisted) and the function says so; the admin page shows a notice. Approve, merge and reject each write one audit row. It now returns `{decision, kept_linked}` | `20261111001100_platform_review_gaps` |
+| 6 | A model's instant / request / ready-now counts could stay higher than its active bikes after a bike left | A trigger on bikes clamps the counts down (never up) when a bike leaves a model's active set (status change, model change, delete), and writes an audit row (`clamp_booking_counts`) with before, after and which bike. Request units give way before instant units | `20261111001200_platform_clamp_booking_counts` |
+| 7 | "End downtime" from a stale page could re-extend a block someone had already ended | The update only matches a block that is running right now; otherwise the page says it was already ended | none (app) |
+| 8 | An old bike form could overwrite a newer odometer reading | The details form carries the bike's `updated_at`; a save is refused with "changed by someone else, reload" when it has moved on | none (app) |
+| 9 | A shop's own model accepted 1 to 20000 cc, the catalog 50 to 2500: a 49 cc moped saved, then failed with a raw error when submitted | Both accept 1 to 20000 cc. Out of range gives "Enter an engine size from 1 to 20000 cc." under the field; the database's refusal maps to the same message | `20261111001300_platform_cc_range` |
+
+**After the owner's click-through (12 Nov 2026): downtime on the bike page**
+- "End now" from a stale tab did refuse to write, but its message sat inside the row that then disappeared, so nothing was shown. The bike page now reloads with a notice: "That downtime was already ended or removed by someone else."
+- A new downtime couldn't be added after ending one without a reload. "From" was filled with the time the page was opened, which by then lay inside the block just ended. "From" now starts blank, and blank means now, taken from the server when it is saved.
+- Even after a reload it could be refused within the same minute: the old block ended at, say, 10:30:45 and the new one was typed as 10:30. Ending a downtime, and starting one "now", both use the start of the current minute. A downtime started and ended within one minute is removed, not kept.
+
+**Rules for later phases that come out of this**
+- **Phase 2 must compute availability from `units` and `unit_blocks`, never from the stored counts alone.** `instant_units`, `request_units` and `ready_now` are a shop's setting. They are kept within the active bikes, but a bike in a block is still "active".
+- **Lock order:** code that needs the lock of more than one bike in one transaction takes the per-bike advisory locks in sorted `unit_id` order. The block guard does (a block moved from one bike to another).
+- **A column added to `public.bike_catalog` is not readable by the public** until it is added to the column grant on purpose.
+
+**Changed for the marketplace: nothing it uses.** Its public and vendor queries name their columns and use none of the three private ones; its admin pages use the service role. All 81 marketplace database tests pass with the new grant. The catalog's engine-size limit is wider (1 to 20000); the marketplace's own vendor form still checks 50 to 2500.
+
+**Known limits**
+- A model kept linked to a rejected entry (fix 5) can't be listed and can't be sent again from the screen. It is rare (the shop re-added the same make and model while waiting); the model page says why. Tidying it up means deleting one of the two.
+- Fix 2 is tested through direct SQL as a signed-in user (the `platform_private` schema is not reachable through the API, so it could not be reached that way before either).
+- The race tests (3, 4, 5) fire the two calls at the same instant several rounds each. They failed every run before the fixes and pass every run after, but a race test can only show a race is closed for the timings it hit.
+- Not built, by decision: see "Before Phase 2" below.
+
+### Before Phase 2
+
+Review findings deferred, to do before or with Phase 2:
+- **Non-atomic pairs:** a renewal and its cost, and opening hours (delete then upsert), are two writes. Make each one RPC or transaction.
+- **`unit_blocks.created_by` and `unit_renewals.recorded_by` are client-settable.** Set them in the database from `auth.uid()`.
+- **Preset copies drift:** a model's copy of its catalog entry's make, model and specs isn't updated when an approved entry is edited or un-approved.
+- **Audit gaps:** log changes to `platform_admins`; keep audit rows when a tenant is deleted (or block hard tenant delete).
+- **Phase 2 multi-bike bookings must take per-bike locks in sorted order** (the rule above).
+- **pg_cron on live:** the migrations enable the hourly reminder job where `pg_cron` is available, so it will start on live when Phase 1a's migrations are applied there. Expected; put it on the go-live checklist.
+
+Tests after these fixes: 102 platform unit, 115 platform database, 81 marketplace database, 58 Playwright (29 at 375 px, 29 at 1280 px).
+
+## Platform Phase 1a follow-ups (same branch and PR #8, 11 Nov 2026)
+
+Ten requests from the owner after trying Phase 1a. Where they differ from the Phase 1a notes below, these are the current state. Migration `20261111000200_platform_fleet_followups.sql`.
+
+**Decisions that change the spec** (owner, 11 Nov 2026; `docs/platform/SPEC.md` still has the old wording and needs the same edits at its next export)
+- **Odometer:** a lower reading is no longer refused for anyone who may update the odometer. The app asks "Are you sure?" first; the audit log records who changed it, from what, to what. (Spec: "a reading lower than the last one needs a manager override".) Drivers still can't change a bike at all.
+- **Borrowed units removed:** the `borrowed` status and the active-from / active-to window are gone. (Spec: "Borrowed units (sub-rentals) with an active window".) Nothing else depended on them: no query, rule or screen read them.
+- **"First registered" removed** from the data model, screens and import. Before the column was dropped, its year was copied into the new `model_year` where a bike had one.
+- **Tax and insurance pulled forward from Phase 1b:** the renewal log (minimum), reminder settings and dashboard items are built now. Service schedules, odometer alerts, keys, GPS, the unit timeline and profit stay in 1b.
+- **Scheduled jobs:** the hourly reminder queue uses Supabase Cron (`pg_cron`), the scheduler the spec names. It is the repo's first scheduled job. The migration enables the extension where it is available and skips the schedule where it isn't.
+
+**Built**
+- **Bug fixed: the distance unit "reverted" after saving.** The save always worked. The form was left to the browser to submit, and React then reset it, so the dropdown showed the value the page first loaded with until a reload. The settings form is now submitted by script like the others. The same class of bug existed on the Fleet filter form ("Reset view" left old values on screen) and is fixed by redrawing the form when the view changes.
+- **Fleet list, grouped.** By model (default), each split into the shop's own model-year bands, newest first; "Unknown year" for bikes with no year, "Other years" for a year outside every band, one group for all years when a model has no bands. Each group shows make, model, year band, bike count and a status breakdown, and opens with its arrow. Expand all, collapse all. Group by model, make, location, status or none. Filters: make and model (linked), engine size range, transmission, status, location, model year, plate or frame search. Sort: make and model, engine size, bike count, plate, odometer, purchase date (owners and managers only). The view lives in the address, so it can be bookmarked, and the last view is remembered per person per device (a cookie, like the other per-device choices). "Next service due" is not offered as a sort: that data arrives in Phase 1b.
+- **Model-year bands:** `model_year_bands`, edited on each model's page by owners and managers; a year can sit in one band of a model only (database rule).
+- **Make, then model, everywhere a model is chosen** (add bike, add model, Fleet filters, sticker filters): two linked dropdowns from the catalog. Choosing a catalog model the shop doesn't have yet creates the shop's model on save. "Add a make or model" covers what the catalog lacks: the shop uses it at once and a platform admin reviews it (the existing catalog-request path, renamed).
+- **CSV import** now takes `make, model, model_year, name` instead of `model, catalog`. Where the catalog has several generations of a model, the model year picks the one whose years include it. `name` is optional: the shop's own model name.
+- **Status:** one control per bike (active, maintenance, retired, sold), each with a line saying whether the bike can be rented. The duplicate beside the odometer is gone. Staff and mechanics are offered active and maintenance only.
+- **Selling:** choosing Sold only changes the status (still refused while the bike has a block ending in the future), then lands on the one "Purchase and sale" section at the bottom, where every purchase and sale field is viewed, edited and saved. The separate "Mark as sold" panel with its own price fields is gone.
+- **Tax and insurance:** `unit_renewals` (kind, provider, reference, start, expiry; everyone reads, staff and mechanics record, owners and managers delete) and `unit_renewal_costs` (owners and managers only, like purchase prices; a cost locks the currency too). The bike page shows "Road tax expires" and "Insurance expires" from the latest record of each kind, highlighted when due or expired. Reminder settings per shop: days before expiry (default 45, 30, 14, 7) and an optional monthly digest day (1 to 28). Dashboard: a renewal shows from the shop's first reminder day, under Upcoming with its date (Today and Tomorrow when it is that close), and under Late once expired. Only the current record of each kind counts; sold and retired bikes are left out.
+- **Notification outbox:** `notification_outbox` plus `queue_renewal_notifications()`, run hourly. It queues one message per reminder day reached (only the nearest one for a record added late), one "expired", and one monthly digest, each exactly once, by the calendar date at the bike's location. **Nothing sends them yet** (see below).
+- **Print stickers:** a button on the Fleet page opens a list with a checkbox per bike, select-all for what the filter shows, make and model filters, newest first or by plate. Printing shows only the ticked stickers. The bike page keeps "Print this sticker", which opens the list with that bike ticked.
+- **Demo data:** BSR renewals in every state (insurance expiring 30 days after the seed runs, one in 5 days, road tax 3 days overdue), and a third shop, Big Fleet Demo (`/big-fleet`, `owner@big.demo.test`), with 150 bikes in 5 models, three year bands each, two locations and mixed statuses.
+
+**What statuses and downtime do to availability today** (asked by the owner)
+- Nothing computes availability yet: that is Phase 2, and there are no bookings until Phase 3. What exists today:
+- **Active** is the only status counted as rentable stock: a model's Instant, Request and Ready-now counts can't exceed its active bikes.
+- **Maintenance** therefore already takes the bike out of those counts, and the status text says it can't be rented. Phase 2's availability function must count active bikes only for this to hold for bookings; that is how the spec defines it.
+- **Retired and Sold:** refused while the bike has a block ending in the future; afterwards no new block can be added; left off the sticker list and the dashboard.
+- **Scheduled downtime** is a `unit_blocks` row. The database already refuses any other block on that bike for overlapping times, whatever its kind, so from Phase 2 a booking can't land on it.
+
+**Sending by email or LINE: what the codebase can do**
+- Nothing. There is no email sender, no LINE client, no outbox and no job runner anywhere in the repo, in either app. Sign-in emails are sent by Supabase itself. The spec puts jobs + outbox + email in Phase 3 and LINE in Phase 6.
+- So reminders are queued, not sent, and no sender was built. The outbox rows hold facts (bike, kind, expiry, days before), not text, so the Phase 3 sender can word them per language and choose recipients. Until then the dashboard is the only place a reminder is seen.
+
+**Tests** (all passing locally, 11 Nov 2026)
+- Unit: 91 platform (new: fleet view incl. 150 bikes, import by make and model, renewals and reminder settings), 144 marketplace, 86 core.
+- Database: 84. New: the four new tables in the isolation harness (fixtures, cross-tenant read/insert/update/delete), year bands, renewals and cost visibility by role, reminder settings, the queue (once each, nearest reminder only, location date, expired, digest, sold bikes skipped), lowered odometer with its audit row, removed columns and status.
+- Playwright: 50 (25 at 375 px, 25 at 1280 px). New or rewritten: grouped fleet, the 150-bike shop, status and odometer confirmation, renewals to dashboard, bands, adding a make, sticker picker with print media, the settings bug.
+- Tests updated because the rule changed: the two that expected a refusal on a lowered odometer; the Phase 0 dashboard test (tab counts are no longer zero).
+
+**Not truly tested**
+- The hourly schedule itself: the queue function is tested directly; that `pg_cron` fires it each hour is checked only by seeing the job listed on local and staging.
+- Printing on paper and scanning a printed sticker (as before); the print layout is tested with the browser's print styles.
+- 150 bikes on a real phone: tested at 375 px in a desktop browser, and the page loaded within the test's limit.
+- Thai wording of the new text (key parity only).
+
+**Surprises**
+- The "reverted to kilometres" bug was a display bug: the database had the right value all along.
+- Models with no bikes had dropped off the first version of the grouped list; the browser test for adding a make caught it.
+- The catalog's entries are per generation (CB500X 2016–2018, 2019–2021, 2022–2023), so "make then model" can list the same model name more than once, told apart by years. Year bands are the shop's own and separate from those.
+
+**Scan QR on the Maintenance tab (owner request, 11 Nov 2026; QR scanning was planned for Phase 5)**
+- A camera button sits beside the plate search. It opens the camera, reads a bike's sticker and opens that bike. Only the sticker's token is used, so a sticker printed with another address (a preview, an old domain) still opens the bike on the site the person is signed in to, and a code that isn't a sticker is never followed.
+- It reads codes on Android, iPhone and laptops with a camera. Chrome on Android has a code reader built in. Safari on iPhone and Firefox don't, so there each camera frame is decoded on the device by the `jsqr` library (owner OK, 11 Nov 2026; Apache-2.0, no dependencies of its own), which is downloaded only on those browsers and only when the scanner is opened. Nothing is uploaded.
+- Tests: the token rule (unit). In Playwright the stand-in camera plays a file showing a QR sticker (`e2e/fake-camera.ts`): one test reads that code for real from the camera frames with `jsqr`, as an iPhone would; others cover the right bike opening, a foreign code refused, the camera turned off on close, and the message when a browser has no camera access. Not tested: a real phone camera reading a real printed sticker, and Safari itself (the tests run in Chromium with its own reader removed).
+- Stickers hold the address of the site they were printed from. Print the real ones from the final domain, not from a deploy preview: the in-app scanner copes either way, but a phone's own camera app follows the printed address.
+- Playwright: 58 (29 at 375 px, 29 at 1280 px).
+- CI (11 Nov 2026): for some hours GitHub's runners could not look up Ubuntu's package servers, so installing Chromium's system packages (mostly fonts) failed before any test ran. The install step now falls back to Chromium without them (`.github/workflows/ci.yml`); all 58 Playwright tests pass that way. Known issue: while such an outage lasts the step spends about 10 minutes timing out first.
+
+**Spec rules that changed** (`docs/platform/SPEC.md` is not edited here: the owner keeps the spec in a separate document and re-exports it after merge)
+
+From the catalog and listing decision (11 Nov 2026):
+- **(a) A model no longer needs a catalog entry.** The spec says "a model can't be saved without a catalog entry, so cc and transmission are always filled in". Now a model is either on a preset (an approved catalog entry) or is the shop's own, with its make, model and specs stored on the model.
+- **(b) Required specs.** Vehicle type: always. Engine size (cc) and transmission: required for motorbikes only; optional for cars, ATVs, boats and "other" (a shop may add them). An earlier version the same day also required a transmission for cars; the owner withdrew that.
+- **(c) Moto Mangos listing and approval.** Approval appears only when a shop wants a model on Moto Mangos. A model on an approved entry can be switched on directly. One of the shop's own is matched to a suggested entry ("Did you mean…") or sent to the platform admin, who approves it (it becomes a preset for every shop), merges it into an existing entry, or rejects it. Only a model on an approved entry can be listed. The spec's "a missing catalog entry goes to the platform admin for approval" now applies at listing, not when a bike is added.
+- **(d) Writes to one bike's `unit_blocks` queue behind each other** (a transaction-level advisory lock per bike), on top of the exclusion constraint. The spec's review decision asks for "check + insert inside one function under a per-location-and-model advisory lock" before Phase 2; the per-bike lock is in place now and Phase 2's booking function takes the same one.
+
+From the earlier follow-ups the same day (details further down): a lowered odometer is confirmed, not refused; borrowed units and "first registered" are removed; the tax and insurance log, reminder settings and dashboard items were built ahead of Phase 1b; the hourly reminder queue uses Supabase Cron.
+
+**Shops' own vehicles and one list for Moto Mangos (owner decision, 11 Nov 2026; built)**
+
+This replaces the spec rule "a model can't be saved without a catalog entry" and the open decision recorded just below. Migrations `20261111000300_platform_own_models.sql` and `20261111000400_platform_unit_block_lock.sql`.
+
+- **One list, two uses.** The approved entries of the vehicle catalog are the presets in the management system's make and model dropdowns, and they are the list Moto Mangos uses. There is no second list to keep in step: approving an entry makes it a preset for every shop at once.
+- **Presets first.** Make, then model, from the presets is the default path everywhere. "Not in the list? Add my own" is the link underneath.
+- **A shop's own make and model** is saved straight away with no approval, for any vehicle (motorbike, car, ATV, boat, other). A model now carries its own make, model, vehicle type, engine size and transmission; a model on a preset takes them from the preset (the database copies them, so they can't drift).
+- **Required specs** (owner, 11 Nov 2026, final): vehicle type always; engine size and transmission for motorbikes only. For cars, ATVs, boats and "other" both are optional. The same rule holds in the Add my own form, the model edit form, CSV import and the database (`models_required_specs_check`; migrations `20261111000500` and `20261111000600`, the second withdrawing a short-lived rule that cars need a transmission).
+- **No duplicates within a shop:** the same make and model of the shop's own can't be added twice, ignoring case and spacing (database rule). Adding something that is exactly a preset is refused with a link to the preset. Models on presets are not affected: the catalog has one entry per generation, and a shop may keep two models on one entry (owner, 10 Nov).
+- **Listing on Moto Mangos is the only place approval comes up.** Each model page has a Moto Mangos box:
+  - on a preset: "On the Moto Mangos list as …" and a "List this model on Moto Mangos" switch;
+  - the shop's own: close matches are suggested ("Did you mean: Use Honda PCX 160 (2026)"), which links the model to the preset in one click; or "Send to Moto Mangos", which puts it in the platform admin's list;
+  - waiting: the shop keeps using the model meanwhile;
+  - not a motorbike: Moto Mangos lists motorbikes only for now.
+- **The admin's list** (`/admin/catalog`) now offers Approve (it becomes a preset for everyone), Merge into an existing entry (every model waiting on it moves to that entry, closest matches listed first), or Reject (the model goes back to being the shop's own, unlisted).
+- **Only a model on an approved preset can be switched on for Moto Mangos** (database rule). The switch is stored now and takes effect when the marketplace reads the platform (Phase 3M).
+- **CSV import:** a make and model that matches a preset goes on it; one that doesn't becomes the shop's own, with new optional columns `vehicle_type`, `cc` and `transmission` (required for a motorbike). The old "this make isn't in the catalog" errors are gone.
+- **Risk to know:** a shop that types "Hodna PCX 160" as its own gets its own model. Nothing blocks a typo at entry; it is caught when the shop goes to list it, by "Did you mean". Exact matches (any case or spacing) are blocked at entry.
+
+**The availability lock under a real race (found and fixed, 11 Nov 2026)**
+- While rerunning the tests, the four-way "who gets the bike" race sometimes hung for 20 seconds. Cause: with the exclusion constraint alone, simultaneous overlapping writes for one bike wait on each other in a circle; Postgres cancels one with "deadlock detected" and the API layer retries it, so losers could spin instead of being refused. Earlier runs passed because the requests happened not to overlap closely enough.
+- Fix: writes to one bike's blocks queue behind each other (a transaction-level advisory lock on the bike, taken in the trigger). The exclusion constraint is still the rule. Phase 2's booking function takes the same lock, as the review decision asks.
+- The test is now twelve simultaneous writers, five rounds, exact outcome every time (one success, eleven clean overlap refusals, within 5 seconds), plus "different bikes don't wait on each other" and "ending a block while another is added".
+
+- **Platform admins land on their page.** Signing in as a platform admin with no shop used to show "You're not in a shop yet" (found by the owner). They now go straight to the catalog requests; an admin who also works in a shop gets a link beside the shop list.
+
+- **Catalog reviews are audited.** Approve, merge and reject each write an audit record under the shop that sent the entry (who decided, the entry, the note, and for a merge the entry it went into). Before, only the entry's own status, note and review time recorded the decision.
+
+Tests: 95 platform unit, 93 database, 50 Playwright, passing locally and against the PR #8 deploy preview.
+
+**Second round of owner feedback (11 Nov 2026, later the same day)**
+- **Current fleet by default.** The Fleet list shows the working fleet: sold and retired bikes are kept, with all their records, but stay out of the list. A "Show" control switches between Current fleet, Sold and retired, and Everything; the header counts the working fleet and links to "N sold or retired". Choosing the Sold or Retired status in the filters finds them whatever "Show" says. The choice is remembered with the rest of the view.
+- **Bike Details reordered:** the odometer sits where the location was (for owners and managers it is now part of the Details form, with the same lower-reading confirmation), and the location is the last field. Staff and mechanics keep their separate odometer box, since they can't edit the details.
+- **"Group by location" and the location filter** are only offered to shops with more than one location.
+- **A make and model already in the list can't be added again** for overlapping years (checked when adding a make or model). Found because three overlapping "Honda Test" entries were added during testing; that check previously existed only for a model's own year bands.
+- **A note on bikes with sale details but a status other than Sold.** Saving sale details never changes the status (by design), so a bike could look sold on paper while still Active. The purchase and sale section now says so.
+- Tests: 92 platform unit, 84 database, 50 Playwright.
+
+**Closed (11 Nov 2026): how the shared catalog and shops' own vehicles fit together.** Decided and built as described above: the catalog link is optional, and approval happens only when a model is listed on Moto Mangos. The notes below are the question as it was first put.
+- Today every model must link to a catalog entry, and the catalog only describes motorbikes (engine size and a bike type are required). A shop can add its own entry and use it at once, but each one lands in the platform admin's review list.
+- The owner wants shops to add any vehicle (cars, boats, ATVs) with no approval, while Moto Mangos stays tidy: one Honda PCX, not three spellings.
+- Recommended: a model's catalog link becomes optional. A shop's own make and model are stored on its model and need no approval. Moto Mangos lists only models linked to an approved catalog entry, so linking (or asking for a new entry) happens when a shop chooses to list a model there, not when it adds a bike. The catalog is pre-loaded with the popular bikes and year ranges so most shops just pick. This changes the spec rule "a model can't be saved without a catalog entry" and needs the owner's OK before any migration.
+
+## Platform Phase 1a: fleet core (branch `platform/phase-1a-fleet-core`, 11 Nov 2026)
+
+Mapping first: `docs/platform/MAPPING.md` (legacy marketplace tables → tenants, locations, models, units, unit blocks; column by column), approved by the owner on 10 Nov 2026 with the decisions in its §8.
+
+**Built**
+- **`platform` schema** (owner decision). Platform tables left `public`; `tenants` and `memberships` moved with their functions. Signed-out visitors have no access to the schema. The app's database client (`@mango/db/platform-server`) points at `platform` only and reads the shared catalog with `.schema("public")`. Nothing is granted by default; every function revokes public execute and checks its caller.
+- **Migrations** `20261110000100`–`500` and `20261111000100` (all `_platform_`): schema move and set-form RLS helpers (`my_tenant_ids`, `my_role`), `platform_admins`; `audit_events` with a row trigger and a helper; `locations`, `location_hours`, `location_closures`, `create_tenant()`; the catalog link; `models`, `units`, `unit_financials`, `unit_blocks`, `import_fleet()`.
+- **Locations.** Time zone, address, map pin, contacts, hours, closures and (empty until 3M) market sit on the location. `tenants.timezone` is gone. A tenant can only be created together with its default location (`create_tenant`, checked when the transaction ends); the default can't be deleted or unset. Only an owner changes a time zone, with a confirm.
+- **Catalog.** `public.bike_catalog` stays the one catalog. Added: `vehicle_type` (new `public.vehicle_types`: motorbike, car with a spec schema), `specs`, `requested_by_tenant_id`. A shop can request an entry and use its own pending request; a platform admin approves at `/admin/catalog`. **Platform admin is defined in one place: `platform.platform_admins`.**
+- **Models and units.** Several models per catalog entry, each with its own name. Units: plate (free-form, unique per shop, any letter case) or a "plate pending" flag, frame and engine numbers, colour, odometer in km, status, borrowed window, QR token.
+- **`unit_blocks`**: one table (allocation, downtime, hold, transfer), one exclusion constraint on `[start, end)`. Phase 1a writes downtime only.
+- **Money.** `bigint` minor units with a currency that must equal the tenant's (composite foreign key). `unit_financials` is owner and manager only. The currency locks once a deposit or a financial row exists (trigger; the settings form shows it locked).
+- **Tenant keys.** Every child carries `tenant_id` and references its parent by `(tenant_id, id)`.
+- **Audit.** Every insert, update and delete on tenants, memberships, locations, hours, closures, models, units, financials and blocks writes `audit_events` (actor, only the changed columns). Imports and catalog requests are logged too. Owners and managers read it; nobody signed in can write it.
+- **Role limits** (owner, 10 Nov 2026): owners and managers edit everything. Staff and mechanics add or end downtime, update the odometer (never down: that needs a manager) and switch a unit between active and maintenance. Drivers read only. The database enforces all of it (`units_guard`, policies); the screens only hide what a role can't do.
+- **Screens** (375 px and 1280 px, EN and TH): Fleet list with search, model, bike (details, odometer and status, downtime, purchase and sale, mark as sold, QR sticker), add model, add bike, CSV import with a problems table, QR sticker sheet (prints without the app shell), catalog request, locations (details, hours, closures), `/admin/catalog`. Shop settings: distance unit (km or miles) added, time zone moved out, currency shown locked. Maintenance tab: real search by plate or frame number, plus the bikes in maintenance. Fleet is in the sidebar; on a phone it is reached from Maintenance or "You and this device".
+- **CSV import.** Hand-written reader (`lib/csv.ts`: quotes, line breaks in quotes, BOM, comma, semicolon or tab). `lib/fleet-import.ts` checks the whole file and reports every problem by line and column; `import_fleet()` saves it in one transaction. One row per bike; a new model is created from its catalog code.
+- **QR stickers.** `qrcode` package (owner OK). A sticker is a link to `/q/<token>`; the token says nothing about the bike. A member of the bike's shop lands on the bike; anyone else gets "not found".
+- **Distances** are stored in km and shown in the shop's unit (`lib/distance.ts`; a reading typed in miles comes back as the same miles).
+- **Forms keep what was typed** when the server answers with an error (they are submitted by script, with the plain form action as the no-JavaScript fallback).
+- **Demo seed**: BSR's address, contacts, hours and a yearly Songkran closure; a platform admin (`admin@mangoworks.demo.test`); 20 demo bikes in 11 models read from `apps/platform/scripts/demo/bsr-fleet.csv` through the real reader and checks. Plates and frame numbers are fake (`DEMO-…`); one bike has no plate. Safe to run again.
+
+**Tests** (all passing locally, 11 Nov 2026)
+- Unit: 76 in the platform (CSV, import checks, money, distance, times across daylight-saving changes, form rules), 144 marketplace, 86 core.
+- Database: 74 (`npm run test:db -w @mango/platform`). The isolation test now needs a fixture row per tenant in every tenant table (it fails if one is missing, or if a new table has no payload), and tries cross-tenant read, insert, update, delete and "move my row into your shop" as every role and as an outsider, then compares every row of both tenants before and after. Parent keys are tested with the service role. Every function gets a cross-tenant call. No policy may be `using (true)`.
+- Playwright: 42 (21 at 375 px, 21 at 1280 px), passing locally, in CI and against the PR #8 deploy preview on staging.
+- The hardened test found one real gap while it was being written: `platform_rls_report` and `platform_open_policies` were callable by any signed-in user. Fixed before the migrations were pushed anywhere.
+- **No platform table is readable without RLS** (owner's question, 11 Nov 2026). Checked in the database on local and staging: all 11 tables in the schema have RLS on with at least one policy, signed-out visitors have no access to the schema, and a new table gets no automatic grants (the schema's default privileges name the service role only). The check found leftover grants on `tenants` and `memberships` from their Phase 0 creation in `public` (signed-out `select`; `truncate`, `references`, `trigger`). They couldn't be used, and migration `20261111000100` removes them. Two tests now hold this on every run (`platform_exposure_report`, `platform_schema_access`), including for tables without a `tenant_id` and with no views allowed until one has its own test.
+
+**Server response time per page** (median of 5, signed in as the BSR owner, 20 bikes; `TIMINGS=1 npx playwright test timings --project=desktop`)
+
+| Page | Local production build | Deploy preview (US East → Singapore) |
+| --- | --- | --- |
+| Dashboard | 53 ms | 1.2 s |
+| Maintenance | 51 ms | 1.4 s |
+| Maintenance search | 56 ms | 1.5 s |
+| Fleet | 60 ms | 1.3 s |
+| Model | 57 ms | 1.5 s |
+| Bike | 65 ms | 1.6 s |
+| Add bike | 48 ms | 1.2 s |
+| Import CSV | 42 ms | 1.3 s |
+| QR stickers (all 20) | 65 ms | 1.7 s |
+| Locations | 44 ms | 1.5 s |
+| Location | 61 ms | 1.7 s |
+| Shop settings | 46 ms | 1.0 s |
+| Team | 39 ms | 0.9 s |
+
+**Acceptance checks not truly tested**
+- **Scanning a printed sticker with a phone camera.** Tested: the code's link opens the bike for its shop and "not found" for anyone else. Not tested: that a real camera reads the printed code at sticker size. Needs a phone and a printout.
+- **Printing.** The sheet hides the app shell with print styles; no test prints a page or checks label alignment.
+- **Legacy mapping.** MAPPING.md is a design. No legacy row has been moved; the mapping is exercised for the first time at 3M.
+- **"Selling a unit with future bookings is refused"** is tested with a future block (allocation and downtime kinds), as the spec says for this phase. Real bookings arrive in Phase 3.
+- **Two people blocking the same bike at once**: tested with four parallel requests on a local database (one wins). Not tested under load or against the hosted database.
+- **Time-zone change warning**: the confirm dialog is not driven by a test (no test changes BSR's zone, because other tests read it). The owner-only rule itself is tested in the database.
+- **Thai text**: key-for-key parity with English is tested; the wording has not been read by a Thai speaker.
+
+**Staging (11 Nov 2026)**
+- All six Phase 1a migrations are on `mango-works-staging` (`supabase db push --db-url`, dry run first; live untouched), `platform` is in its Exposed schemas (owner), and the demo seed has run there (11 catalog entries added, 20 demo bikes).
+- **Live needs `platform` added to API › Exposed schemas when this merges.**
+- Preview pages take 0.9-1.7 s on the server against 40-65 ms locally: the functions run in US East and each query crosses to Singapore. Pages make 3-6 queries (membership, fleet, catalog, locations, blocks, money), mostly in parallel. The move to Singapore functions is already planned before Phase 4.
+- Because `tenants` moved schema on staging, the Phase 0 build on the platform site's production URL stops working against staging until this branch is merged.
+
+**Deferred / known issues**
+- Model photo upload (the column exists; upload comes with the online booking page, with its own storage policy and cross-tenant test).
+- Booking-mode counts are checked when a model is saved, not when a bike later leaves the fleet; Phase 2's availability function takes the smaller number.
+- Odometer history is one current value; the readings log is Phase 1b.
+- The audit log has no viewer yet (before Gate A).
+- A shop slug of `q`, `admin`, `login`, `auth` or `offline` would collide with a route; sign-up (Phase 11) must reserve them.
+- `apps/platform/CLAUDE.md` still says "allocations/downtime"; the spec's handoff section is the source for that file and wasn't edited.
+- Running the seed prints a harmless Node warning about module type.
+
+## Platform Phase 0: foundations (merged in PR #7, 10 Nov 2026)
 
 **Built**
 - Migrations (`20261109000100`–`300`, all `_platform_`): `tenants` (name, slug, country, currency, timezone, locale; no defaults, time zone checked by a trigger), `memberships` (owner, manager, staff, mechanic, driver; one user can be in several tenants), RLS helpers in a `platform_private` schema the API doesn't expose, `tenant_members()` for the team list, `set_member_role()` / `remove_member()` (owners change anyone; managers only staff, mechanics and drivers; a tenant always keeps an owner), and `platform_rls_report()` (service role only) listing every table with a `tenant_id`.
@@ -50,7 +282,7 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 **Deferred / known issues**
 - Inviting team members is Phase 11 (spec). Until then members are added by the seed script or by Mango Works with the service role. Owners and managers can change roles and remove members.
-- Tenant columns for later phases (plan, VAT, Stripe, LINE channel, booking rules, marketplace switches, distance unit) are added by those phases.
+- Tenant columns for later phases (plan, VAT, Stripe, LINE channel, booking rules, marketplace switches) are added by those phases.
 - Google and LINE sign-in need the OAuth apps registered under Mango Works and enabled in staging (steps in the PR). Not tested end to end yet; email sign-in is.
 - Sentry source-map upload isn't set up (needs `withSentryConfig` and an auth token), so browser stack traces are minified.
 - "Pull down to refresh" on the Dashboard is a Refresh button (installed apps have no browser pull-to-refresh). A gesture can come with Phase 3's data.
@@ -83,9 +315,10 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 ## Next
 
-1. Owner: create the platform Netlify site (settings in the Phase 0 PR), register Google and LINE sign-in for staging, review and merge the Phase 0 PR.
-2. Owner: archive `mango-works-platform` if not done yet.
-3. Platform Phase 1: fleet (`platform/phase-1-fleet`).
+1. Owner: try the Phase 1a click-through on the deploy preview (phone and desktop), review PR #8, and add `platform` to API › Exposed schemas on live when it merges.
+2. Owner: register Google and LINE sign-in for staging (not tested end to end yet).
+3. Owner: archive `mango-works-platform` (the old repo) if not done yet.
+4. Then Phase 2 (pricing + availability), 3 (orders + calendar), 3M (marketplace switch), 1b (fleet care).
 
 ## Open
 

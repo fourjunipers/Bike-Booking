@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Shop settings an owner or manager can edit in Phase 0 (SPEC › Built for any
- * country). Nothing defaults to Thailand: each value is checked against what
+ * Shop settings an owner or manager can edit (SPEC › Built for any country).
+ * The time zone belongs to a location (lib/locations.ts). Nothing defaults to Thailand: each value is checked against what
  * the runtime's Intl data knows, and the database checks again.
  */
 
@@ -57,7 +57,7 @@ export const tenantSettingsSchema = z.object({
     .trim()
     .toUpperCase()
     .refine(isCurrency, "invalidCurrency"),
-  timezone: z.string().trim().refine(isTimeZone, "invalidTimezone"),
+  distance_unit: z.enum(["km", "mi"], "invalidDistanceUnit"),
   locale: z
     .string()
     .trim()
