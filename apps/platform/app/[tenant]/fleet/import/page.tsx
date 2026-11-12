@@ -9,6 +9,7 @@ import { requireArea } from "@/lib/access";
 import { getCatalog } from "@/lib/fleet-data";
 import { importColumns, importTemplate } from "@/lib/fleet-import";
 import { canManageFleet } from "@/lib/roles";
+import { vehicleKinds } from "@/lib/vehicle-kinds";
 import { ImportForm } from "./import-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -58,6 +59,29 @@ export default async function ImportPage({
               {t("template")}
             </a>
           </Panel>
+          <Panel title={t("categories")} intro={t("categoriesHelp")}>
+            <dl className="space-y-2 text-sm">
+              {vehicleKinds
+                .filter((kind) => kind.categories.length > 0)
+                .map((kind) => (
+                  <div key={kind.type}>
+                    <dt className="font-medium">
+                      {tFleet(`kind.${kind.type}`)}{" "}
+                      <span className="font-mono font-normal text-muted-foreground">
+                        ({kind.type})
+                      </span>
+                    </dt>
+                    <dd className="font-mono break-words">
+                      {kind.categories
+                        .map((key) =>
+                          key === "city_scooter" ? "scooter" : key,
+                        )
+                        .join(", ")}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          </Panel>
           <Panel title={t("catalogCodes")}>
             <details>
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">
@@ -94,7 +118,7 @@ export default async function ImportPage({
                 </tbody>
               </table>
               <Link
-                href={`/${slug}/fleet/own-model`}
+                href={`/${slug}/fleet/models/new`}
                 className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
               >
                 {tFleet("unit.makeOrModelMissing")}

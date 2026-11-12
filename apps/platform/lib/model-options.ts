@@ -2,8 +2,8 @@ import type { ModelOption } from "@/components/fleet/make-model-picker";
 
 /**
  * Choices for the linked make and model dropdowns (owner, 11 Nov 2026).
- * Makes and models come from the shared catalog; a shop adds its own through a
- * catalog request, which it can use straight away.
+ * "+ Make & model" offers the Moto Mangos list (motorbikes); everything else
+ * offers the makes & models the shop already has.
  */
 
 type Entry = {
@@ -40,40 +40,24 @@ export function catalogOptions(
   }));
 }
 
-/**
- * For a bike: the shop's own models first, then catalog entries it has no
- * model for yet (choosing one creates the model). Values are "model:<id>" or
- * "catalog:<id>" (lib/fleet parseModelChoice).
- */
-/** A shop's model, with what it is (from a preset or its own). */
+/** A shop's model, with what it is (from the list or typed in). */
 type ShopModel = {
   id: string;
   name: string;
   catalog: { id: string | null; make: string };
 };
 
-export function bikeModelOptions(
-  models: ShopModel[],
-  catalog: Entry[],
-  labels: { yours: string; catalog: string },
-): ModelOption[] {
-  const used = new Set(models.map((m) => m.catalog?.id));
-  return [
-    ...models.map((model) => ({
-      value: `model:${model.id}`,
-      make: model.catalog?.make ?? "",
-      label: model.name,
-      group: labels.yours,
-    })),
-    ...catalog
-      .filter((entry) => !used.has(entry.id))
-      .map((entry) => ({
-        value: `catalog:${entry.id}`,
-        make: entry.make,
-        label: entryLabel(entry),
-        group: labels.catalog,
-      })),
-  ];
+/**
+ * For a vehicle: the shop's own makes & models, and nothing else. Adding to
+ * the inventory never creates one (owner, 12 Nov 2026). Values are
+ * "model:<id>" (lib/fleet parseModelChoice).
+ */
+export function inventoryModelOptions(models: ShopModel[]): ModelOption[] {
+  return models.map((model) => ({
+    value: `model:${model.id}`,
+    make: model.catalog?.make ?? "",
+    label: model.name,
+  }));
 }
 
 /** For filters: the shop's models only. Values are model ids. */

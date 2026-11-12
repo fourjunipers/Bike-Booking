@@ -13,7 +13,6 @@ import { requireArea } from "@/lib/access";
 import { formatDistance, fromKm } from "@/lib/distance";
 import { hasLeftFleet, type RenewalKind } from "@/lib/fleet";
 import {
-  getCatalog,
   getFleet,
   getLocations,
   getReminderSettings,
@@ -23,7 +22,7 @@ import {
   getUnitFinancials,
   getUnitRenewals,
 } from "@/lib/fleet-data";
-import { bikeModelOptions } from "@/lib/model-options";
+import { inventoryModelOptions } from "@/lib/model-options";
 import { formatMoney, moneyInputValue } from "@/lib/money";
 import { qrSvg, siteOrigin, stickerUrl } from "@/lib/qr";
 import {
@@ -77,7 +76,6 @@ export default async function UnitPage({
     locale,
     unit,
     fleet,
-    catalog,
     locations,
     blocks,
     renewals,
@@ -90,7 +88,6 @@ export default async function UnitPage({
     getLocale(),
     getUnit(tenant.id, id),
     getFleet(tenant.id),
-    getCatalog(),
     getLocations(tenant.id),
     getUnitBlocks(tenant.id, id),
     getUnitRenewals(tenant.id, id),
@@ -185,11 +182,8 @@ export default async function UnitPage({
               <UnitForm
                 slug={slug}
                 distanceUnit={tenant.distanceUnit}
-                addModelHref={`${base}/own-model?then=bike`}
-                models={bikeModelOptions(fleet, catalog, {
-                  yours: tUnit("yourModels"),
-                  catalog: tUnit("fromCatalog"),
-                })}
+                addModelHref={`${base}/models/new`}
+                models={inventoryModelOptions(fleet)}
                 locations={locations.map((l) => ({
                   value: l.id,
                   label: l.name,

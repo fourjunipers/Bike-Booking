@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PageHeader, PlannedCard } from "@/components/page";
+import { MotoMangosMark } from "@/components/brand/moto-mangos-mark";
 import { RefreshButton } from "@/components/refresh-button";
+import { canManageFleet } from "@/lib/roles";
+import { reviewNews } from "@/lib/vehicle-kinds";
 import { requireTab } from "@/lib/access";
 import {
   getFleet,
@@ -56,6 +59,14 @@ export default async function DashboardPage({
 
   // Rendered on the server only, in the shop's zone, so it can't mismatch.
   const now = new Date();
+  // What Moto Mangos decided about the shop's requests, for the people who
+  // sent them: a rejection until it is dealt with, an approval for two weeks.
+  const reviews = canManageFleet(membership.role)
+    ? fleet.flatMap((model) => {
+        const news = reviewNews(model, now);
+        return news ? [{ model, news }] : [];
+      })
+    : [];
   const today = dateInZone(now, tenant.timezone);
   // Each phase adds its items here (orders, bikes, charges).
   // Tax and insurance: the current record of each kind per bike, from the
@@ -183,6 +194,39 @@ export default async function DashboardPage({
         intro={t("shopTime", { time: shopTime, zone: tenant.timezone })}
         actions={<RefreshButton />}
       />
+      {reviews.length > 0 && (
+        <section
+          aria-labelledby="moto-mangos-news"
+          className="mb-5 rounded-lg border bg-card p-4"
+        >
+          <h2
+            id="moto-mangos-news"
+            className="mb-2 flex items-center gap-2 font-semibold"
+          >
+            <MotoMangosMark className="size-6" />
+            {t("motoMangos.title")}
+          </h2>
+          <ul className="divide-y">
+            {reviews.map(({ model, news }) => (
+              <li key={model.id}>
+                <Link
+                  href={`/${slug}/fleet/models/${model.id}`}
+                  className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 py-2 text-sm hover:underline"
+                >
+                  <span className="font-medium">{model.name}</span>
+                  <span
+                    className={
+                      news === "added" ? "text-emerald-800" : "text-amber-800"
+                    }
+                  >
+                    {t(`motoMangos.${news}`)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <DashboardTabs
         tabs={tabs}
         initial={parseDashboardTab(query.view)}

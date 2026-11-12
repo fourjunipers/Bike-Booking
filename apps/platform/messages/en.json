@@ -92,14 +92,19 @@
       "deliveries": "Deliveries and collections",
       "servicesDue": "Services due",
       "renewalsDue": "Tax and insurance renewals due",
-      "overdueBikes": "Overdue bikes",
+      "overdueBikes": "Overdue vehicles",
       "missed": "Missed pickups, deliveries and collections",
       "overdueMaintenance": "Overdue services and renewals",
       "failedCharges": "Failed card charges",
       "unpaid": "Unpaid past deadline"
     },
     "shopTime": "Shop time: {time} ({zone})",
-    "noRenewals": "Nothing due."
+    "noRenewals": "Nothing due.",
+    "motoMangos": {
+      "title": "Moto Mangos reviews",
+      "added": "Added to the Moto Mangos list",
+      "notAdded": "Not added: see why"
+    }
   },
   "Orders": {
     "title": "Orders",
@@ -117,9 +122,9 @@
   },
   "NewOrder": {
     "title": "New order",
-    "intro": "Book a bike and take payment. These steps fill in as the phases land.",
+    "intro": "Book a vehicle and take payment. These steps fill in as the phases land.",
     "dates": "Pick dates",
-    "bike": "See the bikes available",
+    "bike": "See the vehicles available",
     "customer": "Choose or add the customer",
     "extras": "Extras and delivery",
     "price": "Price and discount",
@@ -128,21 +133,21 @@
   },
   "Maintenance": {
     "title": "Maintenance",
-    "searchLabel": "Find a bike",
+    "searchLabel": "Find a vehicle",
     "searchPlaceholder": "Plate number",
     "due": "Due and overdue across the fleet",
-    "noMatch": "No bike matches “{query}”.",
-    "searchHelp": "Type a plate or frame number, or press the camera button to scan a bike's QR sticker.",
+    "noMatch": "No vehicle matches “{query}”.",
+    "searchHelp": "Type a plate or frame number, or press the camera button to scan a vehicle's QR sticker.",
     "openFleet": "See the whole fleet",
     "dueLater": "Service and renewal alerts arrive in Phase 1b.",
     "scan": "Scan QR",
-    "scanTitle": "Scan a bike's QR sticker",
-    "scanHint": "Point the camera at the sticker. The bike opens as soon as the code is read.",
+    "scanTitle": "Scan a vehicle's QR sticker",
+    "scanHint": "Point the camera at the sticker. The vehicle opens as soon as the code is read.",
     "scanProblem": {
       "unsupported": "This browser can't use the camera here. Use your phone's camera app instead: it opens the same sticker.",
       "denied": "The camera is blocked for this site. Allow it in the browser's site settings, then try again.",
       "failed": "The camera couldn't be opened. Close other apps using it and try again.",
-      "notSticker": "That code isn't one of your bike stickers. Keep the camera on a sticker."
+      "notSticker": "That code isn't one of your vehicle stickers. Keep the camera on a sticker."
     }
   },
   "Team": {
@@ -188,7 +193,7 @@
     "timezoneMoved": "Time zone, address, opening hours and closures are set per location. <link>Open locations</link>",
     "reminders": {
       "title": "Tax and insurance reminders",
-      "intro": "When a bike's road tax or insurance is due for renewal. The largest number also decides when it first shows on the dashboard.",
+      "intro": "When a vehicle's road tax or insurance is due for renewal. The largest number also decides when it first shows on the dashboard.",
       "days": "Days before expiry",
       "daysHelp": "Up to 10 numbers, separated by commas. For example 45, 30, 14, 7. Leave blank for no reminders.",
       "digest": "Monthly digest",
@@ -240,13 +245,13 @@
     "invalidTimezone": "Choose a time zone from the list.",
     "endBeforeStart": "The end must be after the start.",
     "plateOrPending": "Enter the plate, or tick “Plate pending”.",
-    "plateExists": "Another bike in this shop already has that plate.",
+    "plateExists": "Another vehicle in this shop already has that plate.",
     "nameExists": "That name is already used in this shop.",
     "inUse": "It is still in use, so it can't be deleted.",
-    "blockOverlap": "This bike is already blocked for part of that time. Pick other times, or end the other block first.",
-    "unit_has_future_blocks": "This bike still has a block that ends in the future. End or remove it first.",
-    "unit_not_in_fleet": "This bike has been sold or retired, so it can't be blocked.",
-    "more_units_than_active": "Instant plus Request units, and Ready now, can't be more than the model's active bikes.",
+    "blockOverlap": "This vehicle is already blocked for part of that time. Pick other times, or end the other block first.",
+    "unit_has_future_blocks": "This vehicle still has a block that ends in the future. End or remove it first.",
+    "unit_not_in_fleet": "This vehicle has been sold or retired, so it can't be blocked.",
+    "more_units_than_active": "Instant plus Request units, and Ready now, can't be more than the model's active vehicles.",
     "catalog_entry_not_usable": "Choose a catalog entry from the list.",
     "only_owner_or_manager": "Only an owner or manager can change that.",
     "currency_locked": "The currency can't change once prices have been saved in it.",
@@ -266,28 +271,30 @@
     "merge_target_not_approved": "Choose an approved entry to merge into.",
     "requiredSpecs": "A motorbike needs an engine size and a transmission.",
     "ccRange": "Enter an engine size from 1 to 20000 cc.",
-    "staleUnit": "This bike was changed by someone else while this form was open. Reload the page to see the latest, then make your change again."
+    "staleUnit": "This vehicle was changed by someone else while this form was open. Reload the page to see the latest, then make your change again.",
+    "invalidCategory": "Choose one of the categories in the list.",
+    "categoryFirst": "Choose a category for this model and save it first, then send it."
   },
   "Fleet": {
     "title": "Fleet",
-    "intro": "{units, plural, =0 {No bikes yet} one {# bike} other {# bikes}} in {models, plural, one {# model} other {# models}}.",
-    "searchLabel": "Find a bike",
+    "intro": "{units, plural, =0 {No vehicles yet} one {# vehicle} other {# vehicles}} in {models, plural, one {# make & model} other {# makes & models}}.",
+    "searchLabel": "Find a vehicle",
     "searchPlaceholder": "Plate or frame number",
-    "noMatch": "No bike matches “{query}”.",
-    "empty": "No bikes yet. Add a model, then its bikes, or import them all from a CSV file.",
-    "addModel": "Add model",
-    "addUnit": "Add bike",
+    "noMatch": "No vehicle matches “{query}”.",
+    "empty": "Nothing here yet. Start with “Make & model”, then add your vehicles to the inventory, or import them all from a CSV file.",
+    "addModel": "Make & model",
+    "addUnit": "Add to inventory",
     "import": {
-      "title": "Import bikes from CSV",
-      "intro": "One row per bike. The whole file is checked first: if any row has a problem, nothing is saved.",
+      "title": "Import vehicles from CSV",
+      "intro": "One row per vehicle. The whole file is checked first: if any row has a problem, nothing is saved.",
       "columns": "Columns",
-      "columnsHelp": "“make” and “model” are required. If they match the list below, the bike goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle becomes one of your own models: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike). A motorbike needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the model. Leave “plate” blank for a bike without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
+      "columnsHelp": "“make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a make & model of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the make & model. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
       "template": "Download a template",
       "file": "CSV file",
       "paste": "Or paste the rows here",
       "submit": "Check and import",
       "importing": "Checking…",
-      "done": "Imported {units, plural, one {# bike} other {# bikes}} and {models, plural, =0 {no new models} one {# new model} other {# new models}}.",
+      "done": "Imported {units, plural, one {# vehicle} other {# vehicles}} and {models, plural, =0 {no new models} one {# new model} other {# new models}}.",
       "viewFleet": "See the fleet",
       "problems": "{count, plural, one {# problem} other {# problems}} found. Nothing was imported.",
       "line": "Line",
@@ -302,12 +309,12 @@
         "unclosedQuote": "A quote opened on this line is never closed.",
         "duplicateHeader": "This column appears twice.",
         "unknownColumn": "This column isn't one of the import columns.",
-        "noRows": "The file has a header but no bikes.",
-        "tooManyRows": "A file can hold at most 1,000 bikes.",
+        "noRows": "The file has a header but no vehicles.",
+        "tooManyRows": "A file can hold at most 1,000 vehicles.",
         "required": "Required.",
         "tooLong": "Too long.",
         "plateDuplicateInFile": "This plate appears on an earlier line.",
-        "plateExists": "A bike in your fleet already has this plate.",
+        "plateExists": "A vehicle in your fleet already has this plate.",
         "invalidDate": "Not a date in YYYY-MM-DD form.",
         "invalidNumber": "Not a number.",
         "invalidMoney": "Not an amount in your currency.",
@@ -320,13 +327,17 @@
         "invalidYear": "Not a year, such as 2024.",
         "ownNeedsSpecs": "This make and model isn't in the list, so it will be one of your own. A motorbike needs “cc” and “transmission”.",
         "invalidVehicleType": "Use motorbike, car, atv, boat or other.",
-        "invalidTransmission": "Use automatic, semi_auto or manual."
+        "invalidTransmission": "Use automatic, semi_auto or manual.",
+        "invalidCategory": "This isn't one of the categories for that kind of vehicle.",
+        "ownNeedsCategory": "A new motorbike or car needs a “category”."
       },
       "showCodes": "{count, plural, one {Show # entry} other {Show # entries}}",
-      "years": "years"
+      "years": "years",
+      "categories": "Categories",
+      "categoriesHelp": "What to write in the “category” column, for each kind of vehicle."
     },
-    "noUnits": "No bikes of this model yet.",
-    "unitCount": "{count, plural, one {# bike} other {# bikes}}",
+    "noUnits": "No vehicles of this model yet.",
+    "unitCount": "{count, plural, one {# vehicle} other {# vehicles}}",
     "platePending": "Plate pending",
     "noPlate": "No plate",
     "status": {
@@ -350,13 +361,10 @@
     },
     "catalogLine": "{make} {model} · {cc} cc · {transmission}",
     "model": {
-      "newTitle": "Add a model",
+      "newTitle": "Add a make & model",
       "editTitle": "Model",
       "name": "Name",
       "nameHelp": "Your own name for it. Several models can share one catalog entry.",
-      "catalog": "Model",
-      "catalogHelp": "The same list Moto Mangos uses. Picking from it means the model can be listed there with no extra step.",
-      "catalogMissing": "Not in the list? Add my own",
       "description": "Description",
       "bookableOnline": "Can be booked online",
       "bufferBefore": "Buffer before pickup (minutes)",
@@ -367,24 +375,28 @@
       "minAge": "Minimum age",
       "licenceClass": "Licence class",
       "modes": "Booking modes",
-      "modesHelp": "How many of the active bikes confirm instantly and how many need your OK. The rest are for walk-ins only.",
+      "modesHelp": "How many of the active vehicles confirm instantly and how many need your OK. The rest are for walk-ins only.",
       "instantUnits": "Instant units",
       "requestUnits": "Request units",
       "readyNow": "Ready for walk-ins now",
-      "units": "Bikes of this model",
+      "units": "Vehicles of this model",
       "delete": "Delete model",
       "deleteConfirm": "Delete this model? This can't be undone.",
       "photosLater": "Photos are added with the online booking page.",
-      "make": "Make"
+      "make": "Make",
+      "newIntro": "A kind of vehicle you rent out, like a Honda Click 160. Add the vehicles themselves afterwards, with “Add to inventory”.",
+      "nameHelpNew": "Optional. Your own name for it; blank uses the make and model.",
+      "saveNew": "Save make & model",
+      "saveThenInventory": "Save and add a vehicle"
     },
     "unit": {
-      "newTitle": "Add a bike",
+      "newTitle": "Add to inventory",
       "details": "Details",
       "model": "Model",
       "location": "Location",
       "plate": "Plate",
       "platePending": "Plate pending (not registered yet)",
-      "platePendingWarning": "This bike has no plate yet. Staff are warned before check-out.",
+      "platePendingWarning": "This vehicle has no plate yet. Staff are warned before check-out.",
       "frameNumber": "Frame (chassis) number",
       "engineNumber": "Engine number",
       "colour": "Colour",
@@ -393,22 +405,23 @@
       "odometer": "Odometer ({unit})",
       "odometerNow": "Odometer",
       "initialOdometer": "Odometer now ({unit})",
-      "delete": "Delete bike",
-      "deleteConfirm": "Delete this bike? This can't be undone.",
-      "readOnly": "You can view this bike but not change it.",
+      "delete": "Delete vehicle",
+      "deleteConfirm": "Delete this vehicle? This can't be undone.",
+      "readOnly": "You can view this vehicle but not change it.",
       "make": "Make",
       "modelYear": "Model year",
       "modelYearHelp": "Used to group the fleet list by year band.",
-      "makeOrModelMissing": "Not in the list? Add my own",
-      "yourModels": "Your models",
-      "fromCatalog": "From the catalog",
-      "statusIntro": "One status per bike. Scheduled downtime is separate, below.",
+      "makeOrModelMissing": "Make & model not here? Add it first",
+      "statusIntro": "One status per vehicle. Scheduled downtime is separate, below.",
       "odometerLowerConfirm": "Are you sure? This is lower than the current reading ({current} {unit}).",
-      "odometerHelp": "A lower reading asks you to confirm."
+      "odometerHelp": "A lower reading asks you to confirm.",
+      "newIntro": "One vehicle of a make & model you already have.",
+      "modelHelp": "Only your own makes & models are listed.",
+      "noModelsYet": "Add a make & model first. Then come back to add the vehicles you have of it."
     },
     "downtime": {
       "title": "Downtime",
-      "intro": "Blocks this bike from bookings. Times are {zone} time.",
+      "intro": "Blocks this vehicle from bookings. Times are {zone} time.",
       "none": "No downtime now or planned.",
       "from": "From",
       "until": "Until",
@@ -427,7 +440,7 @@
       },
       "past": "Earlier blocks",
       "fromHelp": "Leave blank to start now.",
-      "alreadyEnded": "That downtime was already ended or removed by someone else. This is the bike as it is now."
+      "alreadyEnded": "That downtime was already ended or removed by someone else. This is the vehicle as it is now."
     },
     "money": {
       "title": "Purchase and sale",
@@ -439,22 +452,22 @@
       "salePrice": "Sale price ({currency})",
       "soldTo": "Sold to",
       "afterSold": "Marked as sold. Fill in the sale date, price and buyer here, then save.",
-      "notSoldNote": "This bike has sale details but its status isn't Sold. Set the status to Sold above to take it out of the fleet."
+      "notSoldNote": "This vehicle has sale details but its status isn't Sold. Set the status to Sold above to take it out of the fleet."
     },
     "sticker": {
       "title": "QR sticker",
-      "help": "Scan it with a phone camera to open this bike. It only works for people signed in to your shop.",
+      "help": "Scan it with a phone camera to open this vehicle. It only works for people signed in to your shop.",
       "print": "Print this sticker",
       "sheetTitle": "Print stickers",
-      "sheetIntro": "Tick the bikes to print. Only the ticked stickers appear on paper.",
+      "sheetIntro": "Tick the vehicles to print. Only the ticked stickers appear on paper.",
       "printAll": "Print",
-      "selectAll": "{count, plural, one {Select the # bike listed} other {Select all # listed}}",
+      "selectAll": "{count, plural, one {Select the # vehicle listed} other {Select all # listed}}",
       "selected": "{count} selected",
       "sortRecent": "Most recently added"
     },
     "importCsv": "Import CSV",
     "printStickers": "Print stickers",
-    "allBikes": "All bikes",
+    "allBikes": "All vehicles",
     "statusCount": "{count} {status}",
     "statusHelp": {
       "active": "Can be rented.",
@@ -471,10 +484,10 @@
       "ccMax": "Engine size to (cc)",
       "apply": "Apply",
       "reset": "Reset view",
-      "showing": "Showing {shown} of {total} bikes",
+      "showing": "Showing {shown} of {total} vehicles",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
-      "noneMatch": "No bikes match these filters.",
+      "noneMatch": "No vehicles match these filters.",
       "group": {
         "model": "Model",
         "make": "Make",
@@ -485,7 +498,7 @@
       "sort": {
         "makeModel": "Make and model",
         "cc": "Engine size",
-        "count": "Bike count",
+        "count": "Vehicle count",
         "plate": "Plate",
         "odometer": "Odometer",
         "purchaseDate": "Purchase date"
@@ -496,7 +509,8 @@
         "past": "Sold and retired",
         "all": "Everything"
       },
-      "pastLink": "{count} sold or retired"
+      "pastLink": "{count} sold or retired",
+      "kind": "Kind of vehicle"
     },
     "bands": {
       "title": "Model-year bands",
@@ -540,26 +554,6 @@
       "delete": "Delete",
       "deleteConfirm": "Delete this record?"
     },
-    "vehicleType": {
-      "motorbike": "Motorbike",
-      "car": "Car",
-      "atv": "ATV",
-      "boat": "Boat",
-      "other": "Other"
-    },
-    "ownModel": {
-      "title": "Add my own make or model",
-      "intro": "For any vehicle that isn't in the list: bikes, cars, ATVs, boats. It is saved straight away, with no approval.",
-      "make": "Make",
-      "makeHelp": "Pick an existing make, or type a new one.",
-      "model": "Model",
-      "vehicleType": "Vehicle type",
-      "cc": "Engine size (cc)",
-      "transmission": "Transmission",
-      "submit": "Add",
-      "ccHelp": "Required for motorbikes. Optional for everything else.",
-      "transmissionHelp": "Required for motorbikes. Optional for everything else."
-    },
     "motoMangos": {
       "title": "Moto Mangos",
       "intro": "An online marketplace where you can list your rental bikes to be seen by renters in your area.",
@@ -573,16 +567,69 @@
       "submitTitle": "Don't see your model? Send it to Moto Mangos",
       "submitHelp": "We check it, add it to our database, and make it viewable on the Moto Mangos marketplace.",
       "submit": "Send to Moto Mangos",
-      "bikeType": "Bike type",
       "yearFrom": "First model year",
       "yearTo": "Last model year",
       "note": "Note for the reviewer",
       "rejectedLinked": "Moto Mangos didn't add this model, so it can't be listed. It is still tied to that request because you have another model of your own with the same make and model, and a shop can't have two.",
       "rejected": "Moto Mangos reviewed this model on {date} and didn't add it.",
       "rejectReason": "The reviewer's note:",
-      "rejectNoReason": "The reviewer left no note. You can change the details and send it again."
+      "rejectNoReason": "The reviewer left no note. You can change the details and send it again.",
+      "approved": "Moto Mangos added this model to its list on {date}.",
+      "categoryFirst": "Choose a category for this model in the form on this page, save, and then you can send it to Moto Mangos."
     },
-    "editModel": "Edit model"
+    "editModel": "Edit make & model",
+    "addUnitTo": "Add a {name} to inventory",
+    "reviewNews": {
+      "added": "Added to Moto Mangos",
+      "notAdded": "Not added to Moto Mangos"
+    },
+    "kind": {
+      "motorbike": "Motorbike",
+      "car": "Car",
+      "atv": "Off-road",
+      "boat": "Boat or jet ski",
+      "other": "Other"
+    },
+    "category": {
+      "city_scooter": "Scooter",
+      "touring": "Touring",
+      "adventure": "Adventure",
+      "sport": "Sport",
+      "classic": "Classic",
+      "off_road": "Off-road",
+      "sedan": "Sedan",
+      "suv": "SUV",
+      "pickup": "Pickup",
+      "van": "Van",
+      "hatchback": "Hatchback",
+      "convertible": "Convertible",
+      "atv": "ATV",
+      "utv": "UTV",
+      "jet_ski": "Jet ski",
+      "speedboat": "Speedboat",
+      "pontoon": "Pontoon"
+    },
+    "what": {
+      "kindLegend": "What kind of vehicle is it?",
+      "make": "Make",
+      "makeHelp": "Pick an existing make, or type a new one.",
+      "model": "Model",
+      "listHelp": "The Moto Mangos list. A model picked from it can be listed there with no extra step.",
+      "typeIt": "Not in the list? Type it in",
+      "useList": "Choose from the list instead",
+      "cc": "Engine size (cc)",
+      "transmission": "Transmission",
+      "optional": "Optional.",
+      "category": "Category",
+      "categoryHelp": "Helps renters find it when they search and filter.",
+      "categoryOptional": "Optional. Helps renters find it when they search and filter.",
+      "card": {
+        "intro": "The online marketplace where renters in your area find motorbikes to rent.",
+        "onList": "This model is on the Moto Mangos list. After saving, you can list it from its page.",
+        "pick": "Pick a model above to see whether it is on the Moto Mangos list.",
+        "notOnList": "Not on the Moto Mangos list yet. After saving, you can send it for review from its page."
+      }
+    }
   },
   "Locations": {
     "title": "Locations",
@@ -620,7 +667,7 @@
     "addClosure": "Add closure",
     "delete": "Delete location",
     "deleteConfirm": "Delete this location? This can't be undone.",
-    "unitCount": "{count, plural, =0 {No bikes} one {# bike} other {# bikes}}"
+    "unitCount": "{count, plural, =0 {No vehicles} one {# vehicle} other {# vehicles}}"
   },
   "Admin": {
     "title": "Catalog requests",

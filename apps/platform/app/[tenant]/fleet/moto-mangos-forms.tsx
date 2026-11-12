@@ -4,11 +4,9 @@ import { useTranslations } from "next-intl";
 import {
   ActionForm,
   CheckboxInput,
-  SelectInput,
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import { bikeTypes } from "@/lib/fleet";
 import {
   linkModelToPreset,
   setMarketplaceListed,
@@ -46,22 +44,13 @@ export function SubmitToCatalogForm({
   id: string;
 }) {
   const t = useTranslations("Fleet.motoMangos");
-  const tFleet = useTranslations("Fleet");
   return (
     <ActionForm
       action={submitModelToCatalog}
       hidden={{ slug, id }}
       submitLabel={t("submit")}
     >
-      <div className="grid gap-5 sm:grid-cols-3">
-        <SelectInput
-          name="type"
-          label={t("bikeType")}
-          options={bikeTypes.map((value) => ({
-            value,
-            label: tFleet(`type.${value}`),
-          }))}
-        />
+      <div className="grid gap-5 sm:grid-cols-2">
         <TextInput
           name="year_from"
           label={t("yearFrom")}

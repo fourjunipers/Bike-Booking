@@ -11,6 +11,7 @@ import {
   Printer,
   Search,
 } from "lucide-react";
+import { MotoMangosMark } from "@/components/brand/moto-mangos-mark";
 import { MakeModelPicker } from "@/components/fleet/make-model-picker";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { Field, inputClass } from "@/components/form";
@@ -39,6 +40,7 @@ import {
 } from "@/lib/fleet-view";
 import { shopModelOptions } from "@/lib/model-options";
 import { canManageFleet } from "@/lib/roles";
+import { kindTypes, reviewNews } from "@/lib/vehicle-kinds";
 import { cn } from "@/lib/utils";
 import { ExpandCollapse, RememberView } from "./fleet-controls";
 
@@ -101,6 +103,7 @@ export default async function FleetPage({
     })),
   );
   const modelOf = new Map(fleet.map((model) => [model.id, model]));
+  const now = new Date();
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   const result = buildFleetView(
     {
@@ -114,6 +117,7 @@ export default async function FleetPage({
         model: model.catalog?.model ?? model.name,
         cc: model.catalog?.cc ?? null,
         transmission: model.catalog?.transmission ?? null,
+        kind: model.vehicle_type,
       })),
     },
     view,
@@ -199,13 +203,9 @@ export default async function FleetPage({
                   <FileUp aria-hidden />
                   {t("importCsv")}
                 </Link>
-                <Link href={`${base}/models/new`} className={link("outline")}>
+                <Link href={`${base}/models/new`} className={link("default")}>
                   <Plus aria-hidden />
                   {t("addModel")}
-                </Link>
-                <Link href={`${base}/units/new`} className={link("default")}>
-                  <Plus aria-hidden />
-                  {t("addUnit")}
                 </Link>
               </>
             )}
@@ -286,6 +286,17 @@ export default async function FleetPage({
             {t("view.filters", { count: filters })}
           </summary>
           <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-4">
+            <Field id="kind" label={t("view.kind")}>
+              <select
+                id="kind"
+                name="kind"
+                defaultValue={view.kind}
+                className={inputClass}
+              >
+                <option value="">{t("view.any")}</option>
+                {options(kindTypes, (kind) => t(`kind.${kind}`))}
+              </select>
+            </Field>
             <MakeModelPicker
               makeName="make"
               modelName="model"
@@ -324,7 +335,7 @@ export default async function FleetPage({
                 </select>
               </Field>
             )}
-            <Field id="transmission" label={t("ownModel.transmission")}>
+            <Field id="transmission" label={t("what.transmission")}>
               <select
                 id="transmission"
                 name="transmission"
@@ -385,13 +396,26 @@ export default async function FleetPage({
           {t("empty")}
         </p>
       )}
-      {result.total > 0 && (
+      {(result.total > 0 || (manage && fleet.length > 0)) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p role="status" className="text-sm text-muted-foreground">
-            {result.shown === result.total
-              ? t("unitCount", { count: result.total })
-              : t("view.showing", { shown: result.shown, total: result.total })}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {manage && fleet.length > 0 && (
+              <Link href={`${base}/units/new`} className={link("default")}>
+                <Plus aria-hidden />
+                {t("addUnit")}
+              </Link>
+            )}
+            {result.total > 0 && (
+              <p role="status" className="text-sm text-muted-foreground">
+                {result.shown === result.total
+                  ? t("unitCount", { count: result.total })
+                  : t("view.showing", {
+                      shown: result.shown,
+                      total: result.total,
+                    })}
+              </p>
+            )}
+          </div>
           {groupCount > 1 && (
             <ExpandCollapse
               expandLabel={t("view.expandAll")}
@@ -436,6 +460,25 @@ export default async function FleetPage({
                   >
                     <Pencil aria-hidden className="size-4" />
                   </Link>
+                  {(() => {
+                    const news = manage
+                      ? reviewNews(modelOf.get(section.model.id)!, now)
+                      : null;
+                    return news ? (
+                      <Link
+                        href={`${base}/models/${section.model.id}`}
+                        className={cn(
+                          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
+                          news === "added"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+                            : "border-amber-300 bg-amber-50 text-amber-950",
+                        )}
+                      >
+                        <MotoMangosMark className="size-4" />
+                        {t(`reviewNews.${news}`)}
+                      </Link>
+                    ) : null;
+                  })()}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {[
@@ -469,6 +512,18 @@ export default async function FleetPage({
                           : `${t("unitCount", { count: group.count })}: ${breakdown(group.statusCounts)}`}
                       </p>
                     </div>
+                    {manage && section.model && (
+                      <Link
+                        href={`${base}/units/new?model=${section.model.id}`}
+                        aria-label={t("addUnitTo", {
+                          name: section.model.name,
+                        })}
+                        title={t("addUnit")}
+                        className="-my-1 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Plus aria-hidden className="size-5" />
+                      </Link>
+                    )}
                     <ChevronDown
                       aria-hidden
                       className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"

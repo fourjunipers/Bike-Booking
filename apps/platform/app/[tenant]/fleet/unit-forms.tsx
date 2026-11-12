@@ -96,6 +96,7 @@ export function UnitForm({
           models={models}
           defaultModel={values.model_choice}
           required
+          help={t("modelHelp")}
           footer={
             <Link
               href={addModelHref}

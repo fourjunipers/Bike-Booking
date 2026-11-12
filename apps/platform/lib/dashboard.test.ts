@@ -28,13 +28,15 @@ describe("placeItem", () => {
       section: "returns",
     });
     // Upcoming: the 7 days after tomorrow, across the new year.
-    expect(placeItem({ kind: "delivery", date: on(1, 1, 2027) }, today)).toEqual(
-      { tab: "upcoming", section: "deliveries" },
-    );
-    expect(placeItem({ kind: "collection", date: on(7, 1, 2027) }, today)).toEqual(
-      { tab: "upcoming", section: "deliveries" },
-    );
-    expect(placeItem({ kind: "service", date: on(8, 1, 2027) }, today)).toBeNull();
+    expect(
+      placeItem({ kind: "delivery", date: on(1, 1, 2027) }, today),
+    ).toEqual({ tab: "upcoming", section: "deliveries" });
+    expect(
+      placeItem({ kind: "collection", date: on(7, 1, 2027) }, today),
+    ).toEqual({ tab: "upcoming", section: "deliveries" });
+    expect(
+      placeItem({ kind: "service", date: on(8, 1, 2027) }, today),
+    ).toBeNull();
   });
 
   it("puts late kinds in Late whatever their date", () => {
@@ -121,7 +123,15 @@ describe("buildBoard", () => {
     const all = Object.values(board).flatMap((tab) =>
       Object.values(tab.sections).flat(),
     );
-    expect(all.map((i) => i.id).sort()).toEqual(["a", "b", "c", "d", "e", "g", "h"]);
+    expect(all.map((i) => i.id).sort()).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "g",
+      "h",
+    ]);
   });
 
   it("sorts each section by date, then title", () => {

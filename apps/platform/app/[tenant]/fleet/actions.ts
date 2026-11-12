@@ -8,6 +8,7 @@ import { exactPresets } from "@/lib/catalog-match";
 import { CsvError, parseCsv } from "@/lib/csv";
 import { toKm } from "@/lib/distance";
 import {
+  bikeTypes,
   catalogSubmitSchema,
   dbErrorKey,
   fieldErrors,
@@ -28,6 +29,7 @@ import { parseMoney } from "@/lib/money";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
 import { fromLocalInput } from "@/lib/shop-time";
+import { checkCategory } from "@/lib/vehicle-kinds";
 import { createClient } from "@mango/db/platform-server";
 
 /**
@@ -78,10 +80,14 @@ export async function saveModel(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const id = field(formData, "id");
+  // Adding a make & model on the way to adding a vehicle: back to that form.
+  const thenInventory = field(formData, "then") === "inventory";
 
   const raw = Object.fromEntries(formData);
+  // A new make & model with no name of its own is named after what it is.
+  const wantsDefaultName = !id && field(formData, "name") === "";
   const parsed = modelSchema.safeParse({
-    name: raw.name,
+    name: wantsDefaultName ? "-" : raw.name,
     catalog_id: raw.catalog_id,
     description: raw.description,
     bookable_online: raw.bookable_online,
@@ -116,11 +122,15 @@ export async function saveModel(
     cc: number | null;
     transmission: "automatic" | "semi_auto" | "manual" | null;
   } | null = null;
+  // The kind of vehicle decides which categories there are. A model waiting
+  // on Moto Mangos keeps its kind; the form sends it along.
+  let kind = field(formData, "vehicle_type");
   if (field(formData, "waiting") !== "1") {
     const catalog = await getCatalog();
     if (presetId) {
       const entry = catalog.find((c) => c.id === presetId);
       if (!entry) return { errors: { catalog_id: "catalog_entry_not_usable" } };
+      kind = "motorbike";
       what = {
         catalog_id: entry.id,
         make: entry.make,
@@ -148,11 +158,23 @@ export async function saveModel(
             href: `/${slug}/fleet/models/new?catalog=${c.id}`,
           })),
         };
+      kind = own.data.vehicle_type;
       what = { catalog_id: null, ...own.data };
     }
   }
+  // Blank on a list model means "as Moto Mangos files it": the database
+  // fills it from the entry.
+  const checked =
+    presetId && field(formData, "category") === ""
+      ? { category: null }
+      : checkCategory(kind, raw.category);
+  if ("error" in checked) return { errors: { category: checked.error } };
+
+  const defaultName = what ? `${what.make} ${what.model}` : "";
   const common = {
     ...rest,
+    ...(wantsDefaultName ? { name: defaultName } : {}),
+    category: checked.category,
     deposit,
     deposit_currency: deposit === null ? null : tenant.currency,
   };
@@ -172,7 +194,11 @@ export async function saveModel(
       .single();
     if (error) return failed(error);
     refresh(slug);
-    redirect(`/${slug}/fleet/models/${data.id}`);
+    redirect(
+      thenInventory
+        ? `/${slug}/fleet/units/new?model=${data.id}`
+        : `/${slug}/fleet/models/${data.id}?added=1`,
+    );
   }
 
   const { data, error } = await supabase
@@ -257,9 +283,8 @@ export async function deleteYearBand(
 // Units ----------------------------------------------------------------------------
 
 /**
- * The shop's model for what was picked in the make and model dropdowns: one
- * of its models, or a catalog entry, for which a model is created (named from
- * the catalog) the first time a bike of it is added.
+ * The shop's model a vehicle goes on. Adding to the inventory never creates a
+ * make & model (owner, 12 Nov 2026): that is "+ Make & model"'s one job.
  */
 async function resolveModel(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -268,44 +293,13 @@ async function resolveModel(
 ): Promise<string | null> {
   const picked = parseModelChoice(choice);
   if (!picked) return null;
-  if (picked.kind === "model") return picked.id;
-
-  const { data: existing } = await supabase
+  const { data } = await supabase
     .from("models")
     .select("id")
     .eq("tenant_id", tenantId)
-    .eq("catalog_id", picked.id)
-    .order("created_at")
-    .limit(1);
-  if (existing?.[0]) return existing[0].id;
-
-  const entry = (await getCatalog()).find((c) => c.id === picked.id);
-  if (!entry) return null;
-  const { data: names } = await supabase
-    .from("models")
-    .select("name")
-    .eq("tenant_id", tenantId);
-  const taken = new Set((names ?? []).map((m) => m.name.trim().toLowerCase()));
-  let name = catalogName(entry);
-  for (let n = 2; taken.has(name.toLowerCase()); n++)
-    name = `${catalogName(entry)} (${n})`;
-  const { data: created } = await supabase
-    .from("models")
-    .insert({
-      tenant_id: tenantId,
-      catalog_id: entry.id,
-      name,
-      // The database copies these from the catalog entry; they are sent so
-      // the row is complete on its own.
-      make: entry.make,
-      model: entry.model,
-      vehicle_type: "motorbike",
-      cc: entry.cc,
-      transmission: entry.transmission,
-    })
-    .select("id")
-    .single();
-  return created?.id ?? null;
+    .eq("id", picked.id)
+    .maybeSingle();
+  return data?.id ?? null;
 }
 
 export async function saveUnit(
@@ -342,7 +336,7 @@ export async function saveUnit(
     return { errors: { odometer: "invalidDistance" } };
 
   const modelId = await resolveModel(supabase, tenant.id, raw.model_choice);
-  if (!modelId) return { errors: { model_choice: "catalog_entry_not_usable" } };
+  if (!modelId) return { errors: { model_choice: "required" } };
 
   if (!id) {
     const { data, error } = await supabase
@@ -782,73 +776,6 @@ export async function importFleet(
   return { done: data as { models: number; units: number } };
 }
 
-// A shop's own make or model ------------------------------------------------------------
-
-/**
- * Adds one of the shop's own makes or models: any vehicle, no approval. If
- * the make and model is already a preset, the shop is pointed at it instead,
- * so the same bike isn't kept under two names.
- */
-export async function addOwnModel(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const { slug, tenant, role, supabase } = await context(formData);
-  if (!canManageFleet(role)) return notAllowed;
-  const then = field(formData, "then") === "bike" ? "bike" : "model";
-
-  const raw = Object.fromEntries(formData);
-  const parsed = ownModelSchema.safeParse({
-    make: raw.make,
-    model: raw.model,
-    vehicle_type: raw.vehicle_type,
-    cc: raw.cc,
-    transmission: raw.transmission,
-  });
-  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-  const own = parsed.data;
-
-  const presets = exactPresets(own.make, own.model, await getCatalog());
-  if (presets.length > 0)
-    return {
-      errors: { model: "inPresets" },
-      suggestions: presets.map((entry) => ({
-        label: catalogName(entry),
-        href:
-          then === "bike"
-            ? `/${slug}/fleet/units/new?catalog=${entry.id}`
-            : `/${slug}/fleet/models/new?catalog=${entry.id}`,
-      })),
-    };
-
-  const { data: names } = await supabase
-    .from("models")
-    .select("name")
-    .eq("tenant_id", tenant.id);
-  const taken = new Set((names ?? []).map((m) => m.name.trim().toLowerCase()));
-  let name = `${own.make} ${own.model}`;
-  for (let n = 2; taken.has(name.toLowerCase()); n++)
-    name = `${own.make} ${own.model} (${n})`;
-
-  const { data, error } = await supabase
-    .from("models")
-    .insert({ ...own, tenant_id: tenant.id, catalog_id: null, name })
-    .select("id")
-    .single();
-  if (error) {
-    const key = dbErrorKey(error);
-    return {
-      errors: key === "ownModelExists" ? { model: key } : { form: key },
-    };
-  }
-  refresh(slug);
-  redirect(
-    then === "bike"
-      ? `/${slug}/fleet/units/new?model=${data.id}`
-      : `/${slug}/fleet/models/${data.id}`,
-  );
-}
-
 // Listing on Moto Mangos -------------------------------------------------------------------
 
 /** Links one of the shop's own models to a preset ("Did you mean Honda PCX 160?"). */
@@ -878,11 +805,21 @@ export async function submitModelToCatalog(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const { slug, role, supabase } = await context(formData);
+  const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const raw = Object.fromEntries(formData);
+  // Moto Mangos files a motorbike under its category, set on the model.
+  const { data: model } = await supabase
+    .from("models")
+    .select("category")
+    .eq("tenant_id", tenant.id)
+    .eq("id", field(formData, "id"))
+    .maybeSingle();
+  const type = (bikeTypes as readonly string[]).includes(model?.category ?? "")
+    ? (model!.category as (typeof bikeTypes)[number])
+    : null;
+  if (!type) return { errors: { form: "categoryFirst" } };
   const parsed = catalogSubmitSchema.safeParse({
-    type: raw.type,
     year_from: raw.year_from,
     year_to: raw.year_to,
     note: raw.note,
@@ -891,7 +828,7 @@ export async function submitModelToCatalog(
 
   const { error } = await supabase.rpc("submit_model_to_catalog", {
     p_model_id: field(formData, "id"),
-    p_type: parsed.data.type,
+    p_type: type,
     p_year_from: parsed.data.year_from ?? undefined,
     p_year_to: parsed.data.year_to ?? undefined,
     p_note: parsed.data.note ?? undefined,

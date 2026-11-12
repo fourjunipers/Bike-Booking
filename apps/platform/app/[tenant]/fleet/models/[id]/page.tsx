@@ -22,6 +22,7 @@ import {
 import { catalogOptions } from "@/lib/model-options";
 import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
+import { humanizeKey, reviewNews } from "@/lib/vehicle-kinds";
 import { formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
 import { deleteModel } from "../../actions";
@@ -82,6 +83,7 @@ export default async function ModelPage({
       (await getCatalogEntry(model.catalog_id)))
     : null;
   const waiting = entry?.status === "requested";
+  const news = reviewNews(model, new Date());
   const own = !model.catalog_id;
   const matches = own ? suggestCatalog(model.make, model.model, catalog) : [];
   const base = `/${slug}/fleet`;
@@ -99,7 +101,12 @@ export default async function ModelPage({
             : null,
           model.vehicle_type === "motorbike"
             ? null
-            : tFleet(`vehicleType.${model.vehicle_type}` as "vehicleType.car"),
+            : tFleet(`kind.${model.vehicle_type}` as "kind.car"),
+          model.category
+            ? tFleet.has(`category.${model.category}` as "category.sedan")
+              ? tFleet(`category.${model.category}` as "category.sedan")
+              : humanizeKey(model.category)
+            : null,
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -108,27 +115,24 @@ export default async function ModelPage({
         {manage && (
           <Panel>
             <ModelForm
-              own={
-                own
-                  ? {
-                      make: model.make,
-                      model: model.model,
-                      vehicle_type: model.vehicle_type,
-                      cc: model.cc === null ? "" : String(model.cc),
-                      transmission: model.transmission ?? "",
-                    }
-                  : undefined
-              }
+              what={{
+                vehicle_type: model.vehicle_type,
+                catalog_id: own || waiting ? "" : (model.catalog_id ?? ""),
+                make: own ? model.make : "",
+                model: own ? model.model : "",
+                cc: own && model.cc !== null ? String(model.cc) : "",
+                transmission: own ? (model.transmission ?? "") : "",
+                category: model.category ?? "",
+              }}
               waiting={waiting}
               makes={[...new Set(catalog.map((c) => c.make))].sort()}
               slug={slug}
               currency={tenant.currency}
-              requestHref={`${base}/own-model`}
-              catalogOptions={catalogOptions(catalog)}
+              listOptions={catalogOptions(catalog)}
+              listTypes={Object.fromEntries(catalog.map((c) => [c.id, c.type]))}
               values={{
                 id: model.id,
                 name: model.name,
-                catalog_id: own || waiting ? "" : (model.catalog_id ?? ""),
                 description: model.description ?? "",
                 bookable_online: model.bookable_online,
                 buffer_before_minutes: text(model.buffer_before_minutes),
@@ -224,6 +228,20 @@ export default async function ModelPage({
                   )}
                 </div>
               )}
+              {news === "added" && model.catalog_approved_at && (
+                <p
+                  role="status"
+                  className="mb-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm font-medium text-emerald-950"
+                >
+                  {tFleet("motoMangos.approved", {
+                    date: formatInstant(
+                      new Date(model.catalog_approved_at),
+                      tenant.timezone,
+                      locale,
+                    ),
+                  })}
+                </p>
+              )}
               {waiting ? (
                 <p className="text-sm">{tFleet("motoMangos.waiting")}</p>
               ) : entry?.status === "rejected" ? (
@@ -244,6 +262,8 @@ export default async function ModelPage({
                 </>
               ) : model.vehicle_type !== "motorbike" ? (
                 <p className="text-sm">{tFleet("motoMangos.bikesOnly")}</p>
+              ) : !model.category ? (
+                <p className="text-sm">{tFleet("motoMangos.categoryFirst")}</p>
               ) : (
                 <>
                   {matches.length > 0 && (
