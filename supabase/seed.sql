@@ -390,7 +390,9 @@ insert into public.shop_extra_models (extra_id, bike_model_id) values
 
 -- A confirmed booking so the customer can see BSR's contacts.
 -- Honda PCX 160, 14 days = ฿4,200; fee ฿420; ฿3,780 at the shop.
--- Pickup 3 Nov 2026 10:00, return 17 Nov 10:00 Bangkok (UTC+7).
+-- Relative to the day the seed runs, so tests never fall into the past:
+-- pickup 2 days ago 10:00, return in 12 days 10:00 Bangkok; payment was due
+-- 3 days before pickup.
 insert into public.bookings (
   id, code, customer_id, shop_id, bike_model_id, qty, start_at, end_at, mode,
   rental_total, discount, rental_after_promo, fee, due_at_shop, status,
@@ -399,9 +401,12 @@ insert into public.bookings (
   'd0000000-0000-4000-8000-000000000001', 'K7Q4ZP',
   'a0000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001',
   'c0000000-0000-4000-8000-000000000002', 1,
-  '2026-11-03 03:00:00+00', '2026-11-17 03:00:00+00', 'request',
+  ((now() at time zone 'Asia/Bangkok')::date - 2 + time '10:00') at time zone 'Asia/Bangkok',
+  ((now() at time zone 'Asia/Bangkok')::date + 12 + time '10:00') at time zone 'Asia/Bangkok',
+  'request',
   4200, 0, 4200, 420, 3780, 'confirmed_unpaid',
-  'card', '2026-10-31 03:00:00+00'
+  'card',
+  ((now() at time zone 'Asia/Bangkok')::date - 5 + time '10:00') at time zone 'Asia/Bangkok'
 );
 
 insert into public.booking_events (booking_id, actor_type, actor_id, event, data)
