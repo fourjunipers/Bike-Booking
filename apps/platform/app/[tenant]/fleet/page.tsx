@@ -429,10 +429,10 @@ export default async function FleetPage({
                   <Link
                     href={`${base}/models/${section.model.id}`}
                     aria-label={`${t("editModel")}: ${section.model.name}`}
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded-md border bg-card px-3 text-sm font-medium hover:bg-accent"
+                    title={t("editModel")}
+                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border bg-card hover:bg-accent"
                   >
-                    <Pencil aria-hidden className="size-3.5" />
-                    {t("editModel")}
+                    <Pencil aria-hidden className="size-4" />
                   </Link>
                 </div>
                 <p className="text-sm text-muted-foreground">
