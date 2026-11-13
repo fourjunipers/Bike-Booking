@@ -204,47 +204,47 @@ export default async function ProductsPage({
               </Field>
               {/* Kind, category and Moto Mangos are about vehicles. */}
               {tab !== "general" && (
-              <Field id="kind" label={tFleet("view.kind")}>
-                <select
-                  id="kind"
-                  name="kind"
-                  defaultValue={view.kind}
-                  className={inputClass}
-                >
-                  <option value="">{tFleet("view.any")}</option>
-                  {kindTypes.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {tFleet(`kind.${kind}`)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+                <Field id="kind" label={tFleet("view.kind")}>
+                  <select
+                    id="kind"
+                    name="kind"
+                    defaultValue={view.kind}
+                    className={inputClass}
+                  >
+                    <option value="">{tFleet("view.any")}</option>
+                    {kindTypes.map((kind) => (
+                      <option key={kind} value={kind}>
+                        {tFleet(`kind.${kind}`)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
               )}
               {tab !== "general" && (
-              <Field id="category" label={tFleet("view.category")}>
-                <select
-                  id="category"
-                  name="category"
-                  defaultValue={view.category}
-                  className={inputClass}
-                >
-                  <option value="">{tFleet("view.any")}</option>
-                  {vehicleKinds
-                    .filter((kind) => kind.categories.length > 0)
-                    .map((kind) => (
-                      <optgroup
-                        key={kind.type}
-                        label={tFleet(`kind.${kind.type}`)}
-                      >
-                        {kind.categories.map((key) => (
-                          <option key={key} value={key}>
-                            {categoryLabel(key)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                </select>
-              </Field>
+                <Field id="category" label={tFleet("view.category")}>
+                  <select
+                    id="category"
+                    name="category"
+                    defaultValue={view.category}
+                    className={inputClass}
+                  >
+                    <option value="">{tFleet("view.any")}</option>
+                    {vehicleKinds
+                      .filter((kind) => kind.categories.length > 0)
+                      .map((kind) => (
+                        <optgroup
+                          key={kind.type}
+                          label={tFleet(`kind.${kind.type}`)}
+                        >
+                          {kind.categories.map((key) => (
+                            <option key={key} value={key}>
+                              {categoryLabel(key)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                  </select>
+                </Field>
               )}
               {manage && tab !== "general" && (
                 <Field id="listing" label={t("motoMangos")}>

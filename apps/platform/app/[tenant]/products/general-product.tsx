@@ -10,12 +10,13 @@ import {
   getProductStock,
   getStockMovements,
 } from "@/lib/fleet-data";
+import { hasStock, stockOf, type GeneralType } from "@/lib/general-products";
 import {
-  hasStock,
-  stockOf,
-  type GeneralType,
-} from "@/lib/general-products";
-import { canManageFleet, canMarkLost, canWorkOnUnits, type Role } from "@/lib/roles";
+  canManageFleet,
+  canMarkLost,
+  canWorkOnUnits,
+  type Role,
+} from "@/lib/roles";
 import { formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
 import { DeleteProductButton } from "./delete-product";
@@ -93,10 +94,7 @@ export async function GeneralProductPage({
   return (
     <>
       <BackLink href={`/${slug}/products`} label={t("title")} />
-      <PageHeader
-        title={product.name}
-        intro={t(`type.${type}`)}
-      />
+      <PageHeader title={product.name} intro={t(`type.${type}`)} />
       {added && (
         <p
           role="status"
@@ -136,7 +134,9 @@ export async function GeneralProductPage({
       {/* A service, for someone who doesn't set the shop up: what it is. */}
       {tab === null && (
         <Panel className="max-w-3xl">
-          <p className="text-sm">{product.description || t("stockTab.serviceNote")}</p>
+          <p className="text-sm">
+            {product.description || t("stockTab.serviceNote")}
+          </p>
           <p className="mt-3 text-sm text-muted-foreground">{t("readOnly")}</p>
         </Panel>
       )}

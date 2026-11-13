@@ -39,8 +39,7 @@ export async function HistoryTab({
     getMemberNames(tenantId),
   ]);
   const entries = buildHistory(rows);
-  const unnamed =
-    unitsAre === "vehicles" ? tFleet("noPlate") : t("unlabelled");
+  const unnamed = unitsAre === "vehicles" ? tFleet("noPlate") : t("unlabelled");
   const unitNames = new Map(
     units.map((unit) => [unit.id, unit.name ?? unnamed]),
   );
