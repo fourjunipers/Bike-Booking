@@ -431,7 +431,9 @@ test("CSV import by make and model; then tax and insurance on the bike and the d
   await expect(
     categories.getByText("sedan, suv, pickup, van, hatchback, convertible"),
   ).toBeVisible();
-  await expect(categories.getByText("atv, utv", { exact: true })).toBeVisible();
+  await expect(
+    categories.getByText("atv, utv, dirt_bike", { exact: true }),
+  ).toBeVisible();
   const plate = freshPlate();
 
   await page
@@ -840,7 +842,11 @@ test("my own product: a kind and a name, no duplicate names, then matched or sen
 
   // Off-road: ATV, UTV and Dirt bike.
   await page.goto("/bsr/products/new");
-  await page.getByText("Off-road", { exact: true }).click();
+  // (Motorbikes have an "Off-road" category too: this is the kind.)
+  await page
+    .getByRole("group", { name: "What kind of product is it?" })
+    .getByText("Off-road", { exact: true })
+    .click();
   await expect(categories(page).locator("label")).toHaveText([
     "ATV",
     "UTV",
@@ -934,24 +940,27 @@ test("my own product: a kind and a name, no duplicate names, then matched or sen
       "Give its make, model, engine size and transmission: all four are needed for a motorbike. We review it first because it is new to our list.",
     ),
   ).toBeVisible();
+  // The review form (the panel also has a make and model picker for the
+  // list, so the form is found by its own anchor).
+  const review = page.locator("#send-for-review");
   const send = mangos.getByRole("button", {
     name: "Switch on and send for review",
   });
-  await expect(mangos.getByLabel("Make", { exact: true })).toHaveValue(make);
-  await expect(mangos.getByLabel("Model", { exact: true })).toHaveValue(
+  await expect(review.getByLabel("Make", { exact: true })).toHaveValue(make);
+  await expect(review.getByLabel("Model", { exact: true })).toHaveValue(
     "Tester 125",
   );
   for (const label of ["Make", "Model", "Engine size (cc)", "Transmission"])
-    await expect(mangos.getByLabel(label, { exact: true })).toHaveAttribute(
+    await expect(review.getByLabel(label, { exact: true })).toHaveAttribute(
       "required",
       "",
     );
-  await expect(mangos.getByLabel("Engine size (cc)")).toHaveValue("");
+  await expect(review.getByLabel("Engine size (cc)")).toHaveValue("");
   // Without the engine size and transmission nothing is sent.
   await send.click();
   await expect(mangos.getByText(/Sent to Moto Mangos\./)).toHaveCount(0);
-  await mangos.getByLabel("Engine size (cc)").fill("125");
-  await mangos.getByLabel("Transmission").selectOption("automatic");
+  await review.getByLabel("Engine size (cc)").fill("125");
+  await review.getByLabel("Transmission").selectOption("automatic");
   await send.click();
   await expect(mangos.getByText(/Sent to Moto Mangos\./)).toBeVisible();
   // The details are on the product now.
@@ -1009,10 +1018,10 @@ test("my own product: a kind and a name, no duplicate names, then matched or sen
   // The review form holds what was sent before, ready to be corrected.
   await editAgain.click();
   await expect(page).toHaveURL(/#send-for-review$/);
-  await expect(mangos.getByLabel("Make", { exact: true })).toHaveValue(make);
-  await expect(mangos.getByLabel("Engine size (cc)")).toHaveValue("125");
-  await expect(mangos.getByLabel("Transmission")).toHaveValue("automatic");
-  await mangos.getByLabel("First model year").fill("2024");
+  await expect(review.getByLabel("Make", { exact: true })).toHaveValue(make);
+  await expect(review.getByLabel("Engine size (cc)")).toHaveValue("125");
+  await expect(review.getByLabel("Transmission")).toHaveValue("automatic");
+  await review.getByLabel("First model year").fill("2024");
   await mangos.getByRole("button", { name: "Send for review again" }).click();
   await expect(mangos.getByText(/Sent to Moto Mangos\./)).toBeVisible();
   await expect(mangos.getByText("E2E: add the model years")).toHaveCount(0);

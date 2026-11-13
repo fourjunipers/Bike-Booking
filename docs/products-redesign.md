@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | 1 | Rename `models` to `products` | §1.2 |
 | 2 | Moto Mangos listings keep today's split: two counts (instant, by request) with a simple control on top | §1.4, §2.6 |
-| 3 | The create form has **one** type-ahead of known models. Picking one fills make, model, engine size and transmission. If the model isn't known, the owner keeps typing in the same field: no second path, no "Manually enter" button | §4.1 |
+| 3 | ~~The create form has one type-ahead of known models that fills make, model, engine size and transmission.~~ **Superseded by decision 17** after the click-through: it was built, tried and removed | §4.1 |
 | 4 | Delivery: the computed distance fee stays for every shop. A shop may also add its own flat "Delivery" service product. Nothing is preset | §3.5 |
 | 5 | **No preset products ship**, and product names are free text. No built-in damage cover, "tax and insurance" or delivery product | §1.2 |
 | 6 | A vehicle's own tax and insurance are the legally required records on each unit (`unit_renewals`). A product a vendor calls "tax and insurance" or "full coverage" is that vendor's own optional add-on or side service (BSR helps customers with licences, tax and insurance for their own vehicles) | §1.3 |
@@ -26,6 +26,8 @@
 | 14 | The deposit on an order is the sum of each vehicle's deposit (two bikes, two deposits), adjustable by staff | §3.3 |
 | 15 | Tiered pricing is entered as anchor prices (daily, weekly, two weeks, three weeks, monthly); the system fills the days between; every filled-in price stays editable. The spec's stored "price per day" mode is dropped; a "same price every day" helper fills the anchor totals instead, all editable | §3.2 |
 | 16 | Open, Mark answers later: whether BSR's 30 Booqable templates are multipliers or fixed amounts. It matters only to the importer (Phase 10) | §7 |
+| 17 | **After the Stage A click-through (13 Nov 2026).** The create form is headed "Product details" and asks for the kind ("What kind of product is it?") and one line: the product name (placeholder "e.g. Honda PCX 160"). No type-ahead, no make, model, engine size or transmission on it. Names are unique in a shop ignoring case and all spacing. The four columns stay, nullable, for Moto Mangos matching. When a motorbike is sent for review, the Moto Mangos panel asks for all four at that moment (required), or the shop picks an approved model from the list. Off-road gains Dirt bike beside ATV and UTV | §1.2, §4.1 |
+| 18 | **Stage B direction (13 Nov 2026).** The create page opens with two choices, Vehicle and General. Vehicle: kind chips and name, with licence class, minimum age, buffers and categories. General: a type (Rental gear, Item for sale, Service or extra), no licence class, minimum age or buffers, and a quantity where it applies. The Products list gets All, Vehicles and General tabs | §4.1, §5.7 |
 
 Decisions 9, 12 and 15 include Mark's second round of answers the same day (items for sale by stage, who may mark a unit lost, and the price-per-day mode).
 
@@ -88,9 +90,9 @@ Prices are not on this table: see `product_pricing` (§3.1).
 Rules, all as check constraints or the existing guard trigger:
 
 - `type` and `tracking` must be one of the pairs above.
-- A vehicle needs `vehicle_type`, `make` and `model`; a motorbike also needs `cc` and `transmission` (today's rule, unchanged). Every other type must leave all vehicle-only columns empty.
+- A vehicle needs its kind (`vehicle_type`). Its `make`, `model`, `cc` and `transmission` are optional (decision 17): the create form asks for a name only, and they are filled in when a motorbike is sent to Moto Mangos (all four required then) or copied from the approved list entry it is put on. A make and a model come together or not at all. Every other type must leave all vehicle-only columns empty. The old rule "a motorbike can't be saved without engine size and transmission" (`models_required_specs_check`) is dropped by the Stage A migration.
 - `type` cannot change once the row exists. `tracking` can change only between `bulk` and `unit` on gear (§2.4).
-- Names stay unique within a shop (`models_name_idx`, unchanged). The "no duplicate own make and model" index gains `and type = 'vehicle'`.
+- Names are unique within a shop ignoring case and all spacing (`products_name_idx` on the name with spaces removed and in lower case; it was lower-case and trimmed only). The "no duplicate own make and model" index covers vehicles that have a make and model.
 - **No product is preset and names are free text** (decisions 5 and 7). A new shop starts with an empty Products list. A service can be "Full coverage", "Licence help" or "Tax and insurance for your own bike"; an item for sale can be a sticker, a shirt or a hat. Nothing in the database or the code knows what a particular service or item is, so no behaviour hangs on its name.
 - `categories` keeps its shape check. The lists stay in code (`apps/platform/lib/vehicle-kinds.ts`, to be renamed). Vehicles keep today's lists, required for motorbikes and cars. Gear gets a short optional list for filtering (helmet, jacket, gloves, camera, phone holder, luggage, lock, other). Services and items for sale get no list at first: each vendor's are too different to guess.
 - Retire, restore and delete rules from the fleet rework apply to every type through the same triggers: a product is retired only when none of its units is in use; a retired product takes no new units and comes off Moto Mangos.
@@ -331,15 +333,15 @@ price_template_days   tenant_id, template_id, day (1..30), total bigint, source 
 | Screen | Address | What it shows |
 | --- | --- | --- |
 | **Products** | `/[tenant]/products` | Every product, one row each: photo or type icon, name, type, price, stock (units in use / total; "—" for services), Moto Mangos chip and switch (vehicles only). Filters: type, category, status, Moto Mangos state. "+ New product" |
-| **New product** | `/[tenant]/products/new` | Step 1: pick the type (Vehicle, Rental gear, Service, Item for sale; the last three join in stage B). Step 2: the form for that type. Vehicle: kind, the make-and-model type-ahead (below), categories. Gear: name, optional category, quantity per location, "track individual units". Service: name. Item for sale: name and stock per location. No marketplace fields and no preset products anywhere on it. In stage A only vehicles exist, so the type step is skipped until stage B |
+| **New product** | `/[tenant]/products/new` | Headed "Product details". Stage A: the kind ("What kind of product is it?"), the product name on one line, categories, then description, buffers, deposit, minimum age and licence class. No make, model, engine size or transmission and no marketplace fields. From stage B it opens with two choices, Vehicle and General (decision 18, §5.7) |
 | **Product page** | `/[tenant]/products/[id]` | Tabs: **Details**, **Units** (vehicle and tracked gear: rows with "+ Add unit"; bulk gear: quantity per location, with "damaged" and "lost" counts), **Pricing**, **Moto Mangos** (vehicles only), **History** |
 | **Unit rows** | on the Units tab and in Fleet | Vehicle: plate, status, odometer, location; opens the unit page. Tracked gear: label, status, location |
 | **Unit page** | `/[tenant]/fleet/units/[id]` | Unchanged: status, odometer, downtime, tax and insurance, purchase and sale, sticker, delete |
 | **Fleet** | `/[tenant]/fleet` | Vehicle units only, for the mechanic: plate, product, status, odometer, service due (Phase 1b), insurance and tax expiry, current or next downtime. Today's grouping, filters and sort carry over |
 | **Moto Mangos tab** | on the product page | Not listed: "List on Moto Mangos" → match an approved catalog model ("Did you mean…") or send a new one for review → instant, request and units to offer → lead time. Listed: the same settings plus the switch and the review state. Rejected: the reviewer's note and the two next steps from the fleet rework |
 
-- **The make-and-model type-ahead** (decision 3). One text field. As the owner types, it suggests known models from the approved catalog entries ("Honda PCX 160 (2021–2024)"), for motorbikes as today. Picking one fills make, model, engine size and transmission, shown as filled fields the owner can see. If nothing matches, the owner just keeps typing: the same field's text becomes the shop's own model, and the form asks for what it could not fill (make and model confirmed as two fields, split at the first word; engine size and transmission, required for motorbikes). There is no "Manually enter" button, no "Choose from the list instead" button and no second form. The field carries no Moto Mangos wording; the tip box from the fleet rework moves to the Moto Mangos tab. In the database nothing changes: a picked model has a `catalog_id`, a typed one doesn't, and exact duplicates of a known model are still pointed at the known one.
-- It replaces three things from the fleet rework: the linked make and model dropdowns, the "Manually enter" switch, and the separate picker of the whole list. The "Use a known model" step for a rejected product stays on the Moto Mangos tab.
+- **No type-ahead (decision 17).** Stage A first shipped one make-and-model field that suggested known models and filled in the details. Mark's click-through removed it: the create form is the kind and a name. The known-models list is used in one place only, the Moto Mangos panel on the product page: it suggests close matches from the product's name ("Did you mean…"), offers the whole approved list to choose from, and otherwise shows the send-for-review form, which asks for make, model, engine size and transmission (required for a motorbike; the make and model start from the name) with the model years and a note. A rejected product's "Edit and send again" opens that same form with what was sent before.
+- On the create form this leaves nothing from the fleet rework's two paths: no dropdowns, no "Manually enter", no list picker. The Moto Mangos tip stays for motorbikes and now says the model is chosen or sent for review from the product page.
 - Products and Fleet read the same rows. Fleet is `units` joined to `products` where the type is vehicle; Products is `products` with unit counts. A change in one shows in the other at once.
 - Old addresses redirect: `/fleet/models/[id]` → `/products/[id]`, `/fleet/models/new` → `/products/new`, `/fleet/units/new?model=` → the product's Units tab. Printed QR stickers are unaffected (they hold a token, not a path).
 - CSV import stays on Fleet for vehicles; a `type` column and a gear and services import can follow with the Booqable importer (Phase 10).
@@ -440,7 +442,7 @@ Mark accepted all five disagreements on 13 Nov 2026.
 | # | The review said | Settled as |
 | --- | --- | --- |
 | 1 | "Instant vs request" as one choice loses today's split and changes the marketplace contract | Keep the two counts; a simple control on top (decision 2) |
-| 2 | Dropping the catalog from the create form costs typing and invites typos | One type-ahead of known models; unknown models are typed in the same field (decision 3) |
+| 2 | Dropping the catalog from the create form costs typing and invites typos | First settled as one type-ahead (decision 3), then overruled after the click-through: the create form has no catalog at all, and the details are asked for when a motorbike is sent to Moto Mangos (decision 17). The typo risk is now carried by the review step |
 | 3 | Delivery as a priced service collides with the distance fee | The distance fee stays for every shop; a shop may add its own flat "Delivery" service; nothing preset (decision 4) |
 | 4 | "Tax and insurance" as a service name clashes with the vehicle's own record | No preset products at all, and names are free text. The unit's record is the legal one; a product by that name is the vendor's own add-on (decisions 5 and 6) |
 | 5 | Items for sale need orders | In the database from stage A; name and stock from stage B; price in stage D; selling in Phase 3 (decision 9) |
@@ -483,7 +485,7 @@ Stage A is the rename and the new screens for vehicles only. No new behaviour: a
 | Migration | 1 new file | Migration 1 of §1.7: the renames, `type`, `tracking`, `units.product_type` and its composite key, the type checks (all four types allowed), about 15 functions re-created. No table created, so no new grants |
 | `packages/db` | generated types | Regenerated (`models` → `products`) |
 | `apps/platform/app/[tenant]/fleet/**` | 22 files, about 4,500 lines | Split: product screens move to `/products` (list, new, `[id]` with Details, Units, History tabs); Fleet keeps the vehicle-unit list, unit page, stickers and import. Redirects from the old addresses |
-| Create form | part of the above | The linked dropdowns, "Manually enter" and the separate list picker are replaced by the one type-ahead |
+| Create form | part of the above | The linked dropdowns, "Manually enter" and the separate list picker are gone. First replaced by one type-ahead; after the click-through, by the kind and one name line (decision 17) |
 | `apps/platform/lib` | 12 of 29 files name models | Renamed types and queries (`fleet-data`, `fleet`, `fleet-view`, `fleet-import`, `model-options`, `catalog-match`, `vehicle-kinds`, `dashboard`, `roles`); a new products-list view beside the fleet view |
 | Menu and roles | `lib/roles.ts`, the shell | "Products" joins "Fleet" in the menu; mechanics still land on Maintenance and see Fleet |
 | Messages | `en.json` and `th.json`, about 130 lines in each mention model, vehicle or inventory | Reworded to "product"; Thai with สินค้า and a review list for Korn |
@@ -508,12 +510,44 @@ Not in stage A: gear, services, quantities, the `lost` status (B); `product_list
 
 Not testable in stage A: anything with a non-vehicle product on screen (stage B), and the live push (done once, after stage C, by the runbook).
 
+### 5.7 Stage B plan: general products (not started)
+
+Mark's direction (decision 18). Written as a plan to approve, not built.
+
+**What the owner sees**
+
+- **New product opens with two choices: Vehicle and General.** Vehicle is today's form: kind chips, name, categories, description, buffers, deposit, minimum age, licence class. General asks for a type (Rental gear, Item for sale, Service or extra), a name and a description; no licence class, minimum age or buffers; and a quantity per location for gear (default: counted; "track individual units" as an option) and for items for sale. A service has no quantity.
+- **The Products list gets three tabs: All, Vehicles, General.** General rows show the type and the stock ("18 in stock, 2 lost", "—" for a service) in place of vehicle facts. The kind and Moto Mangos filters apply to Vehicles only.
+- **A general product's page** has Details, Stock (gear and items for sale) and History. Stock: the quantity per location with "Change quantity" (owners and managers), "Mark damaged" and "Mark lost" (owners, managers and staff; not mechanics), and, for tracked gear, one row per unit with its label. No Moto Mangos panel and no year bands.
+- One product per size (Helmet S, M, L), no prices and no selling yet, as decided.
+
+**What it touches**
+
+| Area | Change |
+| --- | --- |
+| Migration (one new file, `platform_gear_units`) | `units.label`; unit status `lost` with who may set it; per-type unit checks (a gear unit has no plate or odometer; a tracked one needs a label unique in its product; a bulk one has neither); `set_stock_quantity()`, `set_quantity_out()`, `mark_units_lost()`; the product-and-location advisory lock; `stock_movements` for items for sale (received and adjusted rows; sold rows come with orders) with RLS, grants and a fixture row per tenant. The Stage A migration is not touched |
+| Decision to confirm | The brief says "no buffers" on a general product. The design had buffers apply to gear too (cleaning time between rentals). Stage B would hide them and store none; they can return with Phase 2 if wanted |
+| Screens | The two-choice start of New product and the General form; list tabs; the general product page with its Stock tab; quantity, damaged and lost dialogs; tracked-gear unit rows. Fleet stays vehicles only |
+| App code | Product readers stop assuming a vehicle (`getFleet` and `getModel` filter to vehicles today); a products reader for every type; stock counts from unit rows and the ledger; role helpers for "may mark lost" |
+| Wording | New English and Thai texts for the types, stock and dialogs, on the Thai review list |
+| Tests | Below |
+
+**Estimate.** Two to three working sessions, about two days with a click-through and one round of fixes. It is new behaviour, not a rename, so more of the time goes to the database functions and their race tests than in Stage A.
+
+**Tests**
+
+1. Database: type rules for units (no plate on gear, label rules, no units on a service or an item for sale); quantity up and down, with a refusal when units are blocked; damaged and lost by role (staff yes, mechanic no for lost; nobody but owners and managers changes a quantity or brings a lost unit back); switching counted and tracked keeps blocks; the stock ledger is append-only and sums to the count; isolation and default-grants for the new table; twelve writers lowering a quantity while units are being blocked.
+2. Unit: list tabs and filters, stock wording, the General form's rules, key parity.
+3. Browser, phone and desktop: create one of each general type; the three list tabs; set a helmet quantity, mark 2 damaged and 1 lost as staff, confirm the loss as owner; a tracked camera with labels; a mechanic can't mark lost; vehicles behave exactly as before (the Stage A suite unchanged).
+4. The Stage A demo data carried again, counts before and after.
+
+
 ## 6. The brief and this design side by side
 
 | Brief | This design, as decided |
 | --- | --- |
 | Instant vs request as a setting | The two stored counts stay; simple control on top |
-| No marketplace fields at creation | No listing fields; one neutral type-ahead of known models |
+| No marketplace fields at creation | No listing fields, and no catalog on the create form either: a kind and a name. Make, model, engine size and transmission are asked for at Moto Mangos review |
 | Delivery is a service product | The distance fee stays for every shop; a shop's own flat "Delivery" product is allowed; nothing preset |
 | Services such as tax and insurance, damage cover | No preset products; free-text names; any vendor's own goods and services |
 | Gear counted by quantity | Counted on screen; stored as nameless unit rows so the database lock covers it. One product per size until after the pilot |
