@@ -13,6 +13,56 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Products, stage A (branch `platform/products-stage-a`, 13 Nov 2026)
+
+The first build stage of the products redesign. The design and the owner's decisions are in `docs/products-redesign.md` (PR #15, docs only). Platform only: nothing in `apps/marketplace`, nothing pushed to staging or live. `docs/platform/SPEC.md` does not have this yet (the owner maintains it).
+
+**What changed**
+
+- **`platform.models` is `platform.products`** (migration `20261113000200_platform_products`), with `units.model_id` → `product_id` and `model_year_bands` → `product_year_bands`, and their constraints, indexes, triggers, policies and trigger functions renamed to match. PR 13's migration (`20261113000100`) is untouched.
+- **A product has a `type`** (vehicle, gear, sale_item, service) **and a `tracking` mode** (unit, bulk, consumable, none). Only the pairs that make sense are accepted, the type can never change, and every existing row is a vehicle tracked by unit. Make, model and kind are required for a vehicle and must be empty for anything else (`products_vehicle_fields_check`), so those three columns are no longer NOT NULL.
+- **A unit carries its product's type** (`units.product_type`), kept equal by a composite foreign key. Only vehicles and gear can have units.
+- **Functions re-created: ten, not the fifteen the design guessed.** Read from the database, these name the old table or column in their bodies: `products_guard`, `products_retire_guard`, `products_withdraw_request`, `units_clamp_product_counts`, `units_product_not_retired`, `tenants_lock_currency`, `currency_locked`, `import_fleet`, `review_catalog_request`, `submit_product_to_catalog`. Two more were only renamed (`products_keep_catalog_outcome`, `products_default_category`). `units_guard`, `unit_blocks_guard`, `catalog_requests` and the reminder queue never named the table and are unchanged.
+- **`submit_model_to_catalog(p_model_id)` is `submit_product_to_catalog(p_product_id)`**: dropped and created again (a parameter name can't be changed in place), with its grant restated. `import_fleet()` reads `product_id` from each unit and answers `{"products": n, "units": n}`.
+- **Audit rows written before today were relabelled** from entity `models` to `products` (and `model_year_bands` to `product_year_bands`), so a product's history is found in one place. Nothing else in those rows changed. Say if the old label should have been kept.
+- **Grants:** no new table. The renamed tables keep their grants; the migration restates them under the new names, because `default-grants.test.ts` looks for each reachable table's grant by name.
+- **Screens.** New **Products** list (`/[tenant]/products`: one row per product with type, kind, categories, vehicles in the fleet and the Moto Mangos chip; search and filters in the address). The product page has three tabs: **Details** (the form, the Moto Mangos panel, retire and delete), **Units** (its vehicles, "Add vehicle", year bands) and **History**. **Fleet** keeps the vehicle-unit list, the unit page, stickers and import. "Products" is in the menu before "Fleet", for every role.
+- **One type-ahead on the create form** (`lib/known-models.ts`, `products/what-fields.tsx`): typing suggests known models, picking one fills make, model, engine size and transmission; an unknown model is typed in the same field and the form then asks for the rest. The linked dropdowns, the "Manually enter" button and "Choose from the list instead" are gone from this form. Keyboard: arrows, Enter picks (without sending the form), Escape closes.
+- **History tab** (owners and managers): who changed what on the product, its vehicles and its year bands, newest first, the latest 100. It is the first screen that shows the audit trail to a shop.
+- **Old addresses redirect:** `/fleet/models/[id]` and `/fleet/models/new`; `/fleet/units/new?model=` still works beside `?product=`.
+- **Wording:** "product" in place of "make & model" and "model"; "Add vehicle" in place of "Add to inventory" and "Add product to inventory" (the owner chose those two names on 13 Nov, before the redesign: say if "Add vehicle" should go back). Thai uses สินค้า, provisional; every new or changed Thai line is in `docs/platform/thai-review-products.md` for Korn or BSR's admin.
+- **Kept from the fleet rework:** categories (several per product, required for motorbikes and cars), retire and restore, the delete rules, the rejected-model flow with its two next steps, the Moto Mangos tip on the create form and the panel on the product page.
+
+**Demo data carried across.** A database built at `main` (54 migrations) was seeded with the three demo shops, given two listed products and three downtime blocks, and migrated. Per shop, before and after: products 5 / 11 / 0, vehicles 150 / 20 / 0, year bands 15, listed 2, blocks 3, renewals 8, purchase records 20, audit rows 174 / 89 / 5, and checksums over every product's id, name, make, model, list entry, categories and listing, and every vehicle's id, product, plate and status: identical. All 16 products came out as vehicle / unit and all 170 units as vehicle units.
+
+**Decisions and notes**
+
+- The database test for a missing make or kind now expects the new check (`products_vehicle_fields_check`) where it expected NOT NULL. It is the one existing test whose assertion changed, not just a name.
+- TypeScript names inside the app (`getModel`, `saveModel`, `FleetModel` and the like) were left: they are internal, and renaming them would have doubled the diff with no change a user or the database sees. The `Fleet.model.*` message keys kept their key names for the same reason; their texts say "product".
+- The Moto Mangos listing fields (instant, request and ready-now counts, the switch) are still on the product and on the Details tab. They move to `product_listings` and their own tab in stage C.
+- The deposit is still on the product and readable by every member, as before. It moves to `product_pricing` in stage D, where mechanics and drivers stop seeing prices.
+- This worktree runs its own local Supabase (`Bike_Booking_products_a`, ports 563xx) so it does not disturb the other two. Its `supabase/config.toml` change is local only (`git update-index --skip-worktree`).
+
+**Tests (all passing locally, 13 Nov 2026)**
+
+- Database: 172 (153 existing with names changed, 19 new in `tests/db/products.test.ts`: nothing left named after models, grants and RLS kept, the type and tracking rules, a unit's product type, each re-created function run once including the reminder queue and the CSV import, the History rows and who may read them). Run on a database rebuilt from scratch with all 55 migrations.
+- Unit: platform 146 (21 new in `lib/products.test.ts`: the type-ahead's matching and splitting, the Products list filters, history lines, the menu, key parity in both languages, no "make & model", "inventory" or "Manually enter" left in the texts), marketplace 202, core 86.
+- Playwright: 70 passed at 375 px and 1280 px, 2 skipped (the timing measurement, which runs only on request). New `e2e/products.spec.ts` (list, filters, tabs, History, old addresses, a mechanic, driver and staff member reading without changing, another shop's product); `e2e/fleet.spec.ts` follows the type-ahead, with a keyboard-only pass.
+- `npm run typecheck && npm run lint && npm test` from the root: clean.
+
+**Not truly tested**
+
+- The Netlify deploy preview: it reads staging, and staging does not have this migration (nothing was pushed there, as instructed), so the preview's Products and Fleet pages will fail until it is. The click-through was done on a local production build with a local database.
+- A real phone: phone width in a desktop browser only. Thai wording: key parity only.
+- The live push: not done, by instruction. It follows the runbook after stage C.
+
+**Found on the way**
+
+- A product address that isn't an id (`/products/abc`) gave "Something went wrong"; it is "Page not found" now. The old model page had the same fault.
+- Port 3300, which the browser tests use, was held by a server from the `Bike Booking-ui-refresh` checkout. A first test run was pointed at it for about two minutes before this was noticed and stopped; it may have left a few test rows in that checkout's local demo database (local only). The tests were then run against this worktree's own server on port 3310.
+
+**Not built here (later stages):** gear, services and items for sale on screen, quantities, the `lost` status (B); the Moto Mangos tab and `product_listings` (C); prices (D).
+
 ## Fleet rework: Make & model, Add to inventory, kinds and categories (branch `platform/fleet-rework`, 12 Nov 2026)
 
 Owner's request after the click-through: "Add model" and "Add bike" did the same job and read alike. Built to the owner's instruction in chat; `docs/platform/SPEC.md` in the repo does not have this text yet (the owner maintains it).
