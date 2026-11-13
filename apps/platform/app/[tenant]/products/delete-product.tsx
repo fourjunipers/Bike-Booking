@@ -18,6 +18,7 @@ export function DeleteProductButton({
   label,
   confirm,
   blocked,
+  general,
 }: {
   slug: string;
   id: string;
@@ -27,6 +28,8 @@ export function DeleteProductButton({
   confirm: string;
   /** "This product still has vehicles. Remove all its vehicles first." */
   blocked: string;
+  /** A general product: what holds it is its stock, and the refusal says so. */
+  general?: boolean;
 }) {
   if (hasVehicles)
     return (
@@ -42,7 +45,7 @@ export function DeleteProductButton({
   return (
     <ActionForm
       action={deleteModel}
-      hidden={{ slug, id }}
+      hidden={{ slug, id, ...(general ? { general: "1" } : {}) }}
       submitLabel={label}
       confirm={confirm}
       destructive

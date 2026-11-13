@@ -81,6 +81,15 @@ export function canWorkOnUnits(role: Role): boolean {
 }
 
 /**
+ * Marking a unit or gear lost: owners, managers and staff. A mechanic may
+ * mark it damaged but not lost (owner, 13 Nov 2026). The database enforces it
+ * (units_guard). Bringing a lost unit back, or removing it, is canManageFleet.
+ */
+export function canMarkLost(role: Role): boolean {
+  return role === "owner" || role === "manager" || role === "staff";
+}
+
+/**
  * Whether `actor` may change a member who has role `from` to role `to`
  * (`to` = null removes them). Mirrors platform_private.assert_can_change in
  * the database, which is the real check; this only decides what the UI offers.

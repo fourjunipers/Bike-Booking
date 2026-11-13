@@ -271,9 +271,9 @@ describe("products stage B: the stock ledger and the stock functions", () => {
       group by r order by r;
     `);
     expect(rows).toEqual(["anon none", "authenticated insert,select"]);
-    expect(
-      hasExplicitGrant(migrationsText(), "platform.stock_movements"),
-    ).toBe(true);
+    expect(hasExplicitGrant(migrationsText(), "platform.stock_movements")).toBe(
+      true,
+    );
   });
 
   it("every stage B function is closed to signed-out visitors and to PUBLIC; members call the ones meant for them", () => {

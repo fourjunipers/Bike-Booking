@@ -3,6 +3,11 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ChevronDown, FileUp, Plus, Printer, Search } from "lucide-react";
 import { KindIcon } from "@/components/fleet/kind-icon";
+import {
+  MoveButtons,
+  MoveForms,
+  OrderBar,
+} from "@/components/fleet/order-controls";
 import { EditPencil, ProductTags } from "@/components/fleet/product-tags";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { Field, inputClass } from "@/components/form";
@@ -10,13 +15,19 @@ import { PageHeader } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { requireArea } from "@/lib/access";
 import { unitStatuses } from "@/lib/fleet";
-import { getBlockedUnitIds, getFleet, getLocations } from "@/lib/fleet-data";
+import {
+  getBlockedUnitIds,
+  getFleet,
+  getLocations,
+  getProductOrder,
+} from "@/lib/fleet-data";
 import {
   buildFleetList,
   fleetFilterCount,
   fleetScopes,
   parseFleetList,
 } from "@/lib/fleet-list";
+import { hasCustomOrder, orderIndex } from "@/lib/general-products";
 import { shopModelOptions } from "@/lib/model-options";
 import { canManageFleet } from "@/lib/roles";
 import {
@@ -48,14 +59,18 @@ export default async function FleetPage({
   const { membership } = await requireArea(slug, "fleet");
   const { tenant, role } = membership;
   const manage = canManageFleet(role);
-  const [t, tCommon, locale, fleet, locations, blocked] = await Promise.all([
-    getTranslations("Fleet"),
-    getTranslations("Common"),
-    getLocale(),
-    getFleet(tenant.id),
-    getLocations(tenant.id),
-    getBlockedUnitIds(tenant.id, new Date()),
-  ]);
+  const [t, tCommon, locale, fleet, locations, blocked, everyProduct] =
+    await Promise.all([
+      getTranslations("Fleet"),
+      getTranslations("Common"),
+      getLocale(),
+      getFleet(tenant.id),
+      getLocations(tenant.id),
+      getBlockedUnitIds(tenant.id, new Date()),
+      // The one order Fleet shares with the Products list covers every
+      // product, general ones included.
+      getProductOrder(tenant.id),
+    ]);
 
   const view = parseFleetList(query);
   const { rows, current, past, shown } = buildFleetList(
@@ -69,8 +84,12 @@ export default async function FleetPage({
     })),
     blocked,
     view,
+    orderIndex(everyProduct),
   );
   const filters = fleetFilterCount(view);
+  // The order is changed on the whole list, never on a search or a filter.
+  const lines = rows.map((row) => row.id);
+  const reorder = manage && filters === 0 && rows.length > 1;
   const listings = new Map(
     fleet.map((p) => [p.id, listingStatus(p, p.entry_status)]),
   );
@@ -300,96 +319,111 @@ export default async function FleetPage({
           {view.q ? t("noMatch", { query: view.q }) : t("view.noneMatch")}
         </p>
       ) : (
-        <ul
-          aria-label={t("list")}
-          className="divide-y overflow-hidden rounded-lg border bg-card"
-        >
-          {rows.map((row) => (
-            <li key={row.id} className="even:bg-accent/40">
-              <details
-                data-fleet-product
-                className="group"
-                open={openAll && row.units.length > 0}
-              >
-                <summary className="flex min-h-16 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none sm:px-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-md border bg-card text-muted-foreground">
-                    <KindIcon kind={row.kind} className="size-5" />
-                  </span>
-                  <span className="min-w-0 flex-1 basis-40">
-                    <span className="flex min-w-0 items-center gap-1">
-                      <span className="min-w-0 font-semibold">{row.name}</span>
-                      {/* The edit pencil, beside the title: opens the product. */}
-                      <EditPencil
-                        href={`/${slug}/products/${row.id}`}
-                        name={row.name}
-                      />
+        <>
+          {manage && (
+            <OrderBar
+              slug={slug}
+              custom={hasCustomOrder(everyProduct)}
+              filtered={filters > 0}
+            />
+          )}
+          <ul
+            aria-label={t("list")}
+            className="divide-y overflow-hidden rounded-lg border bg-card"
+          >
+            {rows.map((row) => (
+              <li key={row.id} className="even:bg-accent/40">
+                {reorder && <MoveForms slug={slug} id={row.id} shown={lines} />}
+                <details
+                  data-fleet-product
+                  className="group"
+                  open={openAll && row.units.length > 0}
+                >
+                  <summary className="flex min-h-16 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none sm:px-4">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-md border bg-card text-muted-foreground">
+                      <KindIcon kind={row.kind} className="size-5" />
                     </span>
-                    <span className="block text-sm text-muted-foreground">
-                      {t("vehicleCounts", {
-                        vehicles: row.vehicles,
-                        available: row.available,
-                      })}
-                    </span>
-                  </span>
-                  {/* The same tags as on the Products list. */}
-                  <ProductTags
-                    name={row.name}
-                    retired={row.retired}
-                    listing={manage ? (listings.get(row.id) ?? null) : null}
-                    categories={categoriesOf.get(row.id) ?? []}
-                  />
-                  {manage && !row.retired && (
-                    <Link
-                      href={`${base}/units/new?product=${row.id}`}
-                      className={cn(
-                        buttonVariants({ variant: "outline" }),
-                        "-my-1 h-11 bg-card px-3",
-                      )}
-                    >
-                      <Plus aria-hidden />
-                      {t("addUnitRow")}
-                      <span className="sr-only">
-                        {": "}
-                        {row.name}
+                    <span className="min-w-0 flex-1 basis-40">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="min-w-0 font-semibold">
+                          {row.name}
+                        </span>
+                        {/* The edit pencil, beside the title: opens the product. */}
+                        <EditPencil
+                          href={`/${slug}/products/${row.id}`}
+                          name={row.name}
+                        />
                       </span>
-                    </Link>
+                      <span className="block text-sm text-muted-foreground">
+                        {t("vehicleCounts", {
+                          vehicles: row.vehicles,
+                          available: row.available,
+                        })}
+                      </span>
+                    </span>
+                    {/* The same tags as on the Products list. */}
+                    <ProductTags
+                      name={row.name}
+                      retired={row.retired}
+                      listing={manage ? (listings.get(row.id) ?? null) : null}
+                      categories={categoriesOf.get(row.id) ?? []}
+                    />
+                    {manage && !row.retired && (
+                      <Link
+                        href={`${base}/units/new?product=${row.id}`}
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "-my-1 h-11 bg-card px-3",
+                        )}
+                      >
+                        <Plus aria-hidden />
+                        {t("addUnitRow")}
+                        <span className="sr-only">
+                          {": "}
+                          {row.name}
+                        </span>
+                      </Link>
+                    )}
+                    {reorder && (
+                      <MoveButtons id={row.id} name={row.name} shown={lines} />
+                    )}
+                    <ChevronDown
+                      aria-hidden
+                      className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                    />
+                  </summary>
+                  {row.units.length === 0 ? (
+                    <p className="border-t bg-card px-4 py-3 text-sm text-muted-foreground">
+                      {t("noUnits")}
+                    </p>
+                  ) : (
+                    <ul className="divide-y border-t bg-card">
+                      {row.units.map((unit) => (
+                        <UnitRow
+                          key={unit.id}
+                          unit={unit}
+                          href={`${base}/units/${unit.id}`}
+                          distanceUnit={tenant.distanceUnit}
+                          locale={locale}
+                          detail={
+                            [
+                              unit.model_year,
+                              locations.length > 1
+                                ? locationNames.get(unit.location_id)
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ") || undefined
+                          }
+                        />
+                      ))}
+                    </ul>
                   )}
-                  <ChevronDown
-                    aria-hidden
-                    className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                  />
-                </summary>
-                {row.units.length === 0 ? (
-                  <p className="border-t bg-card px-4 py-3 text-sm text-muted-foreground">
-                    {t("noUnits")}
-                  </p>
-                ) : (
-                  <ul className="divide-y border-t bg-card">
-                    {row.units.map((unit) => (
-                      <UnitRow
-                        key={unit.id}
-                        unit={unit}
-                        href={`${base}/units/${unit.id}`}
-                        distanceUnit={tenant.distanceUnit}
-                        locale={locale}
-                        detail={
-                          [
-                            unit.model_year,
-                            locations.length > 1
-                              ? locationNames.get(unit.location_id)
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ") || undefined
-                        }
-                      />
-                    ))}
-                  </ul>
-                )}
-              </details>
-            </li>
-          ))}
-        </ul>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </>
   );

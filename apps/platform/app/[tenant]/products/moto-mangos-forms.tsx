@@ -18,6 +18,7 @@ import {
   saveListing,
   submitModelToCatalog,
 } from "../fleet/actions";
+import { changeListingEntry, disconnectListing } from "./actions";
 
 /**
  * The Moto Mangos panel's forms, in the order they sit on a product's page
@@ -37,11 +38,14 @@ export function ChooseFromListForm({
   slug,
   id,
   choices,
+  change,
 }: {
   slug: string;
   id: string;
   /** The Moto Mangos list, by make then model. */
   choices: ListChoice[];
+  /** "Change model": the product is on an entry already and moves to this one. */
+  change?: boolean;
 }) {
   const t = useTranslations("Fleet.motoMangos");
   const tFleet = useTranslations("Fleet");
@@ -51,13 +55,13 @@ export function ChooseFromListForm({
   const models = make ? choices.filter((choice) => choice.make === make) : [];
   return (
     <ActionForm
-      action={linkModelToPreset}
+      action={change ? changeListingEntry : linkModelToPreset}
       hidden={{ slug, id }}
       submitLabel={t("useChosen")}
     >
       <fieldset>
         <legend className="mb-2 block text-sm font-medium">
-          {t("selectFromList")}
+          {t(change ? "changeModelLegend" : "selectFromList")}
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="list-make" label={tFleet("what.make")}>
@@ -100,6 +104,69 @@ export function ChooseFromListForm({
         </div>
       </fieldset>
     </ActionForm>
+  );
+}
+
+/**
+ * For a product already on a Moto Mangos list entry (owner, 13 Nov 2026;
+ * owners and managers only): "Change model", the same Make then Model
+ * dropdowns and Select button, and "Disconnect", which switches the listing
+ * off and clears the list entry after a confirmation. Neither touches a
+ * booking that was already made: the line above the buttons says how many
+ * there are.
+ */
+export function ListEntryActions({
+  slug,
+  id,
+  choices,
+  upcoming,
+}: {
+  slug: string;
+  id: string;
+  /** The Moto Mangos list without the entry the product is on. */
+  choices: ListChoice[];
+  /** Bookings on this product's vehicles that have not ended. */
+  upcoming: number;
+}) {
+  const t = useTranslations("Fleet.motoMangos");
+  return (
+    <div className="mt-4 space-y-3">
+      {upcoming > 0 && (
+        <p
+          role="note"
+          className="rounded-md border border-highlight-border bg-highlight p-3 text-sm text-highlight-foreground"
+        >
+          {t("upcomingBookings", { count: upcoming })}
+        </p>
+      )}
+      <details className="group rounded-md border">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
+          <ChevronDown
+            aria-hidden
+            className="size-4 shrink-0 transition-transform group-open:rotate-180"
+          />
+          {t("changeModel")}
+        </summary>
+        <div className="border-t p-3">
+          <p className="mb-3 text-sm text-muted-foreground">
+            {t("changeModelHelp")}
+          </p>
+          <ChooseFromListForm slug={slug} id={id} choices={choices} change />
+        </div>
+      </details>
+      <div className="rounded-md border p-3">
+        <p className="mb-3 text-sm text-muted-foreground">
+          {t("disconnectHelp")}
+        </p>
+        <ActionForm
+          action={disconnectListing}
+          hidden={{ slug, id }}
+          submitLabel={t("disconnect")}
+          confirm={t("disconnectConfirm")}
+          destructive
+        />
+      </div>
+    </div>
   );
 }
 

@@ -31,6 +31,8 @@ export type HistoryEntry = {
   action: string;
   /** For an update: the columns that changed. */
   changes: HistoryChange[];
+  /** For a stock event: how many units it was about. */
+  quantity?: number;
 };
 
 /** Columns that say nothing to a reader, or repeat another one. */
@@ -59,6 +61,8 @@ const quiet = new Set([
   "cc",
   "transmission",
   "catalog_id",
+  // The manual order is the shop's, not this product's story.
+  "sort_position",
 ]);
 
 const record = (value: unknown): Record<string, unknown> =>
@@ -70,6 +74,28 @@ const record = (value: unknown): Record<string, unknown> =>
 export function toHistoryEntry(row: AuditRow): HistoryEntry {
   const before = record(row.before);
   const after = record(row.after);
+  // A quantity change reads "Quantity: 20 -> 25"; marking units damaged or
+  // lost carries how many.
+  if (row.action === "stock_adjust")
+    return {
+      id: row.id,
+      at: row.at,
+      actor: row.actor,
+      entity: row.entity,
+      entityId: row.entity_id,
+      action: row.action,
+      changes: [
+        {
+          field: "quantity",
+          from: before.quantity ?? null,
+          to: after.quantity ?? null,
+        },
+      ],
+    };
+  const quantity =
+    row.action !== "update" && typeof after.quantity === "number"
+      ? after.quantity
+      : undefined;
   const changes =
     row.action === "update"
       ? Object.keys(after)
@@ -88,6 +114,7 @@ export function toHistoryEntry(row: AuditRow): HistoryEntry {
     entityId: row.entity_id,
     action: row.action,
     changes,
+    ...(quantity === undefined ? {} : { quantity }),
   };
 }
 

@@ -72,16 +72,18 @@ export const getFleet = cache(async (tenantId: string) => {
     supabase
       .from("products")
       .select(
-        "id, name, type, catalog_id, make, model, vehicle_type, categories, cc, transmission, bookable_online, marketplace_listed, catalog_rejected_at, catalog_approved_at, photos, retired_at",
+        "id, name, type, catalog_id, make, model, vehicle_type, categories, cc, transmission, bookable_online, marketplace_listed, catalog_rejected_at, catalog_approved_at, photos, retired_at, sort_position",
       )
       .eq("tenant_id", tenantId)
-      // Stage A: every product on screen is a vehicle.
+      // Vehicles: general products are read by getGeneralProducts.
       .eq("type", "vehicle")
       .order("name"),
     supabase
       .from("units")
       .select(unitColumns)
       .eq("tenant_id", tenantId)
+      // Gear units are counted in the database (getProductStock), not listed.
+      .eq("product_type", "vehicle")
       .order("plate", { nullsFirst: false }),
     getCatalog(),
   ]);
@@ -382,4 +384,134 @@ export async function getMemberNames(tenantId: string) {
   return new Map(
     data.map((member) => [member.user_id, member.name || member.email]),
   );
+}
+
+// General products (stage B) -----------------------------------------------------------
+
+/** Every product's name and place, for the one order Fleet and Products share. */
+export const getProductOrder = cache(async (tenantId: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, sort_position")
+    .eq("tenant_id", tenantId);
+  if (error) throw error;
+  return data;
+});
+
+/** Rental gear, items for sale and services. */
+export const getGeneralProducts = cache(async (tenantId: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id, name, type, tracking, description, photos, retired_at, sort_position",
+    )
+    .eq("tenant_id", tenantId)
+    .neq("type", "vehicle")
+    .order("name");
+  if (error) throw error;
+  return data;
+});
+
+/** One product of any type, with what every type has. */
+export async function getProduct(tenantId: string, id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, type, tracking, description, retired_at")
+    .eq("tenant_id", tenantId)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Stock by product and location, counted in the database: units in stock,
+ * damaged, lost and available for gear; what is on hand for an item for sale.
+ */
+export const getProductStock = cache(async (tenantId: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("product_stock", {
+    p_tenant_id: tenantId,
+  });
+  if (error) throw error;
+  return data;
+});
+
+const runningNow = () => {
+  const at = new Date().toISOString();
+  return `[${at},${at}]`;
+};
+
+/** The units of one tracked gear product, labelled ones first, by label. */
+export async function getGearUnits(tenantId: string, productId: string) {
+  const supabase = await createClient();
+  const [units, blocks] = await Promise.all([
+    supabase
+      .from("units")
+      .select("id, label, status, location_id, created_at")
+      .eq("tenant_id", tenantId)
+      .eq("product_id", productId)
+      .in("status", ["active", "maintenance", "lost"])
+      .order("label", { nullsFirst: false })
+      .order("created_at")
+      .order("id"),
+    supabase
+      .from("unit_blocks")
+      .select("unit_id, kind, unit:units!inner(product_id)")
+      .eq("tenant_id", tenantId)
+      .eq("unit.product_id", productId)
+      .overlaps("period", runningNow()),
+  ]);
+  if (units.error) throw units.error;
+  if (blocks.error) throw blocks.error;
+  const damaged = new Set(
+    blocks.data.filter((b) => b.kind === "downtime").map((b) => b.unit_id),
+  );
+  return units.data.map((unit) => ({
+    ...unit,
+    damaged: damaged.has(unit.id),
+  }));
+}
+
+/** An item for sale's ledger, newest first. */
+export async function getStockMovements(
+  tenantId: string,
+  productId: string,
+  limit: number,
+) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_movements")
+    .select("id, location_id, kind, quantity, created_by, created_at")
+    .eq("tenant_id", tenantId)
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Bookings on a product's vehicles that have not ended. Changing or
+ * disconnecting its Moto Mangos list entry leaves them as they are; the panel
+ * says how many.
+ */
+export async function countUpcomingBookings(
+  tenantId: string,
+  unitIds: string[],
+) {
+  if (unitIds.length === 0) return 0;
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("unit_blocks")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("kind", "allocation")
+    .in("unit_id", unitIds)
+    .overlaps("period", `[${new Date().toISOString()},)`);
+  if (error) throw error;
+  return count ?? 0;
 }

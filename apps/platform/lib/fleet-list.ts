@@ -141,6 +141,11 @@ export function buildFleetList<U extends ListUnit>(
   /** Units held by a block right now. */
   blocked: ReadonlySet<string>,
   view: FleetListView,
+  /**
+   * Each product's place in the shop's own order (lib/general-products
+   * orderIndex), shared with the Products list. Left out: A to Z.
+   */
+  order?: ReadonlyMap<string, number>,
 ): {
   rows: FleetRow<U>[];
   /** Vehicles in the fleet, and those that have left it, in the whole shop. */
@@ -204,6 +209,10 @@ export function buildFleetList<U extends ListUnit>(
       units,
     });
   }
-  rows.sort((a, b) => nameOrder.compare(a.name, b.name));
+  rows.sort(
+    (a, b) =>
+      (order ? (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0) : 0) ||
+      nameOrder.compare(a.name, b.name),
+  );
   return { rows, current, past, shown };
 }

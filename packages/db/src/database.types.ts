@@ -414,7 +414,7 @@ isOneToOne: false
               "cc": number,"created_at": string,"id": string,"make": string,"model": string,"request_note": string,"requested_by_tenant_id": string,"requested_by_tenant_name": string,"slug": string,"status": Database["public"]['Enums']["catalog_status"],"transmission": Database["public"]['Enums']["transmission"],"type": Database["public"]['Enums']["bike_type"],"year_from": number,"year_to": number
             }[]
                            },
-"change_listing_model":
+"change_listing_entry":
 { Args: { "p_catalog_id": string,"p_product_id": string }; Returns: Json
                            },
 "create_general_product":

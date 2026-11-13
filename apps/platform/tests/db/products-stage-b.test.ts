@@ -182,7 +182,11 @@ describe("unit rules per type", () => {
 
   it("a vehicle unit keeps its rule and takes no label", async () => {
     const bike = await vehicle();
-    const unit = { tenant_id: shop.id, product_id: bike, location_id: shop.locationId };
+    const unit = {
+      tenant_id: shop.id,
+      product_id: bike,
+      location_id: shop.locationId,
+    };
     const noPlate = await db("owner").from("units").insert(unit);
     expect(noPlate.error?.message).toContain("units_check");
     const labelled = await db("owner")
@@ -281,7 +285,10 @@ describe("unit rules per type", () => {
       .eq("id", camera)
       .select("id");
     expect(toTracked.error).toBeNull();
-    await db("owner").from("units").update({ label: "Cam A" }).eq("id", before[0].id);
+    await db("owner")
+      .from("units")
+      .update({ label: "Cam A" })
+      .eq("id", before[0].id);
     expect((await unitsOf(camera)).map((u) => u.id).sort()).toEqual(
       before.map((u) => u.id).sort(),
     );
@@ -419,7 +426,9 @@ describe("quantity", () => {
     });
     expect(past.error).toBeNull();
     expect((await setQuantity("owner", helmet, 0)).error).toBeNull();
-    expect(await unitsOf(helmet)).toMatchObject([{ id: unit.id, status: "retired" }]);
+    expect(await unitsOf(helmet)).toMatchObject([
+      { id: unit.id, status: "retired" },
+    ]);
     expect((await stock(helmet)).in_stock).toBe(0);
   });
 });
@@ -501,14 +510,16 @@ describe("damaged and lost", () => {
     }
     expect(await stock(helmet)).toMatchObject({ in_stock: 2, lost: 3 });
 
-    expect((await resolveLost("manager", helmet, 1, "restore")).error).toBeNull();
+    expect(
+      (await resolveLost("manager", helmet, 1, "restore")).error,
+    ).toBeNull();
     expect(await stock(helmet)).toMatchObject({ in_stock: 3, lost: 2 });
     expect((await resolveLost("owner", helmet, 2, "remove")).error).toBeNull();
     expect(await stock(helmet)).toMatchObject({ in_stock: 3, lost: 0 });
     expect(await unitsOf(helmet)).toHaveLength(3);
-    expect((await resolveLost("owner", helmet, 1, "remove")).error?.message).toContain(
-      "not_enough_lost",
-    );
+    expect(
+      (await resolveLost("owner", helmet, 1, "remove")).error?.message,
+    ).toContain("not_enough_lost");
   });
 
   it("a lost unit ends its downtime, takes no new block, and a booked unit can't be lost", async () => {
@@ -523,12 +534,14 @@ describe("damaged and lost", () => {
       lost: 1,
       available: 0,
     });
-    const block = await db("staff").from("unit_blocks").insert({
-      tenant_id: shop.id,
-      unit_id: unit.id,
-      kind: "downtime",
-      period: period(hours(1), hours(2)),
-    });
+    const block = await db("staff")
+      .from("unit_blocks")
+      .insert({
+        tenant_id: shop.id,
+        unit_id: unit.id,
+        kind: "downtime",
+        period: period(hours(1), hours(2)),
+      });
     expect(block.error?.message).toContain("unit_not_in_fleet");
 
     const booked = await general("gear", 1);
@@ -574,7 +587,10 @@ describe("damaged and lost", () => {
         .eq("id", unit!.id)
         .select("id");
       expect(sold.error?.message, role).toContain("only_owner_or_manager");
-      await db(role).from("units").update({ status: "active" }).eq("id", unit!.id);
+      await db(role)
+        .from("units")
+        .update({ status: "active" })
+        .eq("id", unit!.id);
     }
   });
 });
@@ -723,8 +739,7 @@ describe("races", () => {
       const blocked = new Set(blocks!.map((b) => b.unit_id));
       const inStock = after.filter((u) => u.status === "active");
       // Every block that was saved is on a unit that is still in stock.
-      for (const id of blocked)
-        expect(inStock.map((u) => u.id)).toContain(id);
+      for (const id of blocked) expect(inStock.map((u) => u.id)).toContain(id);
       // A block that reported success is really there.
       for (const result of results)
         if (result.what === "block" && !result.error)
@@ -813,7 +828,9 @@ describe("manual order", () => {
   });
 
   it("starts as A to Z: no product has a position, and a new one gets none", async () => {
-    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(true);
+    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(
+      true,
+    );
   });
 
   it("is refused to staff, mechanics, drivers, another shop's owner and signed-out visitors", async () => {
@@ -844,12 +861,16 @@ describe("manual order", () => {
       .eq("id", ids[0])
       .select("id");
     expect(byHand.data ?? []).toEqual([]);
-    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(true);
+    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(
+      true,
+    );
   });
 
   it("the first move saves the order on screen with the one change, for every product", async () => {
     // On screen: 0, 1, 2, 3. "Move down" on the first.
-    expect((await move("owner", ids[0], ids[1], "after", ids)).error).toBeNull();
+    expect(
+      (await move("owner", ids[0], ids[1], "after", ids)).error,
+    ).toBeNull();
     expect(await order(lane)).toEqual([
       { id: ids[1], sort_position: 1 },
       { id: ids[0], sort_position: 2 },
@@ -861,7 +882,8 @@ describe("manual order", () => {
   it("is kept, and later moves need no order from the caller", async () => {
     // "Move up" on the last, by a manager; a stale order sent with it is ignored.
     expect(
-      (await move("manager", ids[3], ids[2], "before", [...ids].reverse())).error,
+      (await move("manager", ids[3], ids[2], "before", [...ids].reverse()))
+        .error,
     ).toBeNull();
     expect((await order(lane)).map((p) => p.id)).toEqual([
       ids[1],
@@ -899,18 +921,24 @@ describe("manual order", () => {
       (await move("owner", ids[0], ids[0], "before")).error?.message,
     ).toContain("invalid_move");
     expect(
-      (await move("owner", ids[0], ids[1], "sideways" as "before")).error?.message,
+      (await move("owner", ids[0], ids[1], "sideways" as "before")).error
+        ?.message,
     ).toContain("invalid_move");
   });
 
   it("never touches another shop's order", async () => {
-    expect((await order(rival)).every((p) => p.sort_position === null)).toBe(true);
+    expect((await order(rival)).every((p) => p.sort_position === null)).toBe(
+      true,
+    );
     // And the other shop's own order is its own.
     const theirs = (await order(rival)).map((p) => p.id);
     expect(
       (await move("owner", theirs[0], theirs[1], "after", theirs, rival)).error,
     ).toBeNull();
-    expect((await order(rival)).map((p) => p.id)).toEqual([theirs[1], theirs[0]]);
+    expect((await order(rival)).map((p) => p.id)).toEqual([
+      theirs[1],
+      theirs[0],
+    ]);
     expect((await order(lane)).map((p) => p.id)).toEqual(ids);
   });
 
@@ -920,7 +948,10 @@ describe("manual order", () => {
         .from("products")
         .select("id")
         .order("sort_position");
-      expect(data!.map((p) => p.id), role).toEqual(ids);
+      expect(
+        data!.map((p) => p.id),
+        role,
+      ).toEqual(ids);
     }
   });
 
@@ -929,11 +960,17 @@ describe("manual order", () => {
       p_tenant_id: lane.id,
     });
     expect(reset.error).toBeNull();
-    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(true);
+    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(
+      true,
+    );
     await vehicle(lane);
-    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(true);
+    expect((await order(lane)).every((p) => p.sort_position === null)).toBe(
+      true,
+    );
     // The other shop kept its custom order.
-    expect((await order(rival)).every((p) => p.sort_position !== null)).toBe(true);
+    expect((await order(rival)).every((p) => p.sort_position !== null)).toBe(
+      true,
+    );
   });
 });
 
@@ -1002,17 +1039,27 @@ describe("Moto Mangos: change model and disconnect", () => {
         p_catalog_id: presetB,
       });
       expect(error?.code, role).toBe("42501");
-      const off = await db(role).rpc("disconnect_listing", { p_product_id: id });
+      const off = await db(role).rpc("disconnect_listing", {
+        p_product_id: id,
+      });
       expect(off.error?.code, role).toBe("42501");
     }
     const change = { p_product_id: id, p_catalog_id: presetB };
     const off = { p_product_id: id };
     const them = db("owner", other);
-    expect((await them.rpc("change_listing_entry", change)).error?.code).toBe("42501");
-    expect((await them.rpc("disconnect_listing", off)).error?.code).toBe("42501");
+    expect((await them.rpc("change_listing_entry", change)).error?.code).toBe(
+      "42501",
+    );
+    expect((await them.rpc("disconnect_listing", off)).error?.code).toBe(
+      "42501",
+    );
     const signedOut = anonClient();
-    expect((await signedOut.rpc("change_listing_entry", change)).error).not.toBeNull();
-    expect((await signedOut.rpc("disconnect_listing", off)).error).not.toBeNull();
+    expect(
+      (await signedOut.rpc("change_listing_entry", change)).error,
+    ).not.toBeNull();
+    expect(
+      (await signedOut.rpc("disconnect_listing", off)).error,
+    ).not.toBeNull();
     expect((await product(id)).catalog_id).toBe(presetA);
   });
 
@@ -1076,14 +1123,15 @@ describe("Moto Mangos: change model and disconnect", () => {
     );
     const own = await vehicle();
     expect((await call(own, presetB)).error?.message).toContain("not_on_list");
-    expect((await db("owner").rpc("disconnect_listing", { p_product_id: own })).error?.message).toContain(
-      "not_on_list",
-    );
+    expect(
+      (await db("owner").rpc("disconnect_listing", { p_product_id: own })).error
+        ?.message,
+    ).toContain("not_on_list");
     // A product waiting on its own request is not disconnected from under the reviewer.
     const pending = await vehicle(shop, { catalog_id: waiting!.id });
     expect(
-      (await db("owner").rpc("disconnect_listing", { p_product_id: pending })).error
-        ?.message,
+      (await db("owner").rpc("disconnect_listing", { p_product_id: pending }))
+        .error?.message,
     ).toContain("request_pending");
     await service.from("products").delete().eq("id", pending);
     await removeCatalogEntry(waiting!.id);
@@ -1138,15 +1186,25 @@ describe("another shop", () => {
   it("can't count, damage, lose or resolve this shop's stock, and reads none of it", async () => {
     const helmet = await general("gear", 4);
     await lost("staff", helmet, 1);
-    const args = { p_product_id: helmet, p_location_id: shop.locationId, p_quantity: 1 };
+    const args = {
+      p_product_id: helmet,
+      p_location_id: shop.locationId,
+      p_quantity: 1,
+    };
     for (const role of ["owner", "staff"] as const) {
       const them = db(role, other);
-      expect((await them.rpc("mark_units_damaged", args)).error?.code).toBe("42501");
-      expect((await them.rpc("mark_units_repaired", args)).error?.code).toBe("42501");
-      expect((await them.rpc("mark_units_lost", args)).error?.code).toBe("42501");
+      expect((await them.rpc("mark_units_damaged", args)).error?.code).toBe(
+        "42501",
+      );
+      expect((await them.rpc("mark_units_repaired", args)).error?.code).toBe(
+        "42501",
+      );
+      expect((await them.rpc("mark_units_lost", args)).error?.code).toBe(
+        "42501",
+      );
       expect(
-        (await them.rpc("resolve_lost_units", { ...args, p_action: "remove" })).error
-          ?.code,
+        (await them.rpc("resolve_lost_units", { ...args, p_action: "remove" }))
+          .error?.code,
       ).toBe("42501");
       const seen = await them.rpc("product_stock", { p_tenant_id: shop.id });
       expect(seen.data ?? []).toEqual([]);

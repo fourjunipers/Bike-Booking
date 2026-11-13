@@ -12,15 +12,15 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireArea } from "@/lib/access";
 import {
   catalogName,
+  countUpcomingBookings,
   getCatalog,
   getCatalogEntry,
   getFleet,
   getLocations,
-  getMemberNames,
   getModel,
-  getProductHistory,
+  getProduct,
 } from "@/lib/fleet-data";
-import { buildHistory, historyValue } from "@/lib/history";
+import { isGeneralType } from "@/lib/general-products";
 import { splitMakeModel } from "@/lib/known-models";
 import { catalogChoices } from "@/lib/model-options";
 import { minutesToHours } from "@/lib/fleet";
@@ -31,8 +31,11 @@ import { formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
 import { setModelRetired } from "../../fleet/actions";
 import { DeleteProductButton } from "../delete-product";
+import { GeneralProductPage } from "../general-product";
+import { HistoryTab } from "../history-tab";
 import {
   ChooseFromListForm,
+  ListEntryActions,
   ListingForm,
   ReviewRequest,
 } from "../moto-mangos-forms";
@@ -70,9 +73,23 @@ export default async function ProductPage({
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) notFound();
   const { tenant, role } = membership;
   const manage = canManageFleet(role);
+  const asked = typeof query.tab === "string" ? query.tab : "";
+  // Rental gear, an item for sale or a service: its own page (Details,
+  // Stock, History). A vehicle carries on below, as before.
+  const product = await getProduct(tenant.id, id);
+  if (product && isGeneralType(product.type))
+    return (
+      <GeneralProductPage
+        slug={slug}
+        tenant={tenant}
+        role={role}
+        product={product}
+        asked={asked}
+        added={query.added === "1"}
+      />
+    );
   // Details and History are for those who set the shop up.
   const allowed: readonly Tab[] = manage ? tabs : ["units"];
-  const asked = typeof query.tab === "string" ? query.tab : "";
   const tab: Tab = (allowed as readonly string[]).includes(asked)
     ? (asked as Tab)
     : allowed[0];
@@ -165,6 +182,7 @@ export default async function ProductPage({
       {tab === "details" && (
         <DetailsTab
           slug={slug}
+          tenantId={tenant.id}
           model={model}
           units={units}
           catalog={catalog}
@@ -237,7 +255,8 @@ export default async function ProductPage({
         <HistoryTab
           tenantId={tenant.id}
           productId={model.id}
-          units={units}
+          units={units.map((unit) => ({ id: unit.id, name: unit.plate }))}
+          unitsAre="vehicles"
           timezone={tenant.timezone}
           locale={locale}
         />
@@ -260,6 +279,7 @@ type Catalog = Awaited<ReturnType<typeof getCatalog>>;
  */
 async function DetailsTab({
   slug,
+  tenantId,
   model,
   units,
   catalog,
@@ -268,8 +288,9 @@ async function DetailsTab({
   locale,
 }: {
   slug: string;
+  tenantId: string;
   model: Product;
-  units: { status: string }[];
+  units: { id: string; status: string }[];
   catalog: Catalog;
   timezone: string;
   currency: string;
@@ -286,6 +307,13 @@ async function DetailsTab({
     : null;
   const waiting = entry?.status === "requested";
   const approved = entry?.status === "approved";
+  // Bookings that changing the model or disconnecting must leave alone.
+  const upcoming = approved
+    ? await countUpcomingBookings(
+        tenantId,
+        units.map((unit) => unit.id),
+      )
+    : 0;
   const news = reviewNews(model, new Date());
   const own = !model.catalog_id;
   const motorbike = model.vehicle_type === "motorbike";
@@ -423,9 +451,20 @@ async function DetailsTab({
             ) : entry?.status === "rejected" ? (
               <p className="text-sm">{tFleet("motoMangos.rejectedLinked")}</p>
             ) : approved && entry ? (
-              <p className="text-sm">
-                {tFleet("motoMangos.ready", { name: catalogName(entry) })}
-              </p>
+              <>
+                <p className="text-sm">
+                  {tFleet("motoMangos.ready", { name: catalogName(entry) })}
+                </p>
+                {/* Already on a list entry: change it, or disconnect. */}
+                <ListEntryActions
+                  slug={slug}
+                  id={model.id}
+                  choices={catalogChoices(
+                    catalog.filter((c) => c.id !== entry.id),
+                  )}
+                  upcoming={upcoming}
+                />
+              </>
             ) : (
               <div className="space-y-4">
                 <div id="choose-from-list" className="scroll-mt-20">
@@ -514,102 +553,5 @@ async function DetailsTab({
         />
       </section>
     </div>
-  );
-}
-
-/** Who changed what on the product and its vehicles, newest first. */
-async function HistoryTab({
-  tenantId,
-  productId,
-  units,
-  timezone,
-  locale,
-}: {
-  tenantId: string;
-  productId: string;
-  units: { id: string; plate: string | null }[];
-  timezone: string;
-  locale: string;
-}) {
-  const limit = 100;
-  const [t, tFleet, rows, names] = await Promise.all([
-    getTranslations("Products.history"),
-    getTranslations("Fleet"),
-    getProductHistory(
-      tenantId,
-      productId,
-      units.map((unit) => unit.id),
-      limit,
-    ),
-    getMemberNames(tenantId),
-  ]);
-  const entries = buildHistory(rows);
-  const plates = new Map(
-    units.map((unit) => [unit.id, unit.plate ?? tFleet("noPlate")]),
-  );
-  const words = { empty: t("empty"), yes: t("yes"), no: t("no") };
-  const fieldLabel = (field: string) =>
-    t.has(`field.${field}` as "field.name")
-      ? t(`field.${field}` as "field.name")
-      : humanizeKey(field);
-  const what = (entity: string, entityId: string) =>
-    entity === "units"
-      ? t("on.units", { name: plates.get(entityId) ?? tFleet("noPlate") })
-      : t("on.products");
-
-  return (
-    <Panel intro={t("intro")} className="max-w-3xl">
-      {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
-        <ol className="divide-y rounded-md border">
-          {entries.map((entry) => {
-            const who =
-              entry.actor === null
-                ? t("system")
-                : (names.get(entry.actor) ?? t("formerMember"));
-            const subject = what(entry.entity, entry.entityId);
-            const line = t.has(`action.${entry.action}` as "action.insert")
-              ? t(`action.${entry.action}` as "action.insert", {
-                  who,
-                  what: subject,
-                })
-              : t("action.other", {
-                  who,
-                  action: entry.action,
-                  what: subject,
-                });
-            return (
-              <li key={entry.id} className="p-3 text-sm">
-                <p className="font-medium">{line}</p>
-                <p className="text-xs text-muted-foreground">
-                  <time dateTime={entry.at}>
-                    {formatInstant(new Date(entry.at), timezone, locale)}
-                  </time>
-                </p>
-                {entry.changes.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {entry.changes.map((change) => (
-                      <li key={change.field}>
-                        {t("change", {
-                          field: fieldLabel(change.field),
-                          from: historyValue(change.from, words),
-                          to: historyValue(change.to, words),
-                        })}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {rows.length >= limit && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          {t("latest", { count: limit })}
-        </p>
-      )}
-    </Panel>
   );
 }
