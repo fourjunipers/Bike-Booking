@@ -68,11 +68,11 @@ test("a mechanic opens on Maintenance and sees only its tabs", async ({
   await signIn(page, demo.bsrMechanic);
   await expect(page).toHaveURL(/\/bsr\/maintenance$/);
   const nav = mainNav(page, isPhone(info.project.name));
-  // The sidebar also lists Fleet, which every role can read (Phase 1a).
+  // The sidebar also lists Products and Fleet, which every role can read.
   await expect(nav.getByRole("link")).toHaveText(
     isPhone(info.project.name)
       ? ["Dashboard", "Maintenance"]
-      : ["Dashboard", "Maintenance", "Fleet"],
+      : ["Dashboard", "Maintenance", "Products", "Fleet"],
   );
 
   // A tab the role doesn't have sends it home; admin pages don't exist for it.
@@ -96,7 +96,7 @@ test("a driver gets Dashboard and Orders", async ({ page }, info) => {
   ).toHaveText(
     isPhone(info.project.name)
       ? ["Dashboard", "Orders"]
-      : ["Dashboard", "Orders", "Fleet"],
+      : ["Dashboard", "Orders", "Products", "Fleet"],
   );
 });
 
