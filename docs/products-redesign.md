@@ -18,25 +18,25 @@
 | 6 | A vehicle's own tax and insurance are the legally required records on each unit (`unit_renewals`). A product a vendor calls "tax and insurance" or "full coverage" is that vendor's own optional add-on or side service (BSR helps customers with licences, tax and insurance for their own vehicles) | §1.3 |
 | 7 | Service and Item for sale must handle any vendor's own general goods and services: stickers, shirts, hats | §1.2 |
 | 8 | Thai for "product" is สินค้า, provisional, until Korn or BSR's admin reviews it | §4.1 |
-| 9 | Items for sale are not on screen before orders exist (Phase 3). See the note under this table | §2.5 |
+| 9 | Items for sale: allowed in the database from stage A; owners enter them (name and stock) from stage B; prices come in stage D; selling comes with orders in Phase 3 | §2.5 |
 | 10 | Sizes: separate products per size (Helmet S, M, L), each with its own quantity, until after the pilot; then real variations | §5.5 |
 | 11 | The units-to-offer cap counts only Moto Mangos bookings | §2.6 |
-| 12 | Only owners and managers switch Moto Mangos on and off or change gear quantities. Staff can mark units lost or damaged. Mechanics and drivers see no prices | §4.2 |
+| 12 | Only owners and managers switch Moto Mangos on and off or change gear quantities. Owners, managers and staff may mark a unit lost or damaged; mechanics may not mark one lost. Staff see prices but can't change them. Mechanics and drivers see no prices | §4.2 |
 | 13 | Lead time is plain hours from now. The stricter of the shop's minimum notice and the listing's lead time applies | §2.6 |
 | 14 | The deposit on an order is the sum of each vehicle's deposit (two bikes, two deposits), adjustable by staff | §3.3 |
-| 15 | Tiered pricing is entered as anchor prices (daily, weekly, two weeks, three weeks, monthly); the system fills the days between; every filled-in price stays editable | §3.2 |
+| 15 | Tiered pricing is entered as anchor prices (daily, weekly, two weeks, three weeks, monthly); the system fills the days between; every filled-in price stays editable. The spec's stored "price per day" mode is dropped; a "same price every day" helper fills the anchor totals instead, all editable | §3.2 |
 | 16 | Open, Mark answers later: whether BSR's 30 Booqable templates are multipliers or fixed amounts. It matters only to the importer (Phase 10) | §7 |
 
-**One point to confirm (decisions 9 and the first message).** Mark wrote both "items for sale exist as products before Phase 3 (name, price, stock, no orders yet)" and "no items for sale on screen before orders exist". This document reads them together as: the database accepts the type and its fields from stage A, so nothing has to be reshaped later; the screens do not offer the type until Phase 3 brings orders. If the first sentence was meant literally (owners can already enter stickers and shirts with a price and a stock count), that is a small addition to stage B and D, not a redesign.
+Decisions 9, 12 and 15 include Mark's second round of answers the same day (items for sale by stage, who may mark a unit lost, and the price-per-day mode).
 
 ## Summary
 
 1. **One `products` table, renamed from `models`**, with a `type` (vehicle, gear, sale item, service) and a `tracking` mode. Vehicle-only fields stay on it, guarded by checks. The platform has no rows on live, so the rename costs no data work; it does mean re-creating about 15 database functions that name the old table.
-2. **Rental gear counted by quantity is stored as real, nameless unit rows.** "20 helmets" is 20 rows in `units`. The existing exclusion constraint, per-unit locks and availability rule then cover gear with no second mechanism, and "track individual units" becomes giving those rows labels. Items for sale are different (they are used up, not lent) and get a stock ledger with orders in Phase 3. Services have no stock.
+2. **Rental gear counted by quantity is stored as real, nameless unit rows.** "20 helmets" is 20 rows in `units`. The existing exclusion constraint, per-unit locks and availability rule then cover gear with no second mechanism, and "track individual units" becomes giving those rows labels. Items for sale are different (they are used up, not lent) and get a stock ledger in stage B; selling them comes with orders in Phase 3. Services have no stock.
 3. **Moto Mangos settings move to their own table, `product_listings`**, so a product is created with no marketplace fields and listed later from its tab. The existing instant and request counts become the "units to offer" cap.
 4. **Pricing sits in its own table, `product_pricing`, one row per product**: a method plus an amount or a shared price template, a tax profile and a deposit. It is a separate table because mechanics and drivers must not see prices, and row-level security hides rows, not columns. Extras are not a separate table: an extra is a gear or service product linked to a vehicle product. This is laid out now so Phase 2's one pricer (`quote()`) reads it without rework.
 5. **PR 13's migration: keep it as it is.** Do not change it in place again; build forward with new migrations. Reasons in §1.6.
-6. **The review's five disagreements with the brief are accepted** (§5.4), and the questions are answered except one that only the importer needs (§7).
+6. **The review's five disagreements with the brief are accepted** (§5.4), and every question is answered except one that only the importer needs (§7).
 
 ## 1. Database design
 
@@ -82,7 +82,7 @@ Prices are not on this table: see `product_pricing` (§3.1).
 | --- | --- | --- |
 | Vehicle | `unit` only | `units`, one row per vehicle, each with a plate (or plate pending) |
 | Rental gear | `bulk` (default) or `unit` | `units`: nameless rows for bulk, labelled rows for tracked |
-| Item for sale | `consumable` | `stock_movements` ledger (Phase 3) |
+| Item for sale | `consumable` | `stock_movements` ledger (stage B) |
 | Service or extra | `none` | Nothing. Always available while the product is active |
 
 Rules, all as check constraints or the existing guard trigger:
@@ -112,7 +112,7 @@ units  (existing columns kept)
 - Check: a vehicle unit keeps today's rule (`plate is not null or plate_pending`). A gear unit has no plate, frame number, engine number, model year or odometer. A tracked gear unit needs a `label`, unique within its product. A bulk unit has neither plate nor label.
 - Sale items and services have no unit rows (enforced by the type pair: the foreign key only matches vehicle and gear products).
 - `status` (active, maintenance, retired, sold), `location_id`, `qr_token`, the role guard (`units_guard`), the sold and retired rules and `units_clear_downtime` all carry over unchanged. A tracked camera gets a QR sticker for free.
-- **New status `lost`** (decision 12), added in stage B. Staff may set it, as they may set maintenance today; it takes the unit out of stock at once. Only an owner or manager can bring a lost unit back, retire it or delete it. "Damaged" is the existing `maintenance` status (or a downtime block with an end date), which staff can already set.
+- **New status `lost`** (decision 12), added in stage B. Owners, managers and staff may set it; mechanics may not (they still set maintenance). It takes the unit out of stock at once. Only an owner or manager can bring a lost unit back, retire it or delete it. "Damaged" is the existing `maintenance` status (or a downtime block with an end date), which staff can already set.
 - `unit_renewals` is the vehicle's own legally required tax and insurance record (decision 6) and has nothing to do with any product a vendor names "tax and insurance". It stays vehicle-only in the screens. No database rule is needed: a renewal on a helmet would be odd but harmless.
 
 ### 1.4 `product_listings` (Moto Mangos)
@@ -144,7 +144,7 @@ product_listings
 | `price_templates`, `price_template_days` | D (Phase 2) | Prices by rental length from anchors, shareable between products (§3.2) |
 | `tax_profiles` | D (Phase 2) | Rate and inclusive or exclusive, per shop (§3.3) |
 | `product_extras` | D (Phase 2) | Which gear and services are offered with which vehicle product (§3.5) |
-| `stock_movements` | Phase 3 | Ledger for items for sale (§2.5) |
+| `stock_movements` | B | Ledger for items for sale: stock in and adjustments from stage B, sales from Phase 3 (§2.5) |
 
 Every new table follows the repo rules: `tenant_id` and a parent reference by `(tenant_id, id)`; RLS in the set form `tenant_id = any((select my_tenant_ids()))`, no `using (true)`; an explicit `grant` to `authenticated` in the migration (`default-grants.test.ts`); new functions start with `revoke all ... from public, anon`; amounts are `bigint` minor units with a `currency` column keyed to `tenants (id, currency)`; `set_updated_at` and `audit_row` triggers; a fixture row per tenant in the isolation tests. Columns that record who did something are set in the database from `auth.uid()`, not sent by the client (this closes the open item in PROGRESS, "Before Phase 2").
 
@@ -165,7 +165,7 @@ Each migration is one logical change. All of them act on platform tables that ar
 | # | Migration (name after the timestamp) | What it does | Stage |
 | --- | --- | --- | --- |
 | 1 | `platform_products` | Rename `models` → `products`, `units.model_id` → `product_id`, `model_year_bands` → `product_year_bands`. Add `type` (existing rows: `vehicle`), `tracking` (`unit`), `units.product_type`, the composite key and the type checks. Rename policies, indexes and triggers to match. Re-create every function that names the old table or column, in the same file | A |
-| 2 | `platform_gear_units` | `units.label`, the `lost` status, the per-type unit checks, `set_stock_quantity()`, `set_quantity_out()` and `mark_units_lost()` (§2.3), the product-level advisory lock | B |
+| 2 | `platform_gear_units` | `units.label`, the `lost` status, the per-type unit checks, `set_stock_quantity()`, `set_quantity_out()` and `mark_units_lost()` (§2.3), the product-level advisory lock, `stock_movements` for items for sale | B |
 | 3 | `platform_product_listings` | Create the table, copy the five columns across, drop them from `products`, add `lead_time_hours`, re-point the guards and the review function | C |
 | 4 | `platform_product_pricing` | `product_pricing` (the deposit moves into it), `price_templates`, `price_template_days`, `tax_profiles`, `product_extras`, the wider currency lock | D |
 
@@ -210,7 +210,7 @@ Lock order, to be written into the root rules: product locks first (sorted), the
 
 - **Setting the quantity** is one function, `set_stock_quantity(product, location, n)`, owners and managers only. Raising it inserts nameless active units. Lowering it removes units that have no block now or in the future; if too few are free it refuses and says how many are booked. This is the same question "retire" asks of a vehicle, so the rule is already familiar.
 - **Damaged gear** ("2 helmets being cleaned or repaired until Friday") is downtime blocks on any 2 free nameless units, through `set_quantity_out(product, location, n, until)`. Staff and mechanics may do this, as they may for vehicle downtime today.
-- **Lost gear** (decision 12): staff call `mark_units_lost(product, location, n)`, which sets `lost` on n free nameless units. The product then reads "18 in stock, 2 lost". An owner or manager later confirms (the units are removed, which is a quantity change) or brings them back. Staff never change the quantity itself.
+- **Lost gear** (decision 12): an owner, manager or staff member (not a mechanic) calls `mark_units_lost(product, location, n)`, which sets `lost` on n free nameless units. The product then reads "18 in stock, 2 lost". An owner or manager later confirms (the units are removed, which is a quantity change) or brings them back. Staff never change the quantity itself.
 - **Booking 3 helmets** is 3 allocation blocks on 3 units. Staff never see which rows.
 - **Why rows and not a counted pool.** The alternative is a `stock_blocks` table with a quantity per row and a "sum of overlapping quantities ≤ stock" check inside a function. That check can't be an exclusion constraint, so gear would have a second, weaker lock that only holds if every writer goes through the function. With rows, the database itself refuses the 21st helmet. The costs are more rows (60 helmets = 60 rows) and one audit row per unit when the quantity changes; `set_stock_quantity` also writes one summary audit event ("quantity 20 → 25") so the history reads cleanly. A limit of 1,000 bulk units per product per location keeps a typo from creating a million rows.
 - **Nameless units can be re-packed.** Because they are interchangeable, the booking function may move not-yet-collected allocations between nameless units when no single unit is free for the whole window but the count says one should be. Build the simple best-fit pick first and add re-packing only if the race and fragmentation tests show a need.
@@ -222,8 +222,8 @@ Switching a gear product from `bulk` to `unit` asks for a label per existing uni
 ### 2.5 Items for sale and services
 
 - **Services** have no stock: available whenever the product is active.
-- **Items for sale** (stickers, shirts, hats: any vendor's own goods) are used up. On-hand is the sum of a `stock_movements` ledger (received, sold, returned, adjusted; append-only, each row with who and when), minus quantities on open orders. They never enter `unit_blocks`. The ledger arrives with orders in Phase 3, because a sale needs an order line and a payment.
-- **Before Phase 3 the type is in the database but not on screen** (decision 9, with the point to confirm at the top). The type check allows `sale_item` from stage A and `product_pricing` accepts a price for one from stage D, so Phase 3 adds the ledger and the screens and reshapes nothing.
+- **Items for sale** (stickers, shirts, hats: any vendor's own goods) are used up. On-hand is the sum of a `stock_movements` ledger (received, sold, returned, adjusted; append-only, each row with who and when), minus quantities on open orders. They never enter `unit_blocks`.
+- **By stage** (decision 9). Stage A: the type check allows `sale_item`; nothing on screen. Stage B: owners and managers create items for sale with a name and a stock count per location; the ledger exists and takes "received" and "adjusted" rows, so the count has a history from the first day. Stage D: a price. Phase 3: order lines, payments and the "sold" and "returned" rows. Until Phase 3 an item for sale can be counted but not sold through the platform.
 
 ### 2.6 Moto Mangos: units to offer and lead time
 
@@ -292,7 +292,8 @@ price_template_days   tenant_id, template_id, day (1..30), total bigint, source 
 - **Editing.** Any filled day can be overwritten; it becomes `manual` and is kept. Changing an anchor refills only the `filled` days between it and its neighbours and leaves `manual` ones alone. "Reset to filled" turns a manual day back.
 - **Never more for fewer days** (review decision): a template is refused on save if any day's total is lower than the day before it. A refill that would break this against a manual day is shown to the owner to resolve, not silently changed.
 - **Over 30 days** derives from the 30-day total, as decided: `round(total(30) × days ÷ 30)`.
-- **One stored shape.** Every template is the same 30 totals, so `quote()` has one lookup. The spec's second mode, "price per day" (three daily rates: 1–6, 7+, 28+ days; change request 41), is not a second stored shape here. If it is still wanted, it becomes a second way to fill the same 30 totals. This needs Mark's word, since the spec still lists it (§7).
+- **One stored shape.** Every template is the same 30 totals, so `quote()` has one lookup. The spec's second stored mode, "price per day" (change request 41), is dropped (decision 15).
+- **"Same price every day" helper.** The owner types one daily price; the helper sets the anchors to that price times 1, 7, 14, 21 and 30, and the fill does the rest. The result is an ordinary template: every anchor and every day stays editable, so a shop can start flat and then lower the weekly and monthly totals by hand.
 - **Sharing.** A template can be used by many products ("Scooters 125 cc"). "Own prices" for one product is a template with `shared = false` that only it points to. The Pricing tab offers "Use a shared price list" or "Set this product's own prices"; either way the owner sees the same five anchor boxes and the 30-day grid.
 - Changing a shared template changes every product on it. The form names them before saving. Past orders are unaffected because an order stores its quote snapshot (review decision).
 - Amounts are **absolute, in minor units**, never multipliers. Whether BSR's Booqable templates are multipliers or fixed amounts only decides how the importer turns them into these rows (decision 16).
@@ -330,7 +331,7 @@ price_template_days   tenant_id, template_id, day (1..30), total bigint, source 
 | Screen | Address | What it shows |
 | --- | --- | --- |
 | **Products** | `/[tenant]/products` | Every product, one row each: photo or type icon, name, type, price, stock (units in use / total; "—" for services), Moto Mangos chip and switch (vehicles only). Filters: type, category, status, Moto Mangos state. "+ New product" |
-| **New product** | `/[tenant]/products/new` | Step 1: pick the type (Vehicle, Rental gear, Service; Item for sale joins in Phase 3). Step 2: the form for that type. Vehicle: kind, the make-and-model type-ahead (below), categories. Gear: name, optional category, quantity per location, "track individual units". Service: name. No marketplace fields and no preset products anywhere on it. In stage A only vehicles exist, so the type step is skipped until stage B |
+| **New product** | `/[tenant]/products/new` | Step 1: pick the type (Vehicle, Rental gear, Service, Item for sale; the last three join in stage B). Step 2: the form for that type. Vehicle: kind, the make-and-model type-ahead (below), categories. Gear: name, optional category, quantity per location, "track individual units". Service: name. Item for sale: name and stock per location. No marketplace fields and no preset products anywhere on it. In stage A only vehicles exist, so the type step is skipped until stage B |
 | **Product page** | `/[tenant]/products/[id]` | Tabs: **Details**, **Units** (vehicle and tracked gear: rows with "+ Add unit"; bulk gear: quantity per location, with "damaged" and "lost" counts), **Pricing**, **Moto Mangos** (vehicles only), **History** |
 | **Unit rows** | on the Units tab and in Fleet | Vehicle: plate, status, odometer, location; opens the unit page. Tracked gear: label, status, location |
 | **Unit page** | `/[tenant]/fleet/units/[id]` | Unchanged: status, odometer, downtime, tax and insurance, purchase and sale, sticker, delete |
@@ -353,7 +354,7 @@ price_template_days   tenant_id, template_id, day (1..30), total bigint, source 
 | Create, edit, retire, restore, delete a product | Yes | Yes | No | No | No |
 | Add or remove units; change gear quantity; switch tracking | Yes | Yes | No | No | No |
 | Unit status active ↔ maintenance, odometer, downtime, gear marked damaged | Yes | Yes | Yes | Yes | No |
-| Mark a unit or gear lost | Yes | Yes | Yes | Yes | No |
+| Mark a unit or gear lost | Yes | Yes | Yes | No | No |
 | Bring a lost unit back, or remove it | Yes | Yes | No | No | No |
 | Tax and insurance records: add and edit / delete | Yes / Yes | Yes / Yes | Yes / No | Yes / No | No |
 | Purchase, sale and renewal costs | Yes | Yes | Hidden | Hidden | Hidden |
@@ -362,7 +363,7 @@ price_template_days   tenant_id, template_id, day (1..30), total bigint, source 
 | Walk-in "ready now" count | Yes | Yes | Yes | No | No |
 | History tab (audit) | Yes | Yes | No | No | No |
 
-This is today's split carried over (owners and managers set up; staff and mechanics work on units) with Mark's rulings (decision 12): only owners and managers switch Moto Mangos or change a gear quantity; staff can mark units lost or damaged; mechanics and drivers see no prices. Two rows are my reading of that and worth a glance: a mechanic may also mark a unit lost (they already mark maintenance), and staff see prices but don't change them (they quote them at the desk).
+This is today's split carried over (owners and managers set up; staff and mechanics work on units) with Mark's rulings (decision 12): only owners and managers switch Moto Mangos or change a gear quantity; owners, managers and staff may mark a unit lost, mechanics may not; staff see prices but can't change them; mechanics and drivers see no prices.
 
 Each row is enforced in the database by RLS and the guard triggers, and repeated in `lib/roles.ts` for the menus. "Hidden" means the database returns no row to that role, not that the screen leaves a column out: for a mechanic the Products list has no price column and the product page has no Pricing tab. The isolation tests cover each role limit. Until stage D moves it, the one price that exists today (the deposit on a model) stays readable by every member.
 
@@ -381,11 +382,11 @@ Each row is enforced in the database by RLS and the guard triggers, and repeated
 | Stage | Scope | Migrations | Main risks |
 | --- | --- | --- | --- |
 | **A. Products core** | Rename; four types in the schema; Products list; create page with the one type-ahead; product page with Details, Units and History tabs; Fleet becomes the vehicle-units view; redirects; wording (สินค้า). Only vehicles on screen, and they behave exactly as today | 1 | The rename touches about 40 app files, every fleet test and the Playwright flows. A missed function body fails only when called, so the function list must come from the database. Thai wording |
-| **B. Gear and services** | Bulk gear with quantity per location, damaged and lost; tracked gear with labels; services as products without stock; one product per size. Items for sale stay off screen until Phase 3 | 2 | Quantity changes racing with downtime or (later) bookings; audit noise from many unit rows |
+| **B. Gear and services** | Bulk gear with quantity per location, damaged and lost; tracked gear with labels; services as products without stock; one product per size; items for sale with a name and a stock count (no price, no selling yet) | 2 | Quantity changes racing with downtime or (later) bookings; audit noise from many unit rows |
 | **C. Moto Mangos tab** | `product_listings`; the tab; the switch in the list; units to offer and lead time stored and validated. Still no effect on the marketplace until 3M | 3 | Moving columns the review function writes; keeping "approved means listed" and the clamp working |
 | **D. Pricing fields** (opens Phase 2) | Method, amount, period; templates; tax profiles; deposit; `product_extras`; Pricing tab; price column in the list | 4 | Getting a shape Phase 2 then has to change. Mitigated by settling §5.3 first |
 | **Phase 2 proper** | `quote()`, the availability function (§2), the booking function with both lock levels, `price_rules`, coupons | Phase 2's own | As the spec says: where bugs cost real money |
-| **Phase 3** | Orders and order lines as in §3.5; `stock_movements` for sale items; `unit_blocks.order_line_id` | Phase 3's own | |
+| **Phase 3** | Orders and order lines as in §3.5; selling items for sale ("sold" and "returned" stock rows); `unit_blocks.order_line_id` | Phase 3's own | |
 
 A, B and C are independent of pricing and can each be a PR. Stage A should merge alone first: it is the one with a wide, mechanical diff, and reviewing it mixed with new behaviour would hide mistakes. Push to live once, after C (§1.7).
 
@@ -418,7 +419,7 @@ A, B and C are independent of pricing and can each be a PR. Stage A should merge
 
 **Before the live push:** the runbook's dry run on a copy of live (36 public queries byte-identical, grants fingerprint unchanged, row counts unchanged, the hourly job's function runs).
 
-**Not truly testable now:** anything that needs an order (blocks from bookings, the cap against real Moto Mangos bookings, sale-item stock). Those tests are written with Phases 2 and 3; stage tests use hand-made blocks, as Phase 1a did for "selling a unit with future bookings".
+**Not truly testable now:** anything that needs an order (blocks from bookings, the cap against real Moto Mangos bookings, selling an item for sale). Those tests are written with Phases 2 and 3; stage tests use hand-made blocks, as Phase 1a did for "selling a unit with future bookings".
 
 ### 5.3 Decide before Phase 2
 
@@ -426,12 +427,11 @@ A, B and C are independent of pricing and can each be a PR. Stage A should merge
 2. **Buffers between two rentals.** With blocks stored widened and requests widened too, the gap between rental A and rental B is A's "after" plus B's "before". Confirm that is intended, with a worked example in the spec.
 3. **Tax rounding per line or per order**, to match the Thai tax invoice (ask Korn with the open invoice-format question).
 4. **Hourly products on a daily order**: each line by its own period unit (recommended), with worked examples.
-5. **The spec's "price per day" mode** (change request 41): dropped, or kept as a second way to fill a template (§3.2, §7).
-6. **Overbooking per product.** The spec has one shop-wide switch; Booqable has "allow shortage" with a limit per product. Recommended: shop-wide in Phase 3, a per-product override later; the design in §2.1 step 4 supports both.
-7. **Which category Moto Mangos files a multi-category motorbike under** (open in PROGRESS already).
-8. **Extras on Moto Mangos need stock.** The contract's `extras[]` has no availability. When helmets are counted, checkout must not sell a fourth helmet when three are left: a contract addition for 3M.
+5. **Overbooking per product.** The spec has one shop-wide switch; Booqable has "allow shortage" with a limit per product. Recommended: shop-wide in Phase 3, a per-product override later; the design in §2.1 step 4 supports both.
+6. **Which category Moto Mangos files a multi-category motorbike under** (open in PROGRESS already).
+7. **Extras on Moto Mangos need stock.** The contract's `extras[]` has no availability. When helmets are counted, checkout must not sell a fourth helmet when three are left: a contract addition for 3M.
 
-Settled on 13 Nov and no longer open: how deposits combine (sum per vehicle, staff can adjust), template amounts (absolute, from anchors), lead time (plain hours, the stricter of the two).
+Settled on 13 Nov and no longer open: how deposits combine (sum per vehicle, staff can adjust), template amounts (absolute, from anchors), lead time (plain hours, the stricter of the two), the "price per day" mode (dropped; a fill helper instead).
 
 ### 5.4 The approved brief: what looked wrong or risky, and how it was settled
 
@@ -443,7 +443,7 @@ Mark accepted all five disagreements on 13 Nov 2026.
 | 2 | Dropping the catalog from the create form costs typing and invites typos | One type-ahead of known models; unknown models are typed in the same field (decision 3) |
 | 3 | Delivery as a priced service collides with the distance fee | The distance fee stays for every shop; a shop may add its own flat "Delivery" service; nothing preset (decision 4) |
 | 4 | "Tax and insurance" as a service name clashes with the vehicle's own record | No preset products at all, and names are free text. The unit's record is the legal one; a product by that name is the vendor's own add-on (decisions 5 and 6) |
-| 5 | Items for sale need orders | In the schema from stage A, on screen from Phase 3 (decision 9, with one point to confirm) |
+| 5 | Items for sale need orders | In the database from stage A; name and stock from stage B; price in stage D; selling in Phase 3 (decision 9) |
 
 Still worth keeping in view:
 
@@ -465,7 +465,7 @@ Still worth keeping in view:
 | **Allow shortage** | Yes, per product with a limit | Shop-wide switch in Phase 3 as the spec says; per-product later (§5.3) |
 | **Replacement value** of gear (what a lost helmet costs the customer) | Yes | Add a `replacement_price` to `product_pricing` in stage D; used by damage charges in Phase 5 and when staff mark gear lost on an order |
 | **Quantity limits per order** | Partly | `product_extras.max_quantity` covers extras |
-| **SKU or barcode** for sale items | Yes | A free-text `sku` column with Phase 3 |
+| **SKU or barcode** for sale items | Yes | A free-text `sku` column with stage B |
 | **Stock per location and transfers** | Add-on | Units already carry a location; transfers are a `unit_blocks` kind. Multi-location is Phase 11 |
 | **Photos** for every type | Yes | The `photos` column exists; upload arrives with Phase 3 as already planned |
 | **Lost or damaged gear** | Yes | Decided: staff mark it (decision 12). `lost` status and downtime, §1.3 and §2.3 |
@@ -517,23 +517,22 @@ Not testable in stage A: anything with a non-vehicle product on screen (stage B)
 | Delivery is a service product | The distance fee stays for every shop; a shop's own flat "Delivery" product is allowed; nothing preset |
 | Services such as tax and insurance, damage cover | No preset products; free-text names; any vendor's own goods and services |
 | Gear counted by quantity | Counted on screen; stored as nameless unit rows so the database lock covers it. One product per size until after the pilot |
-| Four types built together | Sale items are in the schema from stage A and on screen from Phase 3 |
+| Four types built together | Sale items: database in stage A, name and stock in B, price in D, selling in Phase 3 |
 | PR 13's migration may be reshaped | Kept untouched; follow-up migrations |
 
 ## 7. Questions for Mark
 
 Answered on 13 Nov 2026 and worked in above: the rename, the type-ahead, the Thai word, items for sale, sizes, the instant and request split, what the cap counts, who may do what, lead time, deposits, and what "tax and insurance" and delivery are.
 
+Answered in a second round the same day: items for sale by stage, the "price per day" mode, and who may mark a unit lost.
+
 Still open:
 
-1. **Items for sale before Phase 3** (the point to confirm at the top): in the schema but off screen, as this document reads it, or already enterable with a name, price and stock count?
-2. **BSR's Booqable price templates:** multipliers on a base price, or fixed amounts per length? Only the importer needs this (Phase 10).
-3. **The spec's "price per day" mode** (three daily rates: 1–6, 7+, 28+ days; change request 41). The anchor template in §3.2 doesn't include it as a stored mode. Drop it, or keep it as a second way to fill the 30 totals? Needed before stage D.
-4. **Two small permission readings** in §4.2: a mechanic may mark a unit lost, and staff see prices without changing them. Say if either is wrong.
+1. **BSR's Booqable price templates:** multipliers on a base price, or fixed amounts per length? Only the importer needs this (Phase 10).
 
 ## 8. Spec and doc edits this design needs (owner keeps the spec)
 
-- `docs/platform/SPEC.md` › Data model: `models` → `products` with type and tracking; `extras` row removed in favour of products and `product_extras`; `price_structures` → `price_templates` and `price_template_days`, built from anchors; the "price per day" mode (change request 41) dropped or turned into a fill, as Mark decides; new `product_pricing` (the model's deposit moves into it); `order_lines.kind` → a product line with `parent_line_id`; new `product_listings`, `tax_profiles`, `stock_movements`. › Fleet and Pricing module text to match, including: the order deposit is the sum of each vehicle's deposit; lead time; unit status `lost`; no preset products. › Booqable table: variations marked as after the pilot.
+- `docs/platform/SPEC.md` › Data model: `models` → `products` with type and tracking; `extras` row removed in favour of products and `product_extras`; `price_structures` → `price_templates` and `price_template_days`, built from anchors; the stored "price per day" mode (change request 41) dropped, with a "same price every day" fill helper in its place; new `product_pricing` (the model's deposit moves into it); `order_lines.kind` → a product line with `parent_line_id`; new `product_listings`, `tax_profiles`, `stock_movements`. › Fleet and Pricing module text to match, including: the order deposit is the sum of each vehicle's deposit; lead time; unit status `lost`; no preset products. › Booqable table: variations marked as after the pilot.
 - `docs/platform/MAPPING.md`: target names in §4 and §6; `shop_extras` → service or gear products plus `product_extras`.
 - `docs/INTEGRATION.md`: no change now. At 3M: extras availability (§5.3) and the lead-time rule (the stricter of shop notice and listing lead time) in §4.6.
 - Root `CLAUDE.md`: the two-level lock order (§2.2) once Phase 2 builds it.
