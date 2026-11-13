@@ -13,6 +13,16 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Products redesign: design review (branch `docs/products-redesign`, 13 Nov 2026)
+
+Docs only: `docs/products-redesign.md`. No code, no migration, nothing applied to local, staging or live.
+
+- The owner approved a brief to replace "Make & model" and "Add to inventory" with one Products list (four types: vehicle, rental gear, item for sale, service), a Fleet view beside it, and Moto Mangos controls on a product tab. The document is the design for it: tables, availability, pricing, screens, permissions, audit, build stages, tests.
+- **Proposed, not decided:** rename `platform.models` to `products` with a type and a tracking mode; store quantity-counted gear as nameless `units` rows so the one exclusion constraint covers it; move the Moto Mangos columns to a new `product_listings` table; pricing as a method on the product plus shareable price templates; extras as products linked to a vehicle product.
+- **PR 13's migration (`20261113000100`):** the review recommends keeping it unchanged and building forward with new migrations. It is still not on live; the proposal is to push it with the follow-ups in one go after the first three stages.
+- **Waiting on the owner:** 13 questions in §7 of the document (four block the first stage), and the spec edits listed in its §8. `docs/platform/SPEC.md` is not changed here.
+- Found on the way: `apps/platform/CLAUDE.md` says the exclusion constraint is "on allocations/downtime"; it is on `unit_blocks`. Not changed (docs-only review of the design, and the owner keeps that file in step with the spec).
+
 ## Fleet rework: Make & model, Add to inventory, kinds and categories (branch `platform/fleet-rework`, 12 Nov 2026)
 
 Owner's request after the click-through: "Add model" and "Add bike" did the same job and read alike. Built to the owner's instruction in chat; `docs/platform/SPEC.md` in the repo does not have this text yet (the owner maintains it).
