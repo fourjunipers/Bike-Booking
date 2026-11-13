@@ -36,7 +36,7 @@ async function addUnit(tenant = shop, model = modelId): Promise<string> {
     .from("units")
     .insert({
       tenant_id: tenant.id,
-      model_id: model,
+      product_id: model,
       location_id: tenant.locationId,
       plate: `T-${++plateCounter}`,
     })
@@ -67,7 +67,7 @@ beforeAll(async () => {
   ]);
   await service.from("platform_admins").insert({ user_id: admin.id });
   const { data, error } = await service
-    .from("models")
+    .from("products")
     .insert({
       tenant_id: shop.id,
       catalog_id: catalogId,
@@ -131,7 +131,7 @@ describe("role limits", () => {
   it("staff, mechanics and drivers can't add models, units or locations", async () => {
     for (const role of ["staff", "mechanic", "driver"] as const) {
       const db = shop.members[role].db;
-      const model = await db.from("models").insert({
+      const model = await db.from("products").insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
         ...modelSpec,
@@ -140,7 +140,7 @@ describe("role limits", () => {
       expect(model.error?.code, `${role} model`).toBe("42501");
       const unit = await db.from("units").insert({
         tenant_id: shop.id,
-        model_id: modelId,
+        product_id: modelId,
         location_id: shop.locationId,
         plate: `ROLE-${role}`,
       });
@@ -462,7 +462,7 @@ describe("selling or retiring a unit", () => {
       .eq("id", id);
     expect(unit.error?.code).toBe("23503");
     const model = await shop.members.owner.db
-      .from("models")
+      .from("products")
       .delete()
       .eq("id", modelId);
     expect(model.error?.code).toBe("23503");
@@ -474,7 +474,7 @@ describe("units and models", () => {
     const unit = (tenant: TestTenant, model: string, plate: string | null) =>
       service.from("units").insert({
         tenant_id: tenant.id,
-        model_id: model,
+        product_id: model,
         location_id: tenant.locationId,
         plate,
       });
@@ -483,7 +483,7 @@ describe("units and models", () => {
     expect((await unit(shop, modelId, "ab-77")).error).toBeNull();
     expect((await unit(shop, modelId, "AB-77")).error?.code).toBe("23505");
     const { data: otherModel } = await service
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: other.id,
         catalog_id: catalogId,
@@ -498,7 +498,7 @@ describe("units and models", () => {
   it("a unit without a plate needs the plate-pending flag", async () => {
     const row = {
       tenant_id: shop.id,
-      model_id: modelId,
+      product_id: modelId,
       location_id: shop.locationId,
     };
     const bare = await service.from("units").insert(row);
@@ -517,7 +517,7 @@ describe("units and models", () => {
 
   it("several models may share a catalog entry, each with its own name", async () => {
     const add = (name: string) =>
-      shop.members.manager.db.from("models").insert({
+      shop.members.manager.db.from("products").insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
         ...modelSpec,
@@ -530,7 +530,7 @@ describe("units and models", () => {
 
   it("booking-mode counts can't exceed the model's active units", async () => {
     const { data: model } = await service
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
@@ -542,7 +542,7 @@ describe("units and models", () => {
     await addUnit(shop, model!.id);
     await addUnit(shop, model!.id);
     const set = (values: object) =>
-      shop.members.owner.db.from("models").update(values).eq("id", model!.id);
+      shop.members.owner.db.from("products").update(values).eq("id", model!.id);
     expect(
       (await set({ instant_units: 1, request_units: 1 })).error,
     ).toBeNull();
@@ -573,7 +573,7 @@ describe("money", () => {
       expect((await locked()).data).toBe(false);
 
       const { data: model } = await service
-        .from("models")
+        .from("products")
         .insert({
           tenant_id: fresh.id,
           catalog_id: catalogId,
@@ -608,7 +608,7 @@ describe("money", () => {
 
   it("a deposit locks it too, and amounts are whole minor units", async () => {
     const withDeposit = await service
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
@@ -625,7 +625,7 @@ describe("money", () => {
       .update({ currency: "USD" })
       .eq("id", shop.id);
     expect(change.error?.message).toBe("currency_locked");
-    const noCurrency = await service.from("models").insert({
+    const noCurrency = await service.from("products").insert({
       tenant_id: shop.id,
       catalog_id: catalogId,
       ...modelSpec,
@@ -633,7 +633,7 @@ describe("money", () => {
       deposit: 100,
     });
     expect(noCurrency.error?.code).toBe("23514");
-    const fraction = await service.from("models").insert({
+    const fraction = await service.from("products").insert({
       tenant_id: shop.id,
       catalog_id: catalogId,
       ...modelSpec,
@@ -644,7 +644,7 @@ describe("money", () => {
     expect(fraction.error).not.toBeNull();
     // Far past 32 bits: bigint.
     const big = await service
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
@@ -744,15 +744,15 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     ...extra,
   });
   const submit = (db: Db, modelId: string) =>
-    db.rpc("submit_model_to_catalog", {
-      p_model_id: modelId,
+    db.rpc("submit_product_to_catalog", {
+      p_product_id: modelId,
       p_type: "city_scooter",
       p_year_from: 2024,
       p_note: "Please add",
     });
   const model = async (id: string) => {
     const { data } = await service
-      .from("models")
+      .from("products")
       .select(
         "catalog_id, make, model, cc, transmission, vehicle_type, marketplace_listed",
       )
@@ -762,7 +762,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
   };
   const addOwn = async (extra: object = {}) => {
     const { data, error } = await shop.members.manager.db
-      .from("models")
+      .from("products")
       .insert(own(extra))
       .select("id")
       .single();
@@ -772,7 +772,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
 
   it("a model on a preset takes its make, model and specs from the catalog", async () => {
     const { data, error } = await shop.members.manager.db
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: shop.id,
         catalog_id: catalogId,
@@ -820,7 +820,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
       },
     ]) {
       const { data, error } = await shop.members.owner.db
-        .from("models")
+        .from("products")
         .insert(own({ ...vehicle, name: `${vehicle.make} ${vehicle.model}` }))
         .select("catalog_id, vehicle_type")
         .single();
@@ -831,18 +831,18 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
       });
     }
     const unknown = await shop.members.owner.db
-      .from("models")
+      .from("products")
       .insert(own({ vehicle_type: "spaceship" }));
     expect(unknown.error?.code).toBe("23503");
   });
 
   it("required specs: engine size and transmission for motorbikes only", async () => {
     const insert = (extra: object) =>
-      shop.members.owner.db.from("models").insert(own(extra));
+      shop.members.owner.db.from("products").insert(own(extra));
     const refused = async (extra: object, what: string) => {
       const { error } = await insert(extra);
       expect(error?.code, what).toBe("23514");
-      expect(error?.message, what).toContain("models_required_specs_check");
+      expect(error?.message, what).toContain("products_required_specs_check");
     };
     const accepted = async (extra: object, what: string) =>
       expect((await insert(extra)).error, what).toBeNull();
@@ -865,35 +865,42 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     }
     // The service role is held to it too: it's a rule, not a permission.
     const asService = await service
-      .from("models")
+      .from("products")
       .insert(own({ transmission: null }));
-    expect(asService.error?.message).toContain("models_required_specs_check");
+    expect(asService.error?.message).toContain("products_required_specs_check");
     // Changing a saved car into a motorbike needs both then.
     const { data: car } = await service
-      .from("models")
+      .from("products")
       .insert(own({ vehicle_type: "car", cc: null, transmission: null }))
       .select("id")
       .single();
     const toBike = await shop.members.manager.db
-      .from("models")
+      .from("products")
       .update({ vehicle_type: "motorbike" })
       .eq("id", car!.id);
-    expect(toBike.error?.message).toContain("models_required_specs_check");
-    expect((await insert({ make: null })).error?.code).toBe("23502");
-    expect((await insert({ vehicle_type: null })).error?.code).toBe("23502");
+    expect(toBike.error?.message).toContain("products_required_specs_check");
+    // Since 20261113000200 a check, not NOT NULL: other types of product
+    // leave these empty, a vehicle may not.
+    for (const missing of [{ make: null }, { vehicle_type: null }])
+      expect((await insert(missing)).error?.message).toContain(
+        "products_vehicle_fields_check",
+      );
   });
 
   it("every catalog review leaves an audit record under the shop that sent it", async () => {
     const add = async () => {
       const { data } = await service
-        .from("models")
+        .from("products")
         .insert(own())
         .select("id")
         .single();
-      const sent = await shop.members.owner.db.rpc("submit_model_to_catalog", {
-        p_model_id: data!.id,
-        p_type: "city_scooter",
-      });
+      const sent = await shop.members.owner.db.rpc(
+        "submit_product_to_catalog",
+        {
+          p_product_id: data!.id,
+          p_type: "city_scooter",
+        },
+      );
       extraCatalog.push(sent.data!);
       return sent.data!;
     };
@@ -945,22 +952,22 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
       ["  Li fan ", "K P 1 5 0"],
     ]) {
       const { error } = await shop.members.manager.db
-        .from("models")
+        .from("products")
         .insert(own({ make, model: modelName }));
       expect(error?.code, `${make} / ${modelName}`).toBe("23505");
-      expect(error?.message).toContain("models_own_make_model_idx");
+      expect(error?.message).toContain("products_own_make_model_idx");
     }
     // Another model of that make, and the same pair in another shop, are fine.
     expect(
       (
         await shop.members.manager.db
-          .from("models")
+          .from("products")
           .insert(own({ make: "Lifan", model: "KPR 200" }))
       ).error,
     ).toBeNull();
     expect(
       (
-        await service.from("models").insert({
+        await service.from("products").insert({
           ...own({ make: "Lifan", model: "KP 150" }),
           tenant_id: other.id,
         })
@@ -968,7 +975,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     ).toBeNull();
     // Models on presets are not affected: two may share one catalog entry.
     const onPreset = (name: string) =>
-      service.from("models").insert({
+      service.from("products").insert({
         ...modelSpec,
         tenant_id: shop.id,
         catalog_id: catalogId,
@@ -982,7 +989,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     const id = await addOwn();
     const list = (modelId: string, on = true) =>
       shop.members.owner.db
-        .from("models")
+        .from("products")
         .update({ marketplace_listed: on })
         .eq("id", modelId)
         .select("marketplace_listed");
@@ -995,7 +1002,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     extraCatalog.push(sent.data!);
     expect((await list(id)).error?.message).toBe("not_listable");
     // The submission is the shop's alone: another shop can't use it or see it.
-    const theirs = await other.members.owner.db.from("models").insert({
+    const theirs = await other.members.owner.db.from("products").insert({
       ...modelSpec,
       tenant_id: other.id,
       catalog_id: sent.data!,
@@ -1022,7 +1029,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
       .select("status, make")
       .eq("id", sent.data!);
     expect(preset.data).toEqual([{ status: "approved", make: "Kymco" }]);
-    const nowTheirs = await other.members.owner.db.from("models").insert({
+    const nowTheirs = await other.members.owner.db.from("products").insert({
       ...modelSpec,
       tenant_id: other.id,
       catalog_id: sent.data!,
@@ -1033,7 +1040,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
 
   it("a model on a preset is listable at once; picking the preset later works too", async () => {
     const { data: onPreset } = await service
-      .from("models")
+      .from("products")
       .insert({
         ...modelSpec,
         tenant_id: shop.id,
@@ -1043,7 +1050,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
       .select("id")
       .single();
     const listed = await shop.members.manager.db
-      .from("models")
+      .from("products")
       .update({ marketplace_listed: true })
       .eq("id", onPreset!.id)
       .select("marketplace_listed");
@@ -1052,7 +1059,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
     // "Did you mean…": the shop links its own model to the preset.
     const id = await addOwn({ make: "Tsetmake", cc: 999 });
     const linked = await shop.members.manager.db
-      .from("models")
+      .from("products")
       .update({ catalog_id: catalogId })
       .eq("id", id)
       .select("make, cc");
@@ -1167,12 +1174,12 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
 
 describe("import", () => {
   const unit = (plate: string, extra: object = {}) => ({
-    model_id: modelId,
+    product_id: modelId,
     location_id: shop.locationId,
     plate,
     ...extra,
   });
-  const count = async (table: "units" | "models" | "unit_financials") => {
+  const count = async (table: "units" | "products" | "unit_financials") => {
     const { count } = await service
       .from(table)
       .select("*", { count: "exact", head: true })
@@ -1192,12 +1199,12 @@ describe("import", () => {
           purchase_price: 9_500_000,
           purchase_date: "2026-01-10",
         }),
-        { ...unit("IMP-2"), model_id: newModel, current_odometer_km: 1200.5 },
-        { model_id: newModel, location_id: shop.locationId, plate: null },
+        { ...unit("IMP-2"), product_id: newModel, current_odometer_km: 1200.5 },
+        { product_id: newModel, location_id: shop.locationId, plate: null },
       ],
     });
     expect(error).toBeNull();
-    expect(data).toEqual({ models: 1, units: 3 });
+    expect(data).toEqual({ products: 1, units: 3 });
 
     const { data: units } = await shop.members.owner.db
       .from("units")
@@ -1225,7 +1232,7 @@ describe("import", () => {
   it("is all or nothing: one bad row and nothing is saved", async () => {
     const before = await Promise.all([
       count("units"),
-      count("models"),
+      count("products"),
       count("unit_financials"),
     ]);
     const { error } = await shop.members.owner.db.rpc("import_fleet", {
@@ -1249,7 +1256,7 @@ describe("import", () => {
     expect(
       await Promise.all([
         count("units"),
-        count("models"),
+        count("products"),
         count("unit_financials"),
       ]),
     ).toEqual(before);
@@ -1309,7 +1316,7 @@ describe("audit trail", () => {
       .select("after")
       .eq("tenant_id", shop.id)
       .eq("action", "import");
-    expect(imports.data?.[0]?.after).toEqual({ models: 1, units: 3 });
+    expect(imports.data?.[0]?.after).toEqual({ products: 1, units: 3 });
   });
 
   it("can't be written, changed or removed by anyone signed in", async () => {
@@ -1394,34 +1401,34 @@ describe("follow-ups (11 Nov 2026): removed fields, year bands, renewals, remind
   it("year bands: owners and managers edit; a year belongs to one band of a model", async () => {
     const band = (year_from: number, year_to: number) => ({
       tenant_id: shop.id,
-      model_id: modelId,
+      product_id: modelId,
       year_from,
       year_to,
     });
     const manager = shop.members.manager.db;
     expect(
-      (await manager.from("model_year_bands").insert(band(2020, 2023))).error,
+      (await manager.from("product_year_bands").insert(band(2020, 2023))).error,
     ).toBeNull();
     expect(
-      (await manager.from("model_year_bands").insert(band(2024, 2026))).error,
+      (await manager.from("product_year_bands").insert(band(2024, 2026))).error,
     ).toBeNull();
     const overlap = await manager
-      .from("model_year_bands")
+      .from("product_year_bands")
       .insert(band(2023, 2025));
     expect(overlap.error?.code).toBe("23P01");
     const reversed = await manager
-      .from("model_year_bands")
+      .from("product_year_bands")
       .insert(band(2019, 2014));
     expect(reversed.error?.code).toBe("23514");
     for (const role of ["staff", "mechanic", "driver"] as const) {
       const { error } = await shop.members[role].db
-        .from("model_year_bands")
+        .from("product_year_bands")
         .insert(band(2010, 2012));
       expect(error?.code, role).toBe("42501");
       const { data } = await shop.members[role].db
-        .from("model_year_bands")
+        .from("product_year_bands")
         .select("year_from")
-        .eq("model_id", modelId);
+        .eq("product_id", modelId);
       expect(data, role).toHaveLength(2);
     }
   });
@@ -1582,7 +1589,7 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
       timezone: "Asia/Bangkok",
     });
     const { data: model } = await service
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: queue.id,
         catalog_id: catalogId,
@@ -1632,7 +1639,7 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
     // 18:00 UTC on 26 Nov is already 27 Nov in Bangkok: the 14-day reminder
     // for 11 Dec is due there, though it is still 15 days away in UTC.
     const { data: model } = await service
-      .from("models")
+      .from("products")
       .select("id")
       .eq("tenant_id", queue.id)
       .single();
@@ -1648,7 +1655,7 @@ describe("renewal notifications are queued, once each, for a sender that doesn't
 
   it("queues 'expired' once, only for the current record, and never for a sold bike", async () => {
     const { data: model } = await service
-      .from("models")
+      .from("products")
       .select("id")
       .eq("tenant_id", queue.id)
       .single();

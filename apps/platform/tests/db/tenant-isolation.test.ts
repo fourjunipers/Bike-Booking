@@ -77,7 +77,7 @@ async function addFixtures(tenant: TestTenant): Promise<Fixture> {
   );
   const model = ok(
     await service
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: tenant.id,
         catalog_id: catalogId,
@@ -92,7 +92,7 @@ async function addFixtures(tenant: TestTenant): Promise<Fixture> {
       .from("units")
       .insert({
         tenant_id: tenant.id,
-        model_id: model.id,
+        product_id: model.id,
         location_id: tenant.locationId,
         plate: "FIX-1",
       })
@@ -116,9 +116,9 @@ async function addFixtures(tenant: TestTenant): Promise<Fixture> {
     }),
   );
   ok(
-    await service.from("model_year_bands").insert({
+    await service.from("product_year_bands").insert({
       tenant_id: tenant.id,
-      model_id: model.id,
+      product_id: model.id,
       year_from: 2020,
       year_to: 2023,
     }),
@@ -192,7 +192,7 @@ const payloads: Record<string, (t: Fixture, userId: string) => Row> = {
     start_date: "2028-01-01",
     end_date: "2028-01-02",
   }),
-  models: (t) => ({
+  products: (t) => ({
     tenant_id: t.id,
     catalog_id: catalogId,
     ...modelSpec,
@@ -200,7 +200,7 @@ const payloads: Record<string, (t: Fixture, userId: string) => Row> = {
   }),
   units: (t) => ({
     tenant_id: t.id,
-    model_id: t.modelId,
+    product_id: t.modelId,
     location_id: t.locationId,
     plate: "SNEAKY-1",
   }),
@@ -216,9 +216,9 @@ const payloads: Record<string, (t: Fixture, userId: string) => Row> = {
     kind: "downtime",
     period: period(hours(50), hours(51)),
   }),
-  model_year_bands: (t) => ({
+  product_year_bands: (t) => ({
     tenant_id: t.id,
-    model_id: t.modelId,
+    product_id: t.modelId,
     year_from: 2000,
     year_to: 2005,
   }),
@@ -255,11 +255,11 @@ const changes: Record<string, Row> = {
   locations: { name: "Hijacked" },
   location_hours: { open: "00:01" },
   location_closures: { note: "Hijacked" },
-  models: { name: "Hijacked" },
+  products: { name: "Hijacked" },
   units: { notes: "Hijacked" },
   unit_financials: { sold_to: "Hijacked" },
   unit_blocks: { note: "Hijacked" },
-  model_year_bands: { year_to: 2099 },
+  product_year_bands: { year_to: 2099 },
   unit_renewals: { provider: "Hijacked" },
   unit_renewal_costs: { cost: 999 },
   notification_outbox: { status: "cancelled" },
@@ -316,9 +316,9 @@ describe("every tenant table", () => {
       "location_hours",
       "locations",
       "memberships",
-      "model_year_bands",
-      "models",
       "notification_outbox",
+      "product_year_bands",
+      "products",
       "tenants",
       "unit_blocks",
       "unit_financials",
@@ -433,7 +433,7 @@ describe("reading", () => {
     expect(await visibleTenantIds(db, "tenants")).toEqual([a.id]);
     const team = await visibleTenantIds(db, "memberships");
     expect(team).toHaveLength(roles.length);
-    for (const table of ["locations", "models", "units", "unit_blocks"]) {
+    for (const table of ["locations", "products", "units", "unit_blocks"]) {
       expect(await visibleTenantIds(db, table), table).toEqual([a.id]);
     }
   });
@@ -537,13 +537,13 @@ describe("a row can't point at another tenant's parent (service role, so this is
   it("unit → model and unit → location", async () => {
     await refused("units", {
       tenant_id: a.id,
-      model_id: b.modelId,
+      product_id: b.modelId,
       location_id: a.locationId,
       plate: "CROSS-1",
     });
     await refused("units", {
       tenant_id: a.id,
-      model_id: a.modelId,
+      product_id: a.modelId,
       location_id: b.locationId,
       plate: "CROSS-2",
     });
@@ -561,7 +561,7 @@ describe("a row can't point at another tenant's parent (service role, so this is
       .from("units")
       .insert({
         tenant_id: b.id,
-        model_id: b.modelId,
+        product_id: b.modelId,
         location_id: b.locationId,
         plate: "CROSS-3",
       })
@@ -592,7 +592,7 @@ describe("a row can't point at another tenant's parent (service role, so this is
   });
 
   it("money → the tenant's own currency", async () => {
-    await refused("models", {
+    await refused("products", {
       tenant_id: a.id,
       catalog_id: catalogId,
       ...modelSpec,
@@ -615,7 +615,7 @@ describe("functions, as tenant A's owner and as an outsider", () => {
         p_tenant_id: b.id,
         p_models: [],
         p_units: [
-          { model_id: b.modelId, location_id: b.locationId, plate: "RPC-1" },
+          { product_id: b.modelId, location_id: b.locationId, plate: "RPC-1" },
         ],
       });
       expect(error?.code, who).toBe("42501");
@@ -624,13 +624,13 @@ describe("functions, as tenant A's owner and as an outsider", () => {
 
   it("can't submit tenant B's model to the catalog, or list it", async () => {
     for (const { who, db } of callers()) {
-      const { error } = await db.rpc("submit_model_to_catalog", {
-        p_model_id: b.modelId,
+      const { error } = await db.rpc("submit_product_to_catalog", {
+        p_product_id: b.modelId,
         p_type: "city_scooter",
       });
       expect(error?.code, who).toBe("42501");
       const listed = await db
-        .from("models")
+        .from("products")
         .update({ marketplace_listed: true })
         .eq("id", b.modelId)
         .select("id");

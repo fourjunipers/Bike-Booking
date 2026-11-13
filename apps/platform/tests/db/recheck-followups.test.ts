@@ -30,7 +30,7 @@ const tag = Math.random().toString(36).slice(2, 8);
 let counter = 0;
 async function addModel(extra: object = {}): Promise<string> {
   const { data, error } = await service
-    .from("models")
+    .from("products")
     .insert({
       tenant_id: shop.id,
       catalog_id: null,
@@ -53,7 +53,7 @@ async function addUnit(modelId: string): Promise<string> {
     .from("units")
     .insert({
       tenant_id: shop.id,
-      model_id: modelId,
+      product_id: modelId,
       location_id: shop.locationId,
       plate: `RC-${tag}-${++counter}`,
       status: "active",
@@ -66,8 +66,8 @@ async function addUnit(modelId: string): Promise<string> {
 
 async function submit(modelId: string): Promise<string> {
   const { data, error } = await shop.members.owner.db.rpc(
-    "submit_model_to_catalog",
-    { p_model_id: modelId, p_type: "city_scooter", p_note: "Please add" },
+    "submit_product_to_catalog",
+    { p_product_id: modelId, p_type: "city_scooter", p_note: "Please add" },
   );
   if (error) throw error;
   catalogIds.push(data);
@@ -84,7 +84,7 @@ const reject = (catalogId: string, notes?: string) =>
 const outcome = async (modelId: string, db = service) =>
   (
     await db
-      .from("models")
+      .from("products")
       .select("catalog_id, catalog_rejected_at, catalog_reject_reason")
       .eq("id", modelId)
       .maybeSingle()
@@ -191,9 +191,9 @@ describe("1. locks no stronger than they need to be", () => {
     const swap = (bike: string, to: string) =>
       sqlBackground(`
         begin;
-        select 1 from platform.models where id = '${to}' for key share;
+        select 1 from platform.products where id = '${to}' for key share;
         select pg_sleep(1.2);
-        update platform.units set model_id = '${to}' where id = '${bike}';
+        update platform.units set product_id = '${to}' where id = '${bike}';
         commit;
       `);
     const results = await Promise.all([
@@ -208,9 +208,9 @@ describe("1. locks no stronger than they need to be", () => {
     expect(refused.length).toBeLessThanOrEqual(1);
     const { data: bikes } = await service
       .from("units")
-      .select("id, model_id")
+      .select("id, product_id")
       .in("id", [bikeA, bikeB]);
-    const modelOf = (id: string) => bikes!.find((b) => b.id === id)!.model_id;
+    const modelOf = (id: string) => bikes!.find((b) => b.id === id)!.product_id;
     if (refused.length === 0) {
       expect(modelOf(bikeA)).toBe(modelY);
       expect(modelOf(bikeB)).toBe(modelX);
@@ -221,12 +221,12 @@ describe("1. locks no stronger than they need to be", () => {
     const model = await addModel();
     const [one] = [await addUnit(model), await addUnit(model)];
     await service
-      .from("models")
+      .from("products")
       .update({ instant_units: 2, ready_now: 2 })
       .eq("id", model);
     await service.from("units").update({ status: "sold" }).eq("id", one);
     const { data } = await service
-      .from("models")
+      .from("products")
       .select("instant_units, request_units, ready_now")
       .eq("id", model)
       .single();
@@ -340,7 +340,7 @@ describe("4. a rejected request tells the shop why", () => {
     await reject(await submit(model), "Real reason");
     const manager = shop.members.manager.db;
     await manager
-      .from("models")
+      .from("products")
       .update({ catalog_reject_reason: "Made up", catalog_rejected_at: null })
       .eq("id", model);
     expect(await outcome(model)).toMatchObject({
@@ -350,7 +350,7 @@ describe("4. a rejected request tells the shop why", () => {
 
     // Nor set one on a new model.
     const { data: created, error } = await manager
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: shop.id,
         catalog_id: null,
