@@ -55,7 +55,7 @@ export default async function StickersPage({
         // A bike opened by its own link is listed even when sold or retired.
         (unit.id === only || !hasLeftFleet(unit.status)) &&
         (!make || unit.make === make) &&
-        (!model || unit.model_id === model),
+        (!model || unit.product_id === model),
     )
     .sort((a, b) =>
       sort === "plate"

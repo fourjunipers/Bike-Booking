@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createClient } from "@mango/db/platform-server";
 import type { RenewalKind } from "./fleet";
 import { catalogName } from "./fleet-import";
+import type { AuditRow } from "./history";
 
 export { catalogName };
 
@@ -62,18 +63,20 @@ export const getLocations = cache(async (tenantId: string) => {
 });
 
 const unitColumns =
-  "id, model_id, location_id, plate, plate_pending, frame_number, engine_number, colour, model_year, current_odometer_km, status, qr_token, notes, created_at, updated_at";
+  "id, product_id, location_id, plate, plate_pending, frame_number, engine_number, colour, model_year, current_odometer_km, status, qr_token, notes, created_at, updated_at";
 
 /** Every model with its catalog entry and its units, by model name then plate. */
 export const getFleet = cache(async (tenantId: string) => {
   const supabase = await createClient();
   const [models, units, catalog] = await Promise.all([
     supabase
-      .from("models")
+      .from("products")
       .select(
-        "id, name, catalog_id, make, model, vehicle_type, categories, cc, transmission, bookable_online, marketplace_listed, catalog_rejected_at, catalog_approved_at, photos, retired_at",
+        "id, name, type, catalog_id, make, model, vehicle_type, categories, cc, transmission, bookable_online, marketplace_listed, catalog_rejected_at, catalog_approved_at, photos, retired_at",
       )
       .eq("tenant_id", tenantId)
+      // Stage A: every product on screen is a vehicle.
+      .eq("type", "vehicle")
       .order("name"),
     supabase
       .from("units")
@@ -84,6 +87,7 @@ export const getFleet = cache(async (tenantId: string) => {
   ]);
   if (models.error) throw models.error;
   if (units.error) throw units.error;
+  const vehicles = models.data.map(asVehicle);
   // Where each linked entry stands: the list holds the approved ones; the
   // rest (a shop's own request, waiting or turned down) are looked up.
   const status = new Map<string, string>(
@@ -91,7 +95,7 @@ export const getFleet = cache(async (tenantId: string) => {
   );
   const others = [
     ...new Set(
-      models.data
+      vehicles
         .map((model) => model.catalog_id)
         .filter((id): id is string => id !== null && !status.has(id)),
     ),
@@ -105,7 +109,7 @@ export const getFleet = cache(async (tenantId: string) => {
     if (entries.error) throw entries.error;
     for (const entry of entries.data) status.set(entry.id, entry.status);
   }
-  return models.data.map((model) => ({
+  return vehicles.map((model) => ({
     ...model,
     entry_status: model.catalog_id
       ? (status.get(model.catalog_id) ?? null)
@@ -118,9 +122,29 @@ export const getFleet = cache(async (tenantId: string) => {
       cc: model.cc,
       transmission: model.transmission,
     },
-    units: units.data.filter((u) => u.model_id === model.id),
+    units: units.data.filter((u) => u.product_id === model.id),
   }));
 });
+
+/**
+ * A vehicle product always has a make, a model and a kind (the database
+ * checks it: products_vehicle_fields_check); the columns are only nullable
+ * because other types of product leave them empty.
+ */
+function asVehicle<
+  T extends {
+    make: string | null;
+    model: string | null;
+    vehicle_type: string | null;
+  },
+>(row: T) {
+  return {
+    ...row,
+    make: row.make ?? "",
+    model: row.model ?? "",
+    vehicle_type: row.vehicle_type ?? "other",
+  };
+}
 
 export type FleetModel = Awaited<ReturnType<typeof getFleet>>[number];
 export type FleetUnit = FleetModel["units"][number];
@@ -129,8 +153,8 @@ export type FleetUnit = FleetModel["units"][number];
 export const getYearBands = cache(async (tenantId: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("model_year_bands")
-    .select("id, model_id, year_from, year_to")
+    .from("product_year_bands")
+    .select("id, product_id, year_from, year_to")
     .eq("tenant_id", tenantId)
     .order("year_from", { ascending: false });
   if (error) throw error;
@@ -151,15 +175,16 @@ export async function getPurchaseDates(tenantId: string) {
 export async function getModel(tenantId: string, id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .select(
-      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now, categories, catalog_rejected_at, catalog_reject_reason, catalog_approved_at, retired_at",
+      "id, name, type, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now, categories, catalog_rejected_at, catalog_reject_reason, catalog_approved_at, retired_at",
     )
     .eq("tenant_id", tenantId)
     .eq("id", id)
+    .eq("type", "vehicle")
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? asVehicle(data) : null;
 }
 
 export async function getUnit(tenantId: string, id: string) {
@@ -289,4 +314,68 @@ export async function getCatalogEntry(id: string) {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+/**
+ * The audit trail for one product, its vehicles and its year bands, newest
+ * first. Empty for roles that may not read the audit log (RLS: owners and
+ * managers only).
+ */
+export async function getProductHistory(
+  tenantId: string,
+  productId: string,
+  unitIds: string[],
+  limit: number,
+): Promise<AuditRow[]> {
+  const supabase = await createClient();
+  const columns = "id, entity, entity_id, action, actor, before, after, at";
+  const [product, units, bands] = await Promise.all([
+    supabase
+      .from("audit_events")
+      .select(columns)
+      .eq("tenant_id", tenantId)
+      .eq("entity", "products")
+      .eq("entity_id", productId)
+      .order("at", { ascending: false })
+      .limit(limit),
+    unitIds.length === 0
+      ? { data: [], error: null }
+      : supabase
+          .from("audit_events")
+          .select(columns)
+          .eq("tenant_id", tenantId)
+          .eq("entity", "units")
+          .in("entity_id", unitIds)
+          .order("at", { ascending: false })
+          .limit(limit),
+    // A band's audit row holds its product in the snapshot, not in entity_id.
+    supabase
+      .from("audit_events")
+      .select(columns)
+      .eq("tenant_id", tenantId)
+      .eq("entity", "product_year_bands")
+      .or(
+        `after->>product_id.eq.${productId},before->>product_id.eq.${productId}`,
+      )
+      .order("at", { ascending: false })
+      .limit(limit),
+  ]);
+  if (product.error) throw product.error;
+  if (units.error) throw units.error;
+  if (bands.error) throw bands.error;
+  return [...product.data, ...units.data, ...bands.data]
+    .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id)
+    .slice(0, limit);
+}
+
+/** Team members' names by user id, for "who did it". */
+export async function getMemberNames(tenantId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("tenant_members", {
+    p_tenant_id: tenantId,
+  });
+  if (error) throw error;
+  return new Map(
+    data.map((member) => [member.user_id, member.name || member.email]),
+  );
 }

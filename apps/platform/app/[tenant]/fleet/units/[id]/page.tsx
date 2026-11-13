@@ -97,7 +97,7 @@ export default async function UnitPage({
     siteOrigin(),
   ]);
   if (!unit) notFound();
-  const model = fleet.find((m) => m.id === unit.model_id);
+  const model = fleet.find((m) => m.id === unit.product_id);
   const location = locations.find((l) => l.id === unit.location_id);
   const zone = location?.timezone ?? tenant.timezone;
   const [svg, costs] = await Promise.all([
@@ -155,7 +155,7 @@ export default async function UnitPage({
           <span className="flex flex-wrap items-center gap-2">
             {model && (
               <Link
-                href={`${base}/models/${model.id}`}
+                href={`/${slug}/products/${model.id}`}
                 className="hover:underline"
               >
                 {model.name}
@@ -183,7 +183,7 @@ export default async function UnitPage({
               <UnitForm
                 slug={slug}
                 distanceUnit={tenant.distanceUnit}
-                addModelHref={`${base}/models/new`}
+                addModelHref={`/${slug}/products/new`}
                 models={inventoryModelOptions(fleet)}
                 locations={locations.map((l) => ({
                   value: l.id,
@@ -192,7 +192,7 @@ export default async function UnitPage({
                 values={{
                   id: unit.id,
                   updated_at: unit.updated_at,
-                  model_choice: `model:${unit.model_id}`,
+                  model_choice: `model:${unit.product_id}`,
                   location_id: unit.location_id,
                   plate: text(unit.plate),
                   plate_pending: unit.plate_pending,

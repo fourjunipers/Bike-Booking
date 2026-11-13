@@ -32,7 +32,7 @@ export type SortMode = (typeof sortModes)[number];
 
 export type ViewUnit = {
   id: string;
-  model_id: string;
+  product_id: string;
   location_id: string;
   plate: string | null;
   plate_pending: boolean;
@@ -62,7 +62,11 @@ export type ViewModel = {
   retired?: boolean;
 };
 
-export type ViewBand = { model_id: string; year_from: number; year_to: number };
+export type ViewBand = {
+  product_id: string;
+  year_from: number;
+  year_to: number;
+};
 
 export type FleetFilters = {
   q: string;
@@ -281,14 +285,14 @@ export function buildFleetView(
     leftFleet(unit.status) === (view.scope === "past");
 
   const units = data.units.filter((unit) => {
-    const model = models.get(unit.model_id);
+    const model = models.get(unit.product_id);
     if (!inScope(unit)) return false;
     if (!matchesText(unit, view.q)) return false;
     if (view.kind && (model?.kind ?? "motorbike") !== view.kind) return false;
     if (view.category && !model?.categories?.includes(view.category))
       return false;
     if (view.make && model?.make !== view.make) return false;
-    if (view.model && unit.model_id !== view.model) return false;
+    if (view.model && unit.product_id !== view.model) return false;
     if (view.ccMin !== null && (model?.cc ?? 0) < view.ccMin) return false;
     if (view.ccMax !== null && (model?.cc ?? Infinity) > view.ccMax)
       return false;
@@ -340,13 +344,13 @@ export function buildFleetView(
 
   let sections: FleetSection[];
   if (view.group === "model") {
-    const byModel = bucket((u) => u.model_id);
+    const byModel = bucket((u) => u.product_id);
     sections = [...byModel.entries()].map(([modelId, members]) => {
       const model = models.get(modelId);
       const title = model?.name ?? "";
       const naming = { make: model?.make, model: model?.model, cc: model?.cc };
       const bands = data.bands
-        .filter((b) => b.model_id === modelId)
+        .filter((b) => b.product_id === modelId)
         .sort((a, b) => b.year_from - a.year_from);
       const groups: FleetGroup[] = [];
       if (bands.length === 0) {
@@ -438,7 +442,7 @@ export function buildFleetView(
     let groups: FleetGroup[];
     if (view.group === "make") {
       groups = [
-        ...bucket((u) => models.get(u.model_id)?.make ?? "").entries(),
+        ...bucket((u) => models.get(u.product_id)?.make ?? "").entries(),
       ].map(([make, members]) => group(`make-${make}`, "make", make, members));
     } else if (view.group === "location") {
       groups = [...bucket((u) => u.location_id).entries()].map(

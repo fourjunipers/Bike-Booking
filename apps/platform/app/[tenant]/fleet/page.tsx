@@ -223,7 +223,10 @@ export default async function FleetPage({
                   <FileUp aria-hidden />
                   {t("importCsv")}
                 </Link>
-                <Link href={`${base}/models/new`} className={link("default")}>
+                <Link
+                  href={`/${slug}/products/new`}
+                  className={link("default")}
+                >
                   <Plus aria-hidden />
                   {t("addModel")}
                 </Link>
@@ -508,14 +511,14 @@ export default async function FleetPage({
                         {/* No underline at rest (owner, 12 Nov 2026): the
                             pencil beside it says it can be opened. */}
                         <Link
-                          href={`${base}/models/${section.model.id}`}
+                          href={`/${slug}/products/${section.model.id}`}
                           className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
                         >
                           {section.model.name}
                         </Link>
                       </h2>
                       <Link
-                        href={`${base}/models/${section.model.id}`}
+                        href={`/${slug}/products/${section.model.id}`}
                         aria-label={`${t("editModel")}: ${section.model.name}`}
                         title={t("editModel")}
                         // A plain icon: no box until hovered or focused. 44 px
@@ -596,7 +599,7 @@ export default async function FleetPage({
                         // A labelled button, not a bare plus (owner, 12 Nov
                         // 2026). Its name starts with what is on it.
                         <Link
-                          href={`${base}/units/new?model=${section.model.id}`}
+                          href={`${base}/units/new?product=${section.model.id}`}
                           title={t("addUnit")}
                           className={cn(
                             buttonVariants({ variant: "outline" }),
@@ -629,7 +632,7 @@ export default async function FleetPage({
                               [
                                 group.kind === "band"
                                   ? null
-                                  : modelOf.get(unit.model_id)?.name,
+                                  : modelOf.get(unit.product_id)?.name,
                                 unit.model_year,
                                 locationNames.get(unit.location_id),
                               ]

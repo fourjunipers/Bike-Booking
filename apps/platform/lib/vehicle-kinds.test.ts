@@ -279,8 +279,8 @@ describe("CSV import: the category column", () => {
 describe("fleet list: the kind filter", () => {
   const data = {
     units: [
-      { id: "u1", model_id: "m-bike", status: "active" },
-      { id: "u2", model_id: "m-car", status: "active" },
+      { id: "u1", product_id: "m-bike", status: "active" },
+      { id: "u2", product_id: "m-car", status: "active" },
     ].map((u) => ({
       ...u,
       location_id: "loc-1",

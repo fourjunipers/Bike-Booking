@@ -348,15 +348,15 @@ export function dbErrorKey(
 ): string {
   if (!error) return "saveFailed";
   const message = error.message ?? "";
-  if (message.includes("model_year_bands_no_overlap")) return "bandOverlap";
+  if (message.includes("product_year_bands_no_overlap")) return "bandOverlap";
   // The availability lock: two blocks of one unit overlap.
   if (error.code === "23P01") return "blockOverlap";
   if (message.includes("units_plate_idx")) return "plateExists";
-  if (message.includes("models_name_idx")) return "nameExists";
-  if (message.includes("models_own_make_model_idx")) return "ownModelExists";
-  if (message.includes("models_required_specs_check")) return "requiredSpecs";
+  if (message.includes("products_name_idx")) return "nameExists";
+  if (message.includes("products_own_make_model_idx")) return "ownModelExists";
+  if (message.includes("products_required_specs_check")) return "requiredSpecs";
   // Engine size outside 1 to 20000 cc, on a model or on the catalog entry made from it.
-  if (/(models|bike_catalog)_cc_check/.test(message)) return "ccRange";
+  if (/(products|bike_catalog)_cc_check/.test(message)) return "ccRange";
   if (message.includes("locations_name_idx")) return "nameExists";
   // A row other rows still point at (a model with units, a unit with blocks).
   if (error.code === "23503") return "inUse";

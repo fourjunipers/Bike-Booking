@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Lightbulb } from "lucide-react";
 import {
@@ -9,12 +9,13 @@ import {
   useFieldError,
 } from "@/components/action-form";
 import { kindIcons } from "@/components/fleet/kind-icon";
-import {
-  MakeModelPicker,
-  type ModelOption,
-} from "@/components/fleet/make-model-picker";
-import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/form";
 import { needsEngineSize, needsTransmission, transmissions } from "@/lib/fleet";
+import {
+  splitMakeModel,
+  suggestKnown,
+  type KnownModel,
+} from "@/lib/known-models";
 import { cn } from "@/lib/utils";
 import {
   categoriesFor,
@@ -23,19 +24,15 @@ import {
   kindTypes,
 } from "@/lib/vehicle-kinds";
 
-/** Outlined in Moto Mangos leaf green; 44 px tall. AA: see globals.css. */
-const leafButton =
-  "h-11 border-leaf bg-card px-4 text-leaf hover:bg-leaf-soft hover:text-leaf dark:border-leaf dark:bg-card dark:hover:bg-leaf-soft";
-
 export type WhatValues = {
   vehicle_type: string;
-  /** A list (catalog) entry's id; blank for a make and model typed in. */
+  /** A known model's (list entry's) id; blank for a make and model typed in. */
   catalog_id: string;
   make: string;
   model: string;
   cc: string;
   transmission: string;
-  /** Keys from lib/vehicle-kinds; a model can have several. */
+  /** Keys from lib/vehicle-kinds; a product can have several. */
   categories: string[];
 };
 
@@ -49,52 +46,49 @@ export function useCategoryLabel() {
 }
 
 /**
- * What a make & model is (owner, 12 Nov 2026). The kind of vehicle comes
- * first and the rest of the form follows it:
- * - a motorbike is picked from the Moto Mangos list, or typed in;
- * - anything else is typed in;
- * - each kind has its own categories (lib/vehicle-kinds.ts).
+ * What a vehicle product is. The kind of vehicle comes first; then ONE
+ * "make and model" field (owner, 13 Nov 2026):
+ * - typing suggests known models (motorbikes: the same list Moto Mangos
+ *   uses); picking one fills in make, model, engine size and transmission;
+ * - if the model isn't known, the owner keeps typing in the same field and
+ *   the form asks for what it could not fill in.
+ * There is no second path and no button to switch between two forms.
  */
 export function WhatFields({
   values,
-  listOptions,
-  listTypes,
-  makes,
+  known,
   showTip,
 }: {
   values: WhatValues;
-  /** The Moto Mangos list: make, then model. */
-  listOptions: ModelOption[];
-  /** How the list files each entry (entry id to motorbike category). */
-  listTypes: Record<string, string>;
-  /** Makes on the list, offered as suggestions when typing one in. */
-  makes: string[];
-  /** The Moto Mangos tip: on the add form only (the model page has its own panel). */
+  /** Known models, offered as suggestions. */
+  known: KnownModel[];
+  /** The Moto Mangos tip: on the add form only (the product page has its own panel). */
   showTip?: boolean;
 }) {
   const t = useTranslations("Fleet.what");
   const tFleet = useTranslations("Fleet");
   const [kind, setKind] = useState(values.vehicle_type || "motorbike");
-  // A motorbike starts on the list unless it was typed in before.
-  const [typed, setTyped] = useState(!values.catalog_id && values.make !== "");
   const [chosen, setChosen] = useState(values.categories);
+  const [picked, setPicked] = useState<KnownModel | null>(
+    () => known.find((model) => model.id === values.catalog_id) ?? null,
+  );
 
-  const fromList = kind === "motorbike" && !typed;
   const chooseKind = (next: string) => {
     setKind(next);
-    // A category belongs to its kind.
+    // A category belongs to its kind, and so does a known model.
     setChosen((keys) => keys.filter((k) => categoriesFor(next).includes(k)));
+    if (next !== "motorbike") setPicked(null);
   };
-  // Beside the make and model, motorbikes only (Moto Mangos lists motorbikes).
+  // Under the make and model, motorbikes only (Moto Mangos lists motorbikes).
   const tip = showTip && kind === "motorbike" && (
     <aside
       aria-label={t("tip.label")}
-      className="flex items-start gap-3 rounded-lg border border-primary/25 bg-accent p-3 text-sm text-accent-foreground md:col-span-2"
+      className="flex items-start gap-3 rounded-lg border border-primary/25 bg-accent p-3 text-sm text-accent-foreground"
     >
       <Lightbulb aria-hidden className="mt-0.5 size-5 shrink-0" />
       <p>
         <strong className="font-semibold">{t("tip.label")}:</strong>{" "}
-        {t(fromList ? "tip.fromList" : "tip.typed")}
+        {t(picked ? "tip.fromList" : "tip.typed")}
       </p>
     </aside>
   );
@@ -134,102 +128,256 @@ export function WhatFields({
         </div>
       </fieldset>
 
-      {fromList ? (
-        <div className="grid gap-5 md:grid-cols-2">
-          <MakeModelPicker
-            modelName="catalog_id"
-            makeLabel={t("make")}
-            modelLabel={t("model")}
-            models={listOptions}
-            defaultModel={values.catalog_id}
+      <MakeModelField
+        kind={kind}
+        values={values}
+        // Known models are motorbikes; other kinds are always typed in.
+        known={kind === "motorbike" ? known : []}
+        picked={picked}
+        onPick={(model) => {
+          setPicked(model);
+          // Filed the way the list files it, until the shop says otherwise.
+          if (model && categoriesFor(kind).includes(model.type))
+            setChosen([model.type]);
+        }}
+      />
+      {tip}
+
+      <CategoryChips kind={kind} chosen={chosen} onChange={setChosen} />
+    </div>
+  );
+}
+
+/**
+ * The one "make and model" field: a text box with suggestions under it (the
+ * ARIA combobox pattern: arrow keys move, Enter picks, Escape closes). The
+ * server reads `catalog_id` when a known model was picked, and `make`,
+ * `model`, `cc` and `transmission` otherwise.
+ */
+function MakeModelField({
+  kind,
+  values,
+  known,
+  picked,
+  onPick,
+}: {
+  kind: string;
+  values: WhatValues;
+  known: KnownModel[];
+  picked: KnownModel | null;
+  onPick: (model: KnownModel | null) => void;
+}) {
+  const t = useTranslations("Fleet.what");
+  const tFleet = useTranslations("Fleet");
+  const listId = useId();
+  const [text, setText] = useState(
+    picked?.label ?? [values.make, values.model].filter(Boolean).join(" "),
+  );
+  // The two parts follow the text until the owner corrects one by hand.
+  const [make, setMake] = useState<string | null>(values.make || null);
+  const [model, setModel] = useState<string | null>(values.model || null);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const catalogError = useFieldError("catalog_id");
+
+  const suggestions = picked ? [] : suggestKnown(text, known);
+  const showList = open && suggestions.length > 0;
+  const split = splitMakeModel(text, [...new Set(known.map((m) => m.make))]);
+  const typed = !picked && text.trim() !== "";
+
+  const pick = (choice: KnownModel) => {
+    onPick(choice);
+    setText(choice.label);
+    setMake(null);
+    setModel(null);
+    setOpen(false);
+  };
+
+  return (
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="relative md:col-span-2">
+        <Field
+          id="make_model"
+          label={t("makeModel")}
+          help={t(known.length > 0 ? "makeModelHelp" : "makeModelHelpTyped")}
+          error={catalogError}
+        >
+          <input
+            id="make_model"
+            name="make_model"
+            type="text"
+            role="combobox"
+            aria-expanded={showList}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            aria-activedescendant={showList ? `${listId}-${active}` : undefined}
+            aria-describedby="make_model-help"
+            aria-invalid={catalogError ? true : undefined}
+            autoComplete="off"
             required
-            onModelChange={(id) => {
-              // Filed the way the list files it, until the shop says otherwise.
-              if (listTypes[id]) setChosen([listTypes[id]]);
+            maxLength={100}
+            value={text}
+            placeholder={t("makeModelPlaceholder")}
+            onChange={(event) => {
+              setText(event.target.value);
+              // Typing on means "not that one": the choice is dropped.
+              if (picked) onPick(null);
+              setMake(null);
+              setModel(null);
+              setActive(0);
+              setOpen(true);
             }}
-            footer={
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {t("notInList")}
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setTyped(true)}
-                  className={leafButton}
-                >
-                  {t("typeIt")}
-                </Button>
-              </div>
-            }
+            onFocus={() => setOpen(true)}
+            // After a click on a suggestion has had time to land.
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            onKeyDown={(event) => {
+              if (!showList) return;
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setActive((i) => (i + 1) % suggestions.length);
+              } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setActive(
+                  (i) => (i - 1 + suggestions.length) % suggestions.length,
+                );
+              } else if (event.key === "Enter") {
+                // Picks the suggestion; it does not send the form.
+                event.preventDefault();
+                pick(suggestions[active]);
+              } else if (event.key === "Escape") {
+                setOpen(false);
+              }
+            }}
+            className={inputClass}
           />
-          {tip}
+        </Field>
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={t("suggestions")}
+          hidden={!showList}
+          className="absolute inset-x-0 z-20 mt-1 max-h-72 overflow-auto rounded-md border bg-card py-1 shadow-lg"
+        >
+          {suggestions.map((choice, index) => (
+            <li
+              key={choice.id}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === active}
+              // Before the input's blur, so the click isn't lost.
+              onMouseDown={(event) => {
+                event.preventDefault();
+                pick(choice);
+              }}
+              onMouseEnter={() => setActive(index)}
+              className={cn(
+                "flex min-h-11 cursor-pointer flex-wrap items-center gap-x-2 px-3 py-2 text-sm",
+                index === active && "bg-accent text-accent-foreground",
+              )}
+            >
+              <span className="font-medium">{choice.label}</span>
+              <span className="text-muted-foreground">
+                {[
+                  choice.cc ? `${choice.cc} cc` : null,
+                  choice.transmission
+                    ? tFleet(`transmission.${choice.transmission}`)
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {picked ? (
+        // A known model: everything below is filled in from the list.
+        <div className="md:col-span-2">
+          <input type="hidden" name="catalog_id" value={picked.id} />
+          <dl
+            aria-label={t("filled")}
+            className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md border bg-muted/40 p-3 text-sm sm:grid-cols-4"
+          >
+            {(
+              [
+                ["make", picked.make],
+                ["model", picked.model],
+                ["cc", picked.cc ? `${picked.cc} cc` : "—"],
+                [
+                  "transmission",
+                  picked.transmission
+                    ? tFleet(`transmission.${picked.transmission}`)
+                    : "—",
+                ],
+              ] as const
+            ).map(([key, value]) => (
+              <div key={key}>
+                <dt className="text-xs text-muted-foreground">{t(key)}</dt>
+                <dd className="font-medium">{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("filledHelp")}
+          </p>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2">
-          <div>
+        typed && (
+          // Not a known model (yet): the same text, split into its parts to
+          // check, and the details the list would have filled in.
+          <>
+            {known.length > 0 && (
+              <p
+                role="status"
+                className="text-sm text-muted-foreground md:col-span-2"
+              >
+                {t("notKnown")}
+              </p>
+            )}
             <TextInput
               name="make"
               label={t("make")}
               help={t("makeHelp")}
               required
               maxLength={40}
-              list="known-makes"
-              defaultValue={values.make}
+              value={make ?? split.make}
+              onChange={(event) => setMake(event.target.value)}
             />
-            <datalist id="known-makes">
-              {makes.map((make) => (
-                <option key={make} value={make} />
-              ))}
-            </datalist>
-          </div>
-          <div>
             <TextInput
               name="model"
               label={t("model")}
               required
               maxLength={60}
-              defaultValue={values.model}
+              value={model ?? split.model}
+              onChange={(event) => setModel(event.target.value)}
             />
-            {kind === "motorbike" && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setTyped(false)}
-                className={cn("mt-3", leafButton)}
-              >
-                {t("useList")}
-              </Button>
-            )}
-          </div>
-          {tip}
-          <TextInput
-            name="cc"
-            label={t("cc")}
-            help={needsEngineSize(kind) ? undefined : t("optional")}
-            required={needsEngineSize(kind)}
-            inputMode="numeric"
-            maxLength={5}
-            defaultValue={values.cc}
-          />
-          <SelectInput
-            name="transmission"
-            label={t("transmission")}
-            help={needsTransmission(kind) ? undefined : t("optional")}
-            required={needsTransmission(kind)}
-            defaultValue={values.transmission}
-            options={[
-              { value: "", label: "—" },
-              ...transmissions.map((value) => ({
-                value,
-                label: tFleet(`transmission.${value}`),
-              })),
-            ]}
-          />
-        </div>
+            <TextInput
+              name="cc"
+              label={t("cc")}
+              help={needsEngineSize(kind) ? undefined : t("optional")}
+              required={needsEngineSize(kind)}
+              inputMode="numeric"
+              maxLength={5}
+              defaultValue={values.cc}
+            />
+            <SelectInput
+              name="transmission"
+              label={t("transmission")}
+              help={needsTransmission(kind) ? undefined : t("optional")}
+              required={needsTransmission(kind)}
+              defaultValue={values.transmission}
+              options={[
+                { value: "", label: "—" },
+                ...transmissions.map((value) => ({
+                  value,
+                  label: tFleet(`transmission.${value}`),
+                })),
+              ]}
+            />
+          </>
+        )
       )}
-
-      <CategoryChips kind={kind} chosen={chosen} onChange={setChosen} />
     </div>
   );
 }

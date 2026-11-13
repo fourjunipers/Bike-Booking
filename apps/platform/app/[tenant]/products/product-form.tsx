@@ -7,11 +7,11 @@ import {
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import type { ModelOption } from "@/components/fleet/make-model-picker";
-import { addYearBand, deleteYearBand, saveModel } from "./actions";
+import type { KnownModel } from "@/lib/known-models";
+import { addYearBand, deleteYearBand, saveModel } from "../fleet/actions";
 import { CategoryField, WhatFields, type WhatValues } from "./what-fields";
 
-export type ModelFormValues = {
+export type ProductFormValues = {
   id?: string;
   name: string;
   description: string;
@@ -30,27 +30,23 @@ export type ModelFormValues = {
  * Add or edit a make & model (SPEC › Fleet). What it is comes first (kind,
  * make and model, category); booking modes show once it exists.
  */
-export function ModelForm({
+export function ProductForm({
   slug,
   currency,
   values,
   what,
-  listOptions,
-  listTypes,
+  known,
   waiting,
-  makes = [],
   then,
 }: {
   slug: string;
   currency: string;
-  values: ModelFormValues;
+  values: ProductFormValues;
   what: WhatValues;
-  /** The Moto Mangos list, and how it files each entry. */
-  listOptions: ModelOption[];
-  listTypes: Record<string, string>;
+  /** Known models, for the make-and-model type-ahead. */
+  known: KnownModel[];
   /** Sent to Moto Mangos and not yet reviewed: its description stays as it is. */
   waiting?: boolean;
-  makes?: string[];
   /** Added on the way to adding a vehicle: saving goes back to that form. */
   then?: "inventory";
 }) {
@@ -76,13 +72,7 @@ export function ModelForm({
           defaultValue={what.categories}
         />
       ) : (
-        <WhatFields
-          values={what}
-          listOptions={listOptions}
-          listTypes={listTypes}
-          makes={makes}
-          showTip={isNew}
-        />
+        <WhatFields values={what} known={known} showTip={isNew} />
       )}
       <TextInput
         name="name"

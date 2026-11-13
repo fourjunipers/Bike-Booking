@@ -56,6 +56,7 @@ async function context(formData: FormData) {
 
 function refresh(slug: string) {
   revalidatePath(`/${slug}/fleet`, "layout");
+  revalidatePath(`/${slug}/products`, "layout");
   revalidatePath(`/${slug}/maintenance`);
   revalidatePath(`/${slug}/dashboard`);
 }
@@ -155,7 +156,7 @@ export async function saveModel(
           errors: { model: "inPresets" },
           suggestions: presets.map((c) => ({
             label: catalogName(c),
-            href: `/${slug}/fleet/models/new?catalog=${c.id}`,
+            href: `/${slug}/products/new?catalog=${c.id}`,
           })),
         };
       kind = own.data.vehicle_type;
@@ -187,7 +188,7 @@ export async function saveModel(
   if (!id) {
     if (!what) return { errors: { form: "saveFailed" } };
     const { data, error } = await supabase
-      .from("models")
+      .from("products")
       .insert({ ...common, ...what, tenant_id: tenant.id })
       .select("id")
       .single();
@@ -195,13 +196,13 @@ export async function saveModel(
     refresh(slug);
     redirect(
       thenInventory
-        ? `/${slug}/fleet/units/new?model=${data.id}`
-        : `/${slug}/fleet/models/${data.id}?added=1`,
+        ? `/${slug}/fleet/units/new?product=${data.id}`
+        : `/${slug}/products/${data.id}?added=1`,
     );
   }
 
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .update({
       ...common,
       ...(what ?? {}),
@@ -229,7 +230,7 @@ export async function setModelRetired(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .update({
       retired_at:
         field(formData, "retired") === "1" ? new Date().toISOString() : null,
@@ -250,7 +251,7 @@ export async function deleteModel(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .delete()
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
@@ -258,7 +259,7 @@ export async function deleteModel(
   if (error || data.length !== 1)
     return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
-  redirect(`/${slug}/fleet`);
+  redirect(`/${slug}/products`);
 }
 
 /** One of a model's year bands, for grouping the fleet list. */
@@ -274,10 +275,10 @@ export async function addYearBand(
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
-  const { error } = await supabase.from("model_year_bands").insert({
+  const { error } = await supabase.from("product_year_bands").insert({
     ...parsed.data,
     tenant_id: tenant.id,
-    model_id: field(formData, "id"),
+    product_id: field(formData, "id"),
   });
   if (error) {
     const key = dbErrorKey(error);
@@ -294,7 +295,7 @@ export async function deleteYearBand(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("model_year_bands")
+    .from("product_year_bands")
     .delete()
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "band"))
@@ -319,7 +320,7 @@ async function resolveModel(
   const picked = parseModelChoice(choice);
   if (!picked) return null;
   const { data } = await supabase
-    .from("models")
+    .from("products")
     .select("id")
     .eq("tenant_id", tenantId)
     .eq("id", picked.id)
@@ -369,7 +370,7 @@ export async function saveUnit(
       .insert({
         ...parsed.data,
         tenant_id: tenant.id,
-        model_id: modelId,
+        product_id: modelId,
         current_odometer_km: odometer ?? 0,
       })
       .select("id")
@@ -383,7 +384,7 @@ export async function saveUnit(
     .from("units")
     .update({
       ...parsed.data,
-      model_id: modelId,
+      product_id: modelId,
       current_odometer_km: odometer ?? 0,
     })
     .eq("tenant_id", tenant.id)
@@ -736,7 +737,7 @@ export async function endDowntime(
 // CSV import -------------------------------------------------------------------------
 
 export type ImportState = {
-  done?: { models: number; units: number };
+  done?: { products: number; units: number };
   /** A problem with the file as a whole. */
   fileError?: string;
   problems?: ImportError[];
@@ -781,9 +782,10 @@ export async function importFleet(
     getLocations(tenant.id),
     getCatalog(),
     supabase
-      .from("models")
+      .from("products")
       .select("id, name, catalog_id, make, model")
-      .eq("tenant_id", tenant.id),
+      .eq("tenant_id", tenant.id)
+      .eq("type", "vehicle"),
     supabase.from("units").select("plate").eq("tenant_id", tenant.id),
   ]);
   const plan = planImport(table, {
@@ -794,7 +796,11 @@ export async function importFleet(
       name: l.name,
       isDefault: l.is_default,
     })),
-    models: models.data ?? [],
+    models: (models.data ?? []).map((m) => ({
+      ...m,
+      make: m.make ?? "",
+      model: m.model ?? "",
+    })),
     catalog,
     plates: (units.data ?? []).flatMap((u) => (u.plate ? [u.plate] : [])),
     newId: randomUUID,
@@ -809,7 +815,7 @@ export async function importFleet(
   });
   if (error) return { fileError: "saveFailed" };
   refresh(slug);
-  return { done: data as { models: number; units: number } };
+  return { done: data as { products: number; units: number } };
 }
 
 // Listing on Moto Mangos -------------------------------------------------------------------
@@ -822,7 +828,7 @@ export async function linkModelToPreset(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .update({ catalog_id: field(formData, "catalog_id") })
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
@@ -847,7 +853,7 @@ export async function submitModelToCatalog(
   // Moto Mangos files a motorbike under one type: the model's first category
   // (in the order of the list in lib/vehicle-kinds.ts).
   const { data: model } = await supabase
-    .from("models")
+    .from("products")
     .select("categories")
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
@@ -862,8 +868,8 @@ export async function submitModelToCatalog(
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
-  const { error } = await supabase.rpc("submit_model_to_catalog", {
-    p_model_id: field(formData, "id"),
+  const { error } = await supabase.rpc("submit_product_to_catalog", {
+    p_product_id: field(formData, "id"),
     p_type: type,
     p_year_from: parsed.data.year_from ?? undefined,
     p_year_to: parsed.data.year_to ?? undefined,
@@ -882,7 +888,7 @@ export async function setMarketplaceListed(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .update({ marketplace_listed: field(formData, "listed") === "on" })
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))

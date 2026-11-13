@@ -420,7 +420,7 @@ async function seedBsrFleet(
 ) {
   const [{ data: models }, { data: units }] = await Promise.all([
     db
-      .from("models")
+      .from("products")
       .select("id, name, catalog_id, make, model")
       .eq("tenant_id", tenantId),
     db.from("units").select("plate, frame_number").eq("tenant_id", tenantId),
@@ -454,7 +454,7 @@ async function seedBsrFleet(
   // so it saves the same plan with the service role.
   if (plan.models.length > 0) {
     const { error } = await db
-      .from("models")
+      .from("products")
       // Models on presets: the database fills in make, model and specs.
       .insert(plan.models.map((m) => ({ ...m, tenant_id: tenantId })) as never);
     if (error) throw error;
@@ -600,7 +600,7 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
     const entry = approved.find((c) => c.slug === slug);
     if (!entry) fail(`catalog entry ${slug} is missing`);
     const { data, error: modelError } = await db
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: tenantId,
         catalog_id: entry.id,
@@ -613,14 +613,14 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
       .single();
     if (modelError) throw modelError;
     models.push(data);
-    const { error: bandError } = await db.from("model_year_bands").insert(
+    const { error: bandError } = await db.from("product_year_bands").insert(
       [
         [2014, 2019],
         [2020, 2023],
         [2024, 2026],
       ].map(([year_from, year_to]) => ({
         tenant_id: tenantId,
-        model_id: data.id,
+        product_id: data.id,
         year_from,
         year_to,
       })),
@@ -632,7 +632,7 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
     const n = i + 1;
     return {
       tenant_id: tenantId,
-      model_id: models[i % 5].id,
+      product_id: models[i % 5].id,
       location_id: n % 4 === 0 ? airport.id : main.id,
       plate: `BIG-${String(n).padStart(3, "0")}`,
       frame_number: `BIGFRAME${String(n).padStart(4, "0")}`,

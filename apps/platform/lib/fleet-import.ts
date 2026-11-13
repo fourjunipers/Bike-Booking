@@ -122,7 +122,7 @@ export type ImportModel = {
   categories?: string[];
 };
 export type ImportUnit = {
-  model_id: string;
+  product_id: string;
   location_id: string;
   plate: string | null;
   plate_pending: boolean;
@@ -427,7 +427,7 @@ export function planImport(
       if (price === null) fail("purchase_price", "invalidMoney");
     }
 
-    const unit: Omit<ImportUnit, "model_id" | "location_id"> = {
+    const unit: Omit<ImportUnit, "product_id" | "location_id"> = {
       plate,
       plate_pending: !plate,
       frame_number: text("frame_number"),
@@ -440,12 +440,12 @@ export function planImport(
       purchased_from: text("purchased_from"),
     };
     if (errors.length === before && modelId && locationId)
-      units.push({ model_id: modelId, location_id: locationId, ...unit });
+      units.push({ product_id: modelId, location_id: locationId, ...unit });
   }
 
   if (errors.length > 0) return { errors, models: [], units: [] };
   // Only the new models some bike actually uses.
-  const used = new Set(units.map((u) => u.model_id));
+  const used = new Set(units.map((u) => u.product_id));
   return { errors, models: newModels.filter((m) => used.has(m.id)), units };
 }
 

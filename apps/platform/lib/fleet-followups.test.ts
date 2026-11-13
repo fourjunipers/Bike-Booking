@@ -237,7 +237,7 @@ describe("fleet import: make, then model, from the catalog", () => {
     ]);
     expect(result.units).toHaveLength(4);
     expect(result.units[0]).toMatchObject({
-      model_id: "model-pcx",
+      product_id: "model-pcx",
       location_id: "loc-main",
       plate: "DEMO-1",
       model_year: 2026,
@@ -245,13 +245,13 @@ describe("fleet import: make, then model, from the catalog", () => {
       purchase_price: 9500000,
     });
     expect(result.units[1]).toMatchObject({
-      model_id: "new-1",
+      product_id: "new-1",
       location_id: "loc-2",
       model_year: 2024,
     });
     // No plate: allowed, flagged as pending. Same new model, no year needed.
     expect(result.units[2]).toMatchObject({
-      model_id: "new-1",
+      product_id: "new-1",
       plate: null,
       plate_pending: true,
       model_year: null,
@@ -292,7 +292,7 @@ describe("fleet import: make, then model, from the catalog", () => {
     expect(result.models).toEqual([
       { id: "new-1", catalog_id: "cat-pcx", name: "PCX with top box" },
     ]);
-    expect(result.units.map((u) => u.model_id)).toEqual([
+    expect(result.units.map((u) => u.product_id)).toEqual([
       "new-1",
       "new-1",
       "model-pcx",
@@ -435,7 +435,7 @@ describe("fleet import: make, then model, from the catalog", () => {
       },
     ]);
     // Same make and model, whatever the case and spacing: one model, not two.
-    expect(result.units.map((u) => u.model_id)).toEqual([
+    expect(result.units.map((u) => u.product_id)).toEqual([
       "new-1",
       "new-1",
       "new-2",
@@ -480,7 +480,7 @@ describe("fleet import: make, then model, from the catalog", () => {
     expect(result.errors).toEqual([]);
     expect(result.units).toHaveLength(1);
     expect(result.units[0]).toMatchObject({
-      model_id: "model-pcx",
+      product_id: "model-pcx",
       model_year: 2026,
     });
     expect(
@@ -666,18 +666,21 @@ describe("fleet view", () => {
     },
   ];
   const bands: ViewBand[] = [
-    { model_id: "pcx", year_from: 2014, year_to: 2019 },
-    { model_id: "pcx", year_from: 2024, year_to: 2026 },
-    { model_id: "pcx", year_from: 2020, year_to: 2023 },
+    { product_id: "pcx", year_from: 2014, year_to: 2019 },
+    { product_id: "pcx", year_from: 2024, year_to: 2026 },
+    { product_id: "pcx", year_from: 2020, year_to: 2023 },
   ];
   const locations = [
     { id: "main", name: "Main shop" },
     { id: "air", name: "Airport" },
   ];
   let n = 0;
-  const unit = (model_id: string, extra: Partial<ViewUnit> = {}): ViewUnit => ({
+  const unit = (
+    product_id: string,
+    extra: Partial<ViewUnit> = {},
+  ): ViewUnit => ({
     id: `u${++n}`,
-    model_id,
+    product_id,
     location_id: "main",
     plate: `P-${String(n).padStart(3, "0")}`,
     plate_pending: false,
@@ -922,9 +925,9 @@ describe("fleet view", () => {
       unit(`m${i % 5}`, { model_year: 2014 + (i % 13) }),
     );
     const manyBands: ViewBand[] = five.flatMap((m) => [
-      { model_id: m.id, year_from: 2014, year_to: 2019 },
-      { model_id: m.id, year_from: 2020, year_to: 2023 },
-      { model_id: m.id, year_from: 2024, year_to: 2026 },
+      { product_id: m.id, year_from: 2014, year_to: 2019 },
+      { product_id: m.id, year_from: 2020, year_to: 2023 },
+      { product_id: m.id, year_from: 2024, year_to: 2026 },
     ]);
     const data = { units: many, models: five, bands: manyBands, locations };
     const started = performance.now();

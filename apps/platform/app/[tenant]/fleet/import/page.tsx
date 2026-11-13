@@ -118,7 +118,7 @@ export default async function ImportPage({
                 </tbody>
               </table>
               <Link
-                href={`/${slug}/fleet/models/new`}
+                href={`/${slug}/products/new`}
                 className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
               >
                 {tFleet("unit.makeOrModelMissing")}
