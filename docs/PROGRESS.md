@@ -13,6 +13,80 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Fleet rework: Make & model, Add to inventory, kinds and categories (branch `platform/fleet-rework`, 12 Nov 2026)
+
+Owner's request after the click-through: "Add model" and "Add bike" did the same job and read alike. Built to the owner's instruction in chat; `docs/platform/SPEC.md` in the repo does not have this text yet (the owner maintains it).
+
+- **Two buttons, one job each.** "+ Make & model" (top of Fleet) adds a kind of vehicle. "+ Add to inventory" (just above the list) adds one vehicle of a make & model the shop already has, and **never creates a make & model**: its dropdowns list the shop's own only, with a link to "+ Make & model" that comes back afterwards. Each model row has a labelled, outlined “+ Vehicle” button (44 px tall) left of the arrow that opens the inventory form with that model chosen.
+- **The old "Add my own" page is gone** (`/fleet/own-model`): typing a make and model in is part of the Make & model form.
+- **Kind first.** The form starts with Motorbike, Car, Off-road, Boat or jet ski, Other, and reshapes: a motorbike is picked from the Moto Mangos list or typed in; everything else is typed in; engine size and transmission are required for motorbikes only (unchanged rule). The kinds are the database's vehicle types (`atv` reads "Off-road", `boat` reads "Boat or jet ski"). Dirt bikes are motorbikes, category off-road.
+- **Categories: one list in the code**, `apps/platform/lib/vehicle-kinds.ts`, changeable with no migration (the database only checks the key's shape). First guesses: motorbike scooter, touring, adventure, sport, classic, off-road; car sedan, SUV, pickup, van, hatchback, convertible; off-road ATV, UTV; boat jet ski, speedboat, pontoon. Required for motorbikes and cars, optional for the rest, none for Other. Labels are in the messages; a key with no label shows as the key made readable.
+- **Categories are stored on the model** (`platform.models.categories`, a list: a model can have several, e.g. Adventure and Touring). Motorbike keys are the types Moto Mangos files a bike under, so "Send to Moto Mangos" no longer asks for the type. A model on a list entry takes the entry's type unless the shop picks its own; existing models were filled that way. A typed-in motorbike with no category is asked for one before it can be sent.
+- **Helpful tip** on the add form, motorbikes only, right under the make and model: a lightly tinted box with a lightbulb. One text for a model picked from the Moto Mangos list, another for one typed in (the owner's wording). No toggle there: listing stays on the model page, and does nothing until Moto Mangos reads from the platform (after Phase 3). The Moto Mangos mark (inline SVG copied from the marketplace refresh) is still used for the review markers.
+- **Review results reach the shop.** New `platform.models.catalog_approved_at`, set by `review_catalog_request()` on approve and merge (the shop can't write it). The dashboard shows a "Moto Mangos reviews" block for owners and managers, the Fleet list a marker beside the model, and the model page a line: "not added" for as long as the rejection stands, "added" for 14 days (`reviewNewsDays`). No email or LINE yet (Phases 3 and 6).
+- **"Bike" is "vehicle"** in every platform text except the Moto Mangos panel and the catalog admin (Moto Mangos lists motorbikes). Thai already used the general word (รถ), so only new lines changed there: `docs/platform/thai-review-fleet-rework.md` lists them for the owner's approval.
+- **CSV import:** new optional `category` column (required for a new motorbike or car that isn't on the list; several are separated by a semicolon, `adventure; touring`); `vehicle_type` also accepts "Off-road", "jet ski" and the like; the page lists each kind's categories from the code. The import still creates makes & models: it is the bulk path.
+- **Fleet list:** a "Kind of vehicle" filter and a "Category" filter (a model matches on any of its categories); each model's heading line shows all its categories. A make & model with no vehicles yet still shows when only those filters are on. Model titles have no underline at rest (underline on hover, ring on focus).
+- **Pencil** beside a model's name: a plain 44 px icon button, no box, soft tint on hover, focus ring.
+- **Migration `20261113000100_platform_fleet_rework`:** the two columns, a trigger that defaults the categories from the list entry, the review function and `import_fleet()` replaced in place. No new table or API-reachable function, so no new grants; `default-grants.test.ts` passes. On local and staging; **not on live**.
+- **Tests:** `lib/vehicle-kinds.test.ts` (kinds, categories, labels in both languages, CSV category, kind filter, review news); `tests/db/fleet-rework.test.ts` (9); the fleet Playwright tests follow the new flow, plus a new one for the two buttons, the row +, and the kind filter.
+- **Test helper:** database tests now pick this checkout's own database container (by `project_id`), because a second checkout of the repo can run its own beside it.
+
+Second round, after the owner's click-through (12 Nov 2026, evening):
+
+- **Several categories per model.** The form's category field is a row of checkbox chips (44 px, real checkboxes); "required" for motorbikes and cars means at least one, checked on the server. Stored in the list's own order, without repeats.
+- **The migration was changed in place** (`category text` became `categories text[]`), on the owner's instruction, because it was not on live or `main`. Local was rebuilt. **Staging had the first version applied**, so it was taken back there by hand (the old trigger, trigger function and two columns dropped; the migration marked as not applied) and the new version pushed, together with `20261112100000_marketplace_station_osm_refresh` from `main`, which staging did not have yet.
+- "Not in the list?" and "Choose from the list instead" are outlined buttons, 44 px tall.
+- The Moto Mangos card became the helpful tip; the row + became "+ Vehicle"; model titles lost their underline; a category filter was added to the Fleet list (the owner's note mentioned the filter; there was none for categories before).
+- The branch has `main` merged in (PRs #12 and #14); `docs/PROGRESS.md` was the only conflict.
+
+Third round (owner's second click-through, 12 Nov 2026, late):
+
+- **Bug: a model could be saved with no category.** Cause: `saveModel` skipped the category check for a model picked from the Moto Mangos list when no chip was ticked ("as Moto Mangos files it") and let the database fill in the list's type, so the form never refused it. A typed-in motorbike or car was already refused. The exception is removed: a motorbike or a car needs at least one category, list model or not, with the message under the chips. `e2e/fleet.spec.ts` unticks a list model's chip and expects the refusal (it saved before the fix). The database default stays for the CSV import, where a list model with no `category` cell takes the list's.
+- **Leaf green buttons.** New tokens `--leaf` and `--leaf-soft` in `app/globals.css` (text and outline #336600: 6.89:1 on white, 6.22:1 on the hover tint; dark theme #a3d977). "Manually enter" (was "Not in the list?") sits beside the line "Don't see your bike in the list?"; "Choose from the list instead" has the same look. The "Pick from the Moto Mangos list" label is gone.
+- **Rejected models: what to do next.** Beside the reviewer's note: one line and two buttons. "Edit and send again" goes to the details form; the send button then reads "Send for review again". "Choose a model from the list instead" goes to a new picker of the whole approved list ("Use this model"), which is there for every own motorbike.
+- **Resubmitting needed no migration.** A rejected model goes back to being the shop's own; `submit_model_to_catalog()` makes a new request, and the trigger from `20261112000400` clears the rejection on the model once it is on that request. The old reason is kept on the old request (`bike_catalog.review_notes`, status rejected) and in the audit log, not on the model; `tests/db/fleet-rework.test.ts` checks this. The shop has no screen for that history yet.
+- **Approved means listed.** The owner's text says "switch it on and we'll review it first... It goes live once approved", so `review_catalog_request()` now sets `marketplace_listed = true` when it approves or merges a request (in the fleet-rework migration, changed in place again; nothing from `20261112000400` was touched). The shop can switch it off. The control is still the send form (first and last model year, a note), with the button "Switch on and send for review".
+- **Moto Mangos panel** on the model page is headed by the logo (`apps/platform/public/moto-mangos-logo.png`, copied from the marketplace), on a white plate so it reads on the dark theme.
+- **Fleet list look.** Each make & model is one card: a header row in the light mango tint (dark text, AA) with a kind icon in a fixed 44 px box (a photo instead when the model has one with a web address; none do until Phase 3 uploads them), the title and pencil, then chips: Moto Mangos status for owners and managers (green Listed on Moto Mangos, amber In review, red Needs changes, grey Not listed; motorbikes only), the categories, and a dark count badge. Rows under it alternate with a very light cream. The old "Added / Not added to Moto Mangos" markers are replaced by the chips; the dashboard block is unchanged.
+- Staging: the first second-round version of the migration was taken back by hand again and the new one pushed (see the report).
+
+Fourth round, deleting and retiring (owner, 12 Nov 2026, night):
+
+- **What was already there:** a vehicle can be deleted by an owner or manager unless anything on its calendar points at it (downtime now, bookings from Phase 3); sold and retired vehicles leave the default list ("Show: Sold and retired" brings them back); a make & model can be deleted when it has no vehicles; every insert, update and delete is in the audit trail with who did it.
+- **Retire instead.** When deleting a vehicle is refused, the message says why and shows a "Retire instead" button (not for one that is already sold or retired). It is refused in turn while the vehicle has a block still to come.
+- **Restore.** A retired vehicle has a plain "Restore" button (back to active).
+- **Confirmations.** Choosing Retired or Sold in the status form asks first and says what will happen. Deleting already asked.
+- **Retiring a make & model.** New `platform.models.retired_at`. "Retire make & model" shows on its page once none of its vehicles is in the fleet (all sold or retired, or it has none); it asks first. A retired model leaves the fleet list (it is under "Show: Sold and retired", with a "Retired" chip) and the "Add to inventory" form, comes off Moto Mangos (`marketplace_listed` goes off and can't be switched on), and takes no vehicle that is in the fleet, new or restored, until "Restore make & model". The database enforces all of it (`models_retire_guard`, `units_model_not_retired`).
+- **Deleting a model that waits for review withdraws the request** (owner's decision): the request is closed as rejected with the note "Withdrawn: the shop deleted the model." (`models_withdraw_request`). A model on an approved list entry leaves the entry alone.
+- All of this is in `20261113000100_platform_fleet_rework`, changed in place again (not on `main` or live); nothing from `20261112000400` was touched. No new table or API-reachable function, so no new grants.
+- Found on the way: the status choices on a vehicle's page kept showing the old status after a button changed it; they now redraw.
+- Tests: `tests/db/fleet-rework.test.ts` (retire rules, listing off, no vehicles on a retired model, who may and the audit row, refused delete, withdrawn request); a Playwright test for the whole flow; the fleet-view unit test covers where a retired model shows.
+
+Fifth round (owner's click-through, 13 Nov 2026):
+
+- **Deleting a vehicle clears its downtime records.** The owner could not delete DEMO-004 on staging: it had five downtime records that ended days before (left by test runs), and any block, however old, stopped the delete. A `units_clear_downtime` trigger now deletes a vehicle's downtime with it (in the fleet-rework migration, changed in place). Bookings still stop it: an allocation, hold or transfer keeps the foreign key, and the app then offers "Retire instead". Until Phase 3 there are no bookings, so today every vehicle can be deleted.
+- **This supersedes the fourth-round line** "a vehicle can be deleted unless anything on its calendar points at it".
+- **Delete vehicle** is the last thing on the vehicle's page, under Purchase and sale, a solid red button; "Retire instead" appears to its right when a delete is refused. The warning says it is permanent and what is erased (purchase and sale details, tax and insurance, downtime, odometer history).
+- **Buttons renamed:** "+ Make & model" is "+ New Product"; the row's "+ Vehicle" is "+ Add product to inventory"; the separate "+ Add to inventory" button above the Fleet list is gone (the form is still reached from each row and from a model's page). Page titles and other texts still say "make & model" and "Add to inventory".
+- The grey chip reads "Not on Moto Mangos" (was "Not listed", which did not say of what).
+- Text for a model not on the list now ends "Or select the model if already in the list below."
+
+Open, for the owner:
+
+- **Deleting a vehicle that has bookings (from Phase 3).** The owner wants vendors to be able to remove any vehicle for good while past sales history stays. A real delete can't do both: it erases the vehicle's own records and would leave past orders pointing at nothing. Proposed for Phase 3: "Remove for good" marks the vehicle as removed (never shown again, not restorable from the app, plate free to reuse) and keeps the row for past orders and reports. Needs a column and every vehicle query to leave removed ones out.
+- **"Edit" button beside Save on the make & model page:** not built; the page is already an edit form. Waiting for the owner to say what could not be changed.
+
+Known limits and open points:
+
+- **A retired make & model still counts** in the "N makes & models" line at the top of Fleet and still appears in the fleet filters' model dropdown.
+- **Sold vehicles have no Restore button** (only retired ones, as asked); the status form can still set one back to active.
+- **Moto Mangos files a motorbike under one type.** A model with several categories is sent with the first one in the list's order (Scooter, Touring, Adventure, Sport, Classic, Off-road), so "Adventure and Touring" goes as Touring. Phase 3 (or the owner) should decide whether the shop picks the main one or Moto Mangos takes several.
+- A motorbike on a list entry can be given a category different from the list's. Nothing uses the difference yet; Phase 3 should decide which one Moto Mangos search reads.
+- Removing a category from the list leaves models that have it unchanged; the form then asks for a new one on the next save.
+- The review block has no "dismiss": a rejection shows until the model is sent again or put on a list entry.
+- The local dev server (`next dev`) is too slow for the long Playwright tests; they were run against a local production build, as CI does.
+
 ## Marketplace UI batch (branch `marketplace/ui-refresh`, 12 Nov 2026, not merged)
 
 Done (items 1 to 5 of the owner's batch):

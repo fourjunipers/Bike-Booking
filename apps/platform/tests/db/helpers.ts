@@ -1,5 +1,7 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@mango/db/database.types";
 import type { Role } from "@/lib/roles";
@@ -182,19 +184,35 @@ export const modelSpec = {
 };
 
 /**
+ * This checkout's local database container. Named after project_id in
+ * supabase/config.toml, because another checkout of the repo may have its own
+ * local database running beside this one.
+ */
+function dbContainer(): string {
+  const config = readFileSync(
+    fileURLToPath(new URL("../../../../supabase/config.toml", import.meta.url)),
+    "utf8",
+  );
+  const project = /^project_id\s*=\s*"([^"]+)"/m.exec(config)?.[1];
+  if (!project) throw new Error("No project_id in supabase/config.toml");
+  const name = `supabase_db_${project}`;
+  const running = execFileSync(
+    "docker",
+    ["ps", "--filter", `name=^${name}$`, "--format", "{{.Names}}"],
+    { encoding: "utf8" },
+  ).trim();
+  if (running !== name)
+    throw new Error(`The local Supabase database (${name}) isn't running`);
+  return name;
+}
+
+/**
  * Runs SQL straight in the local database, as its superuser unless the SQL
  * itself switches role. For what the API can't reach: functions in the
  * platform_private schema. Returns psql's output; `failed` is its error text.
  */
 export function sql(statements: string): { out: string; failed: string } {
-  const container = execFileSync(
-    "docker",
-    ["ps", "--filter", "name=supabase_db_", "--format", "{{.Names}}"],
-    { encoding: "utf8" },
-  )
-    .trim()
-    .split("\n")[0];
-  if (!container) throw new Error("The local Supabase database isn't running");
+  const container = dbContainer();
   const run = spawnSync(
     "docker",
     [
@@ -234,14 +252,7 @@ export function sqlAs(userId: string, statement: string) {
 export function sqlBackground(
   statements: string,
 ): Promise<{ out: string; failed: string }> {
-  const container = execFileSync(
-    "docker",
-    ["ps", "--filter", "name=supabase_db_", "--format", "{{.Names}}"],
-    { encoding: "utf8" },
-  )
-    .trim()
-    .split("\n")[0];
-  if (!container) throw new Error("The local Supabase database isn't running");
+  const container = dbContainer();
   return new Promise((resolve) => {
     const child = spawn("docker", [
       "exec",

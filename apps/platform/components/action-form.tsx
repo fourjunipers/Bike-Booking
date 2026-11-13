@@ -23,6 +23,8 @@ export type FormState = {
   errors?: Record<string, string>;
   /** "Did you mean…": links offered with an error, e.g. matching presets. */
   suggestions?: { label: string; href: string }[];
+  /** Another way to get it done, offered with an error, e.g. "retire". */
+  offer?: string;
 };
 
 export type FormAction = (
@@ -54,6 +56,7 @@ export function ActionForm({
   confirmIf,
   destructive,
   className,
+  offers,
   children,
 }: {
   action: FormAction;
@@ -65,8 +68,14 @@ export function ActionForm({
   confirm?: string;
   /** Ask only when this returns a question for what was typed. */
   confirmIf?: (data: FormData) => string | undefined;
-  destructive?: boolean;
+  /** An outlined red button; "solid" fills it (deleting for good). */
+  destructive?: boolean | "solid";
   className?: string;
+  /**
+   * What to show under the form when the action answers with an `offer`,
+   * by its name: usually a button for the other way ("Retire instead").
+   */
+  offers?: Record<string, ReactNode>;
   children?: ReactNode;
 }) {
   const t = useTranslations("FormErrors");
@@ -110,10 +119,14 @@ export function ActionForm({
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="submit"
-            variant={destructive ? "outline" : "default"}
+            variant={destructive === true ? "outline" : "default"}
             className={cn(
               "h-11 px-6",
-              destructive && "border-destructive/40 text-destructive",
+              destructive === true && "border-destructive/40 text-destructive",
+              // White on the red: 4.8:1 (light), and the lighter red of the
+              // dark theme takes near-black text.
+              destructive === "solid" &&
+                "bg-destructive text-white hover:bg-destructive/85 dark:text-zinc-950",
             )}
             disabled={pending}
           >
@@ -150,6 +163,10 @@ export function ActionForm({
           </div>
         )}
       </form>
+      {/* Outside the form: an offer is usually a form of its own. */}
+      {state.offer && !pending && offers?.[state.offer] && (
+        <div>{offers[state.offer]}</div>
+      )}
     </FormContext.Provider>
   );
 }
@@ -323,7 +340,7 @@ export function Panel({
 }: {
   /** An anchor to link or scroll to, e.g. "purchase-sale". */
   id?: string;
-  title?: string;
+  title?: ReactNode;
   intro?: ReactNode;
   children: ReactNode;
   className?: string;

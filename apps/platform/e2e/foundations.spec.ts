@@ -123,7 +123,7 @@ test("the dashboard has Today, Tomorrow, Upcoming and Late tabs", async ({
   // Late: its own sections, and the choice survives a reload.
   await page.getByRole("tab", { name: /^Late/ }).click();
   await expect(page).toHaveURL(/\?view=late$/);
-  await expect(panel).toContainText("Overdue bikes");
+  await expect(panel).toContainText("Overdue vehicles");
   await expect(panel).toContainText(
     "Missed pickups, deliveries and collections",
   );

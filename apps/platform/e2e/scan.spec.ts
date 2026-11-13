@@ -52,7 +52,7 @@ test("scanning a sticker opens that bike; another code is refused", async ({
   await expect(buttons).toHaveText([/Search/, /Scan QR/]);
   await page.getByRole("button", { name: "Scan QR" }).click();
   const scanner = page.getByRole("dialog", {
-    name: "Scan a bike's QR sticker",
+    name: "Scan a vehicle's QR sticker",
   });
   await expect(scanner).toBeVisible();
   await expect(
@@ -68,7 +68,7 @@ test("scanning a sticker opens that bike; another code is refused", async ({
   // A code that isn't a bike sticker is not followed anywhere.
   await show(page, "https://example.com/somewhere-else");
   await expect(
-    scanner.getByText("That code isn't one of your bike stickers."),
+    scanner.getByText("That code isn't one of your vehicle stickers."),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/bsr\/maintenance$/);
 

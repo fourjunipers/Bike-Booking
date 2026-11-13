@@ -71,7 +71,7 @@ export const getFleet = cache(async (tenantId: string) => {
     supabase
       .from("models")
       .select(
-        "id, name, catalog_id, make, model, vehicle_type, cc, transmission, bookable_online, marketplace_listed",
+        "id, name, catalog_id, make, model, vehicle_type, categories, cc, transmission, bookable_online, marketplace_listed, catalog_rejected_at, catalog_approved_at, photos, retired_at",
       )
       .eq("tenant_id", tenantId)
       .order("name"),
@@ -84,9 +84,32 @@ export const getFleet = cache(async (tenantId: string) => {
   ]);
   if (models.error) throw models.error;
   if (units.error) throw units.error;
-  void catalog;
+  // Where each linked entry stands: the list holds the approved ones; the
+  // rest (a shop's own request, waiting or turned down) are looked up.
+  const status = new Map<string, string>(
+    catalog.map((entry) => [entry.id, "approved"]),
+  );
+  const others = [
+    ...new Set(
+      models.data
+        .map((model) => model.catalog_id)
+        .filter((id): id is string => id !== null && !status.has(id)),
+    ),
+  ];
+  if (others.length > 0) {
+    const entries = await supabase
+      .schema("public")
+      .from("bike_catalog")
+      .select("id, status")
+      .in("id", others);
+    if (entries.error) throw entries.error;
+    for (const entry of entries.data) status.set(entry.id, entry.status);
+  }
   return models.data.map((model) => ({
     ...model,
+    entry_status: model.catalog_id
+      ? (status.get(model.catalog_id) ?? null)
+      : null,
     // What the model is, whether it came from a preset or is the shop's own.
     catalog: {
       id: model.catalog_id,
@@ -130,7 +153,7 @@ export async function getModel(tenantId: string, id: string) {
   const { data, error } = await supabase
     .from("models")
     .select(
-      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now, catalog_rejected_at, catalog_reject_reason",
+      "id, name, catalog_id, make, model, vehicle_type, cc, transmission, marketplace_listed, description, bookable_online, buffer_before_minutes, buffer_after_minutes, deposit, min_age, licence_class, instant_units, request_units, ready_now, categories, catalog_rejected_at, catalog_reject_reason, catalog_approved_at, retired_at",
     )
     .eq("tenant_id", tenantId)
     .eq("id", id)

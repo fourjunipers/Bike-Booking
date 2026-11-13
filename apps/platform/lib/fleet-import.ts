@@ -9,6 +9,7 @@ import {
   vehicleTypes,
 } from "./fleet";
 import { parseMoney } from "./money";
+import { categoriesFromText, categoryRequired } from "./vehicle-kinds";
 
 /**
  * Checks a fleet CSV (SPEC › Team, settings and platform: CSV import for
@@ -42,6 +43,7 @@ export const importColumns = [
   "purchase_price",
   "purchased_from",
   "vehicle_type",
+  "category",
   "cc",
   "transmission",
 ] as const;
@@ -58,6 +60,8 @@ export type ImportErrorCode =
   | "tooLong"
   | "ownNeedsSpecs"
   | "invalidVehicleType"
+  | "invalidCategory"
+  | "ownNeedsCategory"
   | "invalidTransmission"
   | "modelNeedsYear"
   | "modelNeedsName"
@@ -114,6 +118,8 @@ export type ImportModel = {
   vehicle_type?: string;
   cc?: number | null;
   transmission?: string | null;
+  /** Keys from lib/vehicle-kinds; none on a list model means the list's own. */
+  categories?: string[];
 };
 export type ImportUnit = {
   model_id: string;
@@ -173,6 +179,31 @@ type KnownModel = {
   model: string;
 };
 
+/**
+ * The kind of vehicle as typed in the file: the database's own words, or the
+ * ones on screen ("Off-road", "Boat", "Jet ski"). Blank is a motorbike.
+ */
+function kindFromText(text: string): string {
+  const typed = text
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  const aliases: Record<string, string> = {
+    "": "motorbike",
+    bike: "motorbike",
+    motorcycle: "motorbike",
+    scooter: "motorbike",
+    auto: "car",
+    off_road: "atv",
+    offroad: "atv",
+    utv: "atv",
+    jet_ski: "boat",
+    jetski: "boat",
+    boat_or_jet_ski: "boat",
+  };
+  return aliases[typed] ?? typed;
+}
+
 export function planImport(
   table: CsvTable,
   context: ImportContext,
@@ -219,10 +250,18 @@ export function planImport(
       make: model.make,
       model: model.model,
     });
-    // A preset's description comes from the catalog, so only its link is sent.
+    // A preset's description comes from the catalog, so only its link (and a
+    // category, if the file gave one) is sent.
     newModels.push(
       model.catalog_id
-        ? { id: model.id, name: model.name, catalog_id: model.catalog_id }
+        ? {
+            id: model.id,
+            name: model.name,
+            catalog_id: model.catalog_id,
+            ...(model.categories?.length
+              ? { categories: model.categories }
+              : {}),
+          }
         : model,
     );
     return model.id;
@@ -298,21 +337,31 @@ export function planImport(
             });
           else if (onEntry.length > 1) fail("name", "modelNeedsName");
           else if (onEntry.length === 1) modelId = onEntry[0].id;
-          else
-            modelId = addModel({
-              id: context.newId(),
-              name: uniqueName(catalogName(entry)),
-              catalog_id: entry.id,
-              make: entry.make,
-              model: entry.model,
-            });
+          else {
+            // The list files it under a category already; the file may name
+            // others of the motorbike categories (several, with semicolons).
+            const categoryText = get("category");
+            const categories = categoriesFromText("motorbike", categoryText);
+            if (!categories) fail("category", "invalidCategory");
+            else
+              modelId = addModel({
+                id: context.newId(),
+                name: uniqueName(catalogName(entry)),
+                catalog_id: entry.id,
+                make: entry.make,
+                model: entry.model,
+                categories,
+              });
+          }
         }
       } else {
         // Not a preset: one of the shop's own, old or new.
         const own = models.find((m) => m.catalog_id === null && same(m));
         if (own) modelId = own.id;
         else {
-          const typeText = key(get("vehicle_type")) || "motorbike";
+          const typeText = kindFromText(get("vehicle_type"));
+          const categoryText = get("category");
+          const categories = categoriesFromText(typeText, categoryText);
           const ccText = get("cc");
           const gearText = key(get("transmission")).replace(/[\s-]+/g, "_");
           const cc = ccText ? Number(ccText) : null;
@@ -329,6 +378,9 @@ export function planImport(
           if (needsEngineSize(typeText) && !ccText) fail("cc", "ownNeedsSpecs");
           if (needsTransmission(typeText) && !gearText)
             fail("transmission", "ownNeedsSpecs");
+          if (!categories) fail("category", "invalidCategory");
+          else if (categories.length === 0 && categoryRequired(typeText))
+            fail("category", "ownNeedsCategory");
           if (errors.length === before)
             modelId = addModel({
               id: context.newId(),
@@ -339,6 +391,7 @@ export function planImport(
               vehicle_type: typeText,
               cc,
               transmission: gearText || null,
+              categories: categories ?? [],
             });
         }
       }

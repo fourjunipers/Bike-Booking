@@ -102,10 +102,11 @@ describe("bike form rules", () => {
     expect(unitStatuses.filter(isRentable)).toEqual(["active"]);
   });
 
-  it("reads the model chosen in the make and model dropdowns", () => {
+  it("a vehicle goes on one of the shop's own makes & models, never straight on a list entry", () => {
     const id = "0b0e3b52-6f0e-4f3a-9a52-2a1c4f3f9d11";
-    expect(parseModelChoice(`model:${id}`)).toEqual({ kind: "model", id });
-    expect(parseModelChoice(`catalog:${id}`)).toEqual({ kind: "catalog", id });
+    expect(parseModelChoice(`model:${id}`)).toEqual({ id });
+    // "+ Add to inventory" never creates a make & model (12 Nov 2026).
+    expect(parseModelChoice(`catalog:${id}`)).toBeNull();
     expect(parseModelChoice(id)).toBeNull();
     expect(parseModelChoice("")).toBeNull();
   });
@@ -356,8 +357,10 @@ describe("fleet import: make, then model, from the catalog", () => {
         // needs its engine size and transmission.
         "3:cc:ownNeedsSpecs",
         "3:transmission:ownNeedsSpecs",
+        "3:category:ownNeedsCategory",
         "4:cc:ownNeedsSpecs",
         "4:transmission:ownNeedsSpecs",
+        "4:category:ownNeedsCategory",
         "5:plate:plateExists",
         "6:plate:plateDuplicateInFile",
         "7:model_year:invalidYear",
@@ -386,13 +389,13 @@ describe("fleet import: make, then model, from the catalog", () => {
   it("a make and model outside the list becomes one of the shop's own, with no approval", () => {
     const result = plan(
       [
-        "make,model,plate,vehicle_type,cc,transmission",
-        "Kymco,Like 125,K-1,,125,automatic",
-        "kymco,like125,K-2,,,",
-        "Toyota,Yaris,K-3,car,,automatic",
-        "Honda,Wave 100,K-4,,,",
-        "HONDA,wave100,K-5,,,",
-        "Yamaha,242X,K-6,Boat,,",
+        "make,model,plate,vehicle_type,category,cc,transmission",
+        "Kymco,Like 125,K-1,,Scooter,125,automatic",
+        "kymco,like125,K-2,,,,",
+        "Toyota,Yaris,K-3,car,sedan,,automatic",
+        "Honda,Wave 100,K-4,,,,",
+        "HONDA,wave100,K-5,,,,",
+        "Yamaha,242X,K-6,Boat,,,",
       ].join("\n"),
     );
     expect(result.errors).toEqual([]);
@@ -406,6 +409,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         vehicle_type: "motorbike",
         cc: 125,
         transmission: "automatic",
+        categories: ["city_scooter"],
       },
       {
         id: "new-2",
@@ -416,6 +420,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         vehicle_type: "car",
         cc: null,
         transmission: "automatic",
+        categories: ["sedan"],
       },
       {
         id: "new-3",
@@ -426,6 +431,7 @@ describe("fleet import: make, then model, from the catalog", () => {
         vehicle_type: "boat",
         cc: null,
         transmission: null,
+        categories: [],
       },
     ]);
     // Same make and model, whatever the case and spacing: one model, not two.
@@ -440,17 +446,21 @@ describe("fleet import: make, then model, from the catalog", () => {
     expect(codes("make,model,vehicle_type\nKymco,Like,plane")).toEqual([
       "2:vehicle_type:invalidVehicleType",
     ]);
-    expect(codes("make,model,cc,transmission\nKymco,Like,125,cvt")).toEqual([
-      "2:transmission:invalidTransmission",
-    ]);
-    expect(codes("make,model,cc\nKymco,Like,125")).toEqual([
+    expect(
+      codes("make,model,category,cc,transmission\nKymco,Like,scooter,125,cvt"),
+    ).toEqual(["2:transmission:invalidTransmission"]);
+    expect(codes("make,model,category,cc\nKymco,Like,scooter,125")).toEqual([
       "2:transmission:ownNeedsSpecs",
     ]);
     // The rule by vehicle type (owner, 11 Nov 2026).
-    const specs = (type: string, cc: string, gear: string) =>
-      codes(
-        `make,model,vehicle_type,cc,transmission\nKymco,Rule ${type},${type},${cc},${gear}`,
+    const specs = (type: string, cc: string, gear: string) => {
+      // The category rule has its own tests (lib/vehicle-kinds.test.ts).
+      const category =
+        type === "motorbike" ? "scooter" : type === "car" ? "sedan" : "";
+      return codes(
+        `make,model,vehicle_type,category,cc,transmission\nKymco,Rule ${type},${type},${category},${cc},${gear}`,
       );
+    };
     // A motorbike needs both.
     expect(specs("motorbike", "", "")).toEqual([
       "2:cc:ownNeedsSpecs",

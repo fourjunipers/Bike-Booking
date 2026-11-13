@@ -11,6 +11,7 @@ import {
   Printer,
   Search,
 } from "lucide-react";
+import { KindIcon } from "@/components/fleet/kind-icon";
 import { MakeModelPicker } from "@/components/fleet/make-model-picker";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { Field, inputClass } from "@/components/form";
@@ -39,8 +40,24 @@ import {
 } from "@/lib/fleet-view";
 import { shopModelOptions } from "@/lib/model-options";
 import { canManageFleet } from "@/lib/roles";
+import {
+  humanizeKey,
+  kindTypes,
+  listingStatus,
+  vehicleKinds,
+  type ListingStatus,
+} from "@/lib/vehicle-kinds";
 import { cn } from "@/lib/utils";
 import { ExpandCollapse, RememberView } from "./fleet-controls";
+
+/** The Moto Mangos chip on a model's row: the word says it, the colour helps. */
+const listingClass: Record<ListingStatus, string> = {
+  listed:
+    "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+  inReview: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  needsChanges: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  notListed: "border bg-card text-muted-foreground",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Nav");
@@ -114,6 +131,9 @@ export default async function FleetPage({
         model: model.catalog?.model ?? model.name,
         cc: model.catalog?.cc ?? null,
         transmission: model.catalog?.transmission ?? null,
+        kind: model.vehicle_type,
+        categories: model.categories,
+        retired: model.retired_at !== null,
       })),
     },
     view,
@@ -154,6 +174,10 @@ export default async function FleetPage({
         : group.kind === "all"
           ? t("allBikes")
           : group.title;
+  const categoryLabel = (key: string) =>
+    t.has(`category.${key}` as "category.sedan")
+      ? t(`category.${key}` as "category.sedan")
+      : humanizeKey(key);
   const options = <T extends string>(
     values: readonly T[],
     label: (v: T) => string,
@@ -199,13 +223,9 @@ export default async function FleetPage({
                   <FileUp aria-hidden />
                   {t("importCsv")}
                 </Link>
-                <Link href={`${base}/models/new`} className={link("outline")}>
+                <Link href={`${base}/models/new`} className={link("default")}>
                   <Plus aria-hidden />
                   {t("addModel")}
-                </Link>
-                <Link href={`${base}/units/new`} className={link("default")}>
-                  <Plus aria-hidden />
-                  {t("addUnit")}
                 </Link>
               </>
             )}
@@ -286,6 +306,34 @@ export default async function FleetPage({
             {t("view.filters", { count: filters })}
           </summary>
           <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-4">
+            <Field id="kind" label={t("view.kind")}>
+              <select
+                id="kind"
+                name="kind"
+                defaultValue={view.kind}
+                className={inputClass}
+              >
+                <option value="">{t("view.any")}</option>
+                {options(kindTypes, (kind) => t(`kind.${kind}`))}
+              </select>
+            </Field>
+            <Field id="category" label={t("view.category")}>
+              <select
+                id="category"
+                name="category"
+                defaultValue={view.category}
+                className={inputClass}
+              >
+                <option value="">{t("view.any")}</option>
+                {vehicleKinds
+                  .filter((kind) => kind.categories.length > 0)
+                  .map((kind) => (
+                    <optgroup key={kind.type} label={t(`kind.${kind.type}`)}>
+                      {options(kind.categories, categoryLabel)}
+                    </optgroup>
+                  ))}
+              </select>
+            </Field>
             <MakeModelPicker
               makeName="make"
               modelName="model"
@@ -324,7 +372,7 @@ export default async function FleetPage({
                 </select>
               </Field>
             )}
-            <Field id="transmission" label={t("ownModel.transmission")}>
+            <Field id="transmission" label={t("what.transmission")}>
               <select
                 id="transmission"
                 name="transmission"
@@ -385,13 +433,20 @@ export default async function FleetPage({
           {t("empty")}
         </p>
       )}
-      {result.total > 0 && (
+      {(result.total > 0 || (manage && fleet.length > 0)) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p role="status" className="text-sm text-muted-foreground">
-            {result.shown === result.total
-              ? t("unitCount", { count: result.total })
-              : t("view.showing", { shown: result.shown, total: result.total })}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {result.total > 0 && (
+              <p role="status" className="text-sm text-muted-foreground">
+                {result.shown === result.total
+                  ? t("unitCount", { count: result.total })
+                  : t("view.showing", {
+                      shown: result.shown,
+                      total: result.total,
+                    })}
+              </p>
+            )}
+          </div>
           {groupCount > 1 && (
             <ExpandCollapse
               expandLabel={t("view.expandAll")}
@@ -408,99 +463,189 @@ export default async function FleetPage({
         </p>
       )}
 
-      <div className="space-y-5">
-        {result.sections.map((section) => (
-          <section key={section.key} aria-labelledby={`section-${section.key}`}>
-            {section.model && (
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                  <h2
-                    id={`section-${section.key}`}
-                    className="text-lg font-semibold"
-                  >
-                    <Link
-                      href={`${base}/models/${section.model.id}`}
-                      className="underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-current"
-                    >
-                      {section.model.name}
-                    </Link>
-                  </h2>
-                  {/* The name is a link; this makes it look like one. */}
-                  <Link
-                    href={`${base}/models/${section.model.id}`}
-                    aria-label={`${t("editModel")}: ${section.model.name}`}
-                    title={t("editModel")}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border bg-card hover:bg-accent"
-                  >
-                    <Pencil aria-hidden className="size-4" />
-                  </Link>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {[
-                    section.model.cc ? `${section.model.cc} cc` : null,
-                    section.model.transmission
-                      ? t(
-                          `transmission.${section.model.transmission}` as "transmission.manual",
-                        )
-                      : null,
-                    t("unitCount", { count: section.count }),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-            )}
-            <div className="space-y-2">
-              {section.groups.map((group) => (
-                <details
-                  key={group.key}
-                  data-fleet-group
-                  open={openAll && group.count > 0}
-                  className="group overflow-hidden rounded-lg border bg-card"
-                >
-                  <summary className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{groupTitle(group)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {group.count === 0
-                          ? t("unitCount", { count: 0 })
-                          : `${t("unitCount", { count: group.count })}: ${breakdown(group.statusCounts)}`}
-                      </p>
+      <div className="space-y-4">
+        {result.sections.map((section) => {
+          const model = section.model ? modelOf.get(section.model.id) : null;
+          const status =
+            manage && model ? listingStatus(model, model.entry_status) : null;
+          // Only a web address can be shown as it is; photos are uploaded
+          // with the online booking page (Phase 3).
+          const photo = model?.photos.find((url) => /^https?:\/\//.test(url));
+          return (
+            <section
+              key={section.key}
+              aria-labelledby={`section-${section.key}`}
+              className="overflow-hidden rounded-lg border bg-card"
+            >
+              {section.model && (
+                // The header row: a light mango tint (dark text on it is AA).
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-accent px-3 py-2 sm:px-4">
+                  {/* A fixed box, so the row doesn't move when a photo loads. */}
+                  <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-card text-muted-foreground">
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- a shop's own photo address, not ours to optimise
+                      <img
+                        src={photo}
+                        alt=""
+                        width={44}
+                        height={44}
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <KindIcon
+                        kind={model?.vehicle_type ?? "motorbike"}
+                        className="size-5"
+                      />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1 basis-40">
+                    <div className="flex min-w-0 items-center gap-1">
+                      <h2
+                        id={`section-${section.key}`}
+                        className="min-w-0 text-lg font-semibold"
+                      >
+                        {/* No underline at rest (owner, 12 Nov 2026): the
+                            pencil beside it says it can be opened. */}
+                        <Link
+                          href={`${base}/models/${section.model.id}`}
+                          className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
+                        >
+                          {section.model.name}
+                        </Link>
+                      </h2>
+                      <Link
+                        href={`${base}/models/${section.model.id}`}
+                        aria-label={`${t("editModel")}: ${section.model.name}`}
+                        title={t("editModel")}
+                        // A plain icon: no box until hovered or focused. 44 px
+                        // to tap; the negative margin keeps the row's height.
+                        className="-my-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
+                      >
+                        <Pencil aria-hidden className="size-4" />
+                      </Link>
                     </div>
-                    <ChevronDown
-                      aria-hidden
-                      className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                    />
-                  </summary>
-                  {group.count > 0 && (
-                    <ul className="divide-y border-t">
-                      {group.units.map((unit) => (
-                        <UnitRow
-                          key={unit.id}
-                          unit={unit}
-                          href={`${base}/units/${unit.id}`}
-                          distanceUnit={tenant.distanceUnit}
-                          locale={locale}
-                          detail={
-                            [
-                              group.kind === "band"
-                                ? null
-                                : modelOf.get(unit.model_id)?.name,
-                              unit.model_year,
-                              locationNames.get(unit.location_id),
-                            ]
-                              .filter(Boolean)
-                              .join(" · ") || undefined
-                          }
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </details>
-              ))}
-            </div>
-          </section>
-        ))}
+                    {(section.model.cc || section.model.transmission) && (
+                      <p className="text-sm text-muted-foreground">
+                        {[
+                          section.model.cc ? `${section.model.cc} cc` : null,
+                          section.model.transmission
+                            ? t(
+                                `transmission.${section.model.transmission}` as "transmission.manual",
+                              )
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <ul
+                    aria-label={t("modelFacts", { name: section.model.name })}
+                    className="flex flex-wrap items-center gap-1.5"
+                  >
+                    {section.model.retired && (
+                      <li className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {t("listing.retired")}
+                      </li>
+                    )}
+                    {status && !section.model.retired && (
+                      <li
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                          listingClass[status],
+                        )}
+                      >
+                        {t(`listing.${status}`)}
+                      </li>
+                    )}
+                    {/* Every category the model has. */}
+                    {(section.model.categories ?? []).map((key) => (
+                      <li
+                        key={key}
+                        className="rounded-full border bg-card px-2 py-0.5 text-xs font-medium"
+                      >
+                        {categoryLabel(key)}
+                      </li>
+                    ))}
+                    <li className="rounded-full bg-foreground px-2 py-0.5 text-xs font-semibold text-background tabular-nums">
+                      {t("unitCount", { count: section.count })}
+                    </li>
+                  </ul>
+                </div>
+              )}
+              <div className="divide-y">
+                {section.groups.map((group) => (
+                  <details
+                    key={group.key}
+                    data-fleet-group
+                    open={openAll && group.count > 0}
+                    // A very light cream on every other row.
+                    className="group even:bg-accent/40"
+                  >
+                    <summary className="flex min-h-14 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none sm:px-4">
+                      <div className="min-w-0 flex-1 basis-40">
+                        <p className="font-medium">{groupTitle(group)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {group.count === 0
+                            ? t("unitCount", { count: 0 })
+                            : `${t("unitCount", { count: group.count })}: ${breakdown(group.statusCounts)}`}
+                        </p>
+                      </div>
+                      {manage && section.model && !section.model.retired && (
+                        // A labelled button, not a bare plus (owner, 12 Nov
+                        // 2026). Its name starts with what is on it.
+                        <Link
+                          href={`${base}/units/new?model=${section.model.id}`}
+                          title={t("addUnit")}
+                          className={cn(
+                            buttonVariants({ variant: "outline" }),
+                            "-my-1 h-11 bg-card px-3",
+                          )}
+                        >
+                          <Plus aria-hidden />
+                          {t("addUnitRow")}
+                          <span className="sr-only">
+                            {": "}
+                            {section.model.name}
+                          </span>
+                        </Link>
+                      )}
+                      <ChevronDown
+                        aria-hidden
+                        className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                      />
+                    </summary>
+                    {group.count > 0 && (
+                      <ul className="divide-y border-t bg-card [&>li:nth-child(even)]:bg-accent/40">
+                        {group.units.map((unit) => (
+                          <UnitRow
+                            key={unit.id}
+                            unit={unit}
+                            href={`${base}/units/${unit.id}`}
+                            distanceUnit={tenant.distanceUnit}
+                            locale={locale}
+                            detail={
+                              [
+                                group.kind === "band"
+                                  ? null
+                                  : modelOf.get(unit.model_id)?.name,
+                                unit.model_year,
+                                locationNames.get(unit.location_id),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ") || undefined
+                            }
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </details>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </>
   );

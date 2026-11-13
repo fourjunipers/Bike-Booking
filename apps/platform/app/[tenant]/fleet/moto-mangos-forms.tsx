@@ -4,11 +4,13 @@ import { useTranslations } from "next-intl";
 import {
   ActionForm,
   CheckboxInput,
-  SelectInput,
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import { bikeTypes } from "@/lib/fleet";
+import {
+  MakeModelPicker,
+  type ModelOption,
+} from "@/components/fleet/make-model-picker";
 import {
   linkModelToPreset,
   setMarketplaceListed,
@@ -41,27 +43,21 @@ export function UsePresetButton({
 export function SubmitToCatalogForm({
   slug,
   id,
+  again,
 }: {
   slug: string;
   id: string;
+  /** Its last request was turned down: this sends it for review again. */
+  again?: boolean;
 }) {
   const t = useTranslations("Fleet.motoMangos");
-  const tFleet = useTranslations("Fleet");
   return (
     <ActionForm
       action={submitModelToCatalog}
       hidden={{ slug, id }}
-      submitLabel={t("submit")}
+      submitLabel={t(again ? "submitAgain" : "submit")}
     >
-      <div className="grid gap-5 sm:grid-cols-3">
-        <SelectInput
-          name="type"
-          label={t("bikeType")}
-          options={bikeTypes.map((value) => ({
-            value,
-            label: tFleet(`type.${value}`),
-          }))}
-        />
+      <div className="grid gap-5 sm:grid-cols-2">
         <TextInput
           name="year_from"
           label={t("yearFrom")}
@@ -76,6 +72,39 @@ export function SubmitToCatalogForm({
         />
       </div>
       <TextArea name="note" label={t("note")} maxLength={500} />
+    </ActionForm>
+  );
+}
+
+/**
+ * Any model from the Moto Mangos list, for a model of the shop's own: it
+ * takes the list's make, model and specs and needs no review.
+ */
+export function ChoosePresetForm({
+  slug,
+  id,
+  options,
+}: {
+  slug: string;
+  id: string;
+  options: ModelOption[];
+}) {
+  const t = useTranslations("Fleet");
+  return (
+    <ActionForm
+      action={linkModelToPreset}
+      hidden={{ slug, id }}
+      submitLabel={t("motoMangos.useChosen")}
+    >
+      <div className="grid gap-5 sm:grid-cols-2">
+        <MakeModelPicker
+          modelName="catalog_id"
+          makeLabel={t("what.make")}
+          modelLabel={t("what.model")}
+          models={options}
+          required
+        />
+      </div>
     </ActionForm>
   );
 }

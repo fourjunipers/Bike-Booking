@@ -150,11 +150,9 @@ export type UnitInput = z.infer<typeof unitSchema>;
  * The model chosen for a bike: one of the shop's models, or a catalog entry
  * the shop has no model for yet (a model is created from it on save).
  */
-export function parseModelChoice(
-  value: unknown,
-): { kind: "model" | "catalog"; id: string } | null {
-  const m = /^(model|catalog):([0-9a-f-]{36})$/.exec(String(value ?? ""));
-  return m ? { kind: m[1] as "model" | "catalog", id: m[2] } : null;
+export function parseModelChoice(value: unknown): { id: string } | null {
+  const m = /^model:([0-9a-f-]{36})$/.exec(String(value ?? ""));
+  return m ? { id: m[1] } : null;
 }
 
 /** One of a model's year bands, e.g. 2020 to 2023. */
@@ -290,7 +288,6 @@ export type OwnModelInput = z.infer<typeof ownModelSchema>;
 /** Sending one of the shop's own models to Moto Mangos for a catalog entry. */
 export const catalogSubmitSchema = z
   .object({
-    type: z.enum(bikeTypes, "required"),
     year_from: optionalInt(1950, 2100, "invalidYear"),
     year_to: optionalInt(1950, 2100, "invalidYear"),
     note: optionalText(500),
@@ -374,6 +371,8 @@ export function dbErrorKey(
     "merge_target_not_approved",
     "only_owner_or_manager",
     "currency_locked",
+    "model_has_active_units",
+    "model_retired",
   ])
     if (message.includes(known)) return known;
   if (message.includes("time zone")) return "timezoneOwnerOnly";

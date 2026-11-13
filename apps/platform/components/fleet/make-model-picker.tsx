@@ -14,7 +14,7 @@ export type ModelOption = {
 
 /**
  * Two linked dropdowns (owner, 11 Nov 2026): make first, then the models of
- * that make. Used wherever a model is chosen: adding a bike, adding a model,
+ * that make. Used wherever a model is chosen: adding a vehicle or a make & model,
  * the fleet filters and the sticker list. Native selects, so they work with a
  * finger, a mouse or a keyboard. Without JavaScript the second dropdown lists
  * every model, grouped by make.
@@ -32,6 +32,7 @@ export function MakeModelPicker({
   error,
   help,
   footer,
+  onModelChange,
 }: {
   /** Field name for the make; leave out when the form doesn't need it. */
   makeName?: string;
@@ -47,6 +48,8 @@ export function MakeModelPicker({
   error?: string;
   help?: string;
   footer?: ReactNode;
+  /** Called with the model's value whenever the choice changes. */
+  onModelChange?: (value: string) => void;
 }) {
   const makes = [...new Set(models.map((m) => m.make))].sort((a, b) =>
     a.localeCompare(b),
@@ -54,7 +57,11 @@ export function MakeModelPicker({
   const startMake =
     defaultMake || models.find((m) => m.value === defaultModel)?.make || "";
   const [make, setMake] = useState(startMake);
-  const [model, setModel] = useState(defaultModel);
+  const [model, setModelState] = useState(defaultModel);
+  const setModel = (value: string) => {
+    setModelState(value);
+    onModelChange?.(value);
+  };
   const offered = make ? models.filter((m) => m.make === make) : models;
   const groups = [...new Set(offered.map((m) => m.group ?? ""))];
   const makeId = `${modelName}-make`;

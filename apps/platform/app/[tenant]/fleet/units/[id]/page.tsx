@@ -13,7 +13,6 @@ import { requireArea } from "@/lib/access";
 import { formatDistance, fromKm } from "@/lib/distance";
 import { hasLeftFleet, type RenewalKind } from "@/lib/fleet";
 import {
-  getCatalog,
   getFleet,
   getLocations,
   getReminderSettings,
@@ -23,7 +22,7 @@ import {
   getUnitFinancials,
   getUnitRenewals,
 } from "@/lib/fleet-data";
-import { bikeModelOptions } from "@/lib/model-options";
+import { inventoryModelOptions } from "@/lib/model-options";
 import { formatMoney, moneyInputValue } from "@/lib/money";
 import { qrSvg, siteOrigin, stickerUrl } from "@/lib/qr";
 import {
@@ -43,6 +42,7 @@ import {
   FinancialsForm,
   OdometerForm,
   RenewalForm,
+  SetStatusButton,
   StatusForm,
   UnitForm,
 } from "../../unit-forms";
@@ -77,7 +77,6 @@ export default async function UnitPage({
     locale,
     unit,
     fleet,
-    catalog,
     locations,
     blocks,
     renewals,
@@ -90,7 +89,6 @@ export default async function UnitPage({
     getLocale(),
     getUnit(tenant.id, id),
     getFleet(tenant.id),
-    getCatalog(),
     getLocations(tenant.id),
     getUnitBlocks(tenant.id, id),
     getUnitRenewals(tenant.id, id),
@@ -185,11 +183,8 @@ export default async function UnitPage({
               <UnitForm
                 slug={slug}
                 distanceUnit={tenant.distanceUnit}
-                addModelHref={`${base}/own-model?then=bike`}
-                models={bikeModelOptions(fleet, catalog, {
-                  yours: tUnit("yourModels"),
-                  catalog: tUnit("fromCatalog"),
-                })}
+                addModelHref={`${base}/models/new`}
+                models={inventoryModelOptions(fleet)}
                 locations={locations.map((l) => ({
                   value: l.id,
                   label: l.name,
@@ -232,12 +227,28 @@ export default async function UnitPage({
 
           <Panel title={tUnit("status")} intro={tUnit("statusIntro")}>
             {work ? (
-              <StatusForm
-                slug={slug}
-                id={unit.id}
-                status={unit.status}
-                canRetireOrSell={manage}
-              />
+              <>
+                <StatusForm
+                  slug={slug}
+                  id={unit.id}
+                  status={unit.status}
+                  canRetireOrSell={manage}
+                />
+                {manage && unit.status === "retired" && (
+                  <div className="mt-5 border-t pt-5">
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      {tUnit("restoreHelp")}
+                    </p>
+                    <SetStatusButton
+                      slug={slug}
+                      id={unit.id}
+                      was={unit.status}
+                      status="active"
+                      label={tUnit("restore")}
+                    />
+                  </div>
+                )}
+              </>
             ) : (
               <p>
                 <StatusBadge status={unit.status} />{" "}
@@ -513,17 +524,43 @@ export default async function UnitPage({
               {t("sticker.print")}
             </Link>
           </Panel>
-          {manage && (
-            <ActionForm
-              action={deleteUnit}
-              hidden={{ slug, id: unit.id }}
-              submitLabel={tUnit("delete")}
-              confirm={tUnit("deleteConfirm")}
-              destructive
-            />
-          )}
         </div>
       </div>
+      {/* The very last thing on the page, under the purchase and sale
+          details (owner, 12 Nov 2026). "Retire instead" appears to the
+          right of Delete when the delete is refused. */}
+      {manage && (
+        <section
+          aria-label={tUnit("delete")}
+          className="mt-6 flex flex-wrap items-start gap-3 border-t pt-6"
+        >
+          <ActionForm
+            action={deleteUnit}
+            hidden={{ slug, id: unit.id }}
+            submitLabel={tUnit("delete")}
+            confirm={tUnit("deleteConfirm")}
+            destructive="solid"
+            // Refused because bookings point at it: offer to retire it,
+            // unless it is out of the fleet already.
+            offers={
+              unit.status === "active" || unit.status === "maintenance"
+                ? {
+                    retire: (
+                      <SetStatusButton
+                        slug={slug}
+                        id={unit.id}
+                        was={unit.status}
+                        status="retired"
+                        label={tUnit("retireInstead")}
+                        confirm={tUnit("retireConfirm")}
+                      />
+                    ),
+                  }
+                : undefined
+            }
+          />
+        </section>
+      )}
     </>
   );
 }
