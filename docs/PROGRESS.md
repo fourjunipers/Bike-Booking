@@ -50,9 +50,17 @@ The first build stage of the products redesign. The design and the owner's decis
 - Playwright: 70 passed at 375 px and 1280 px, 2 skipped (the timing measurement, which runs only on request). New `e2e/products.spec.ts` (list, filters, tabs, History, old addresses, a mechanic, driver and staff member reading without changing, another shop's product); `e2e/fleet.spec.ts` follows the type-ahead, with a keyboard-only pass.
 - `npm run typecheck && npm run lint && npm test` from the root: clean.
 
+**On staging, not on live (13 Nov 2026).** PR 13's migration (`20261113000100_platform_fleet_rework`) and PR 16's (`20261113000200_platform_products`) are both on staging: staging records 55 of 55. **Neither is on live**, which stays at 53 of 53; live gets them only from `main`, by the runbook, after stage C.
+
+- Pushed from this branch on the owner's instruction with `supabase db push --db-url` after a dry run that listed exactly one pending migration (`20261113000200`); staging already had PR 13's.
+- Staging's data came through unchanged: per shop, the same counts and checksums before and after (big-fleet 9 products and 150 vehicles, bsr 18 and 26, saigon-scooters none; year bands, listings, blocks, renewals, purchase records and audit rows the same). All 27 products are vehicle / unit and all 176 units vehicle units; no function is left naming `models`; the reminder queue function runs.
+- The demo seed was re-run on staging (`npm run seed:staging`): everything was already there, nothing added.
+- PR 16's Netlify preview (`deploy-preview-16--mango-works-platform.netlify.app`) was opened signed in as the BSR demo owner at phone and desktop width: the Products list, the new-product form with its suggestions, a product's Details, Units and History tabs, and Fleet all load. That pass only read; it saved nothing.
+- Until PR 16 merges, the platform site's main deploy and any other branch's preview still run the old code against staging and will fail on the fleet pages, because the table they read was renamed.
+
 **Not truly tested**
 
-- The Netlify deploy preview: it reads staging, and staging does not have this migration (nothing was pushed there, as instructed), so the preview's Products and Fleet pages will fail until it is. The click-through was done on a local production build with a local database.
+- The full browser suite was not run against the Netlify preview, only the read-only pass above. The suite ran on a local production build with a local database, and in CI.
 - A real phone: phone width in a desktop browser only. Thai wording: key parity only.
 - The live push: not done, by instruction. It follows the runbook after stage C.
 
