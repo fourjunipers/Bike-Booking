@@ -47,7 +47,7 @@ const ownModel = (extra: object = {}) => ({
 
 async function addModel(extra: object = {}): Promise<string> {
   const { data, error } = await service
-    .from("models")
+    .from("products")
     .insert(ownModel(extra))
     .select("id")
     .single();
@@ -60,7 +60,7 @@ async function addUnit(modelId: string, status = "active"): Promise<string> {
     .from("units")
     .insert({
       tenant_id: shop.id,
-      model_id: modelId,
+      product_id: modelId,
       location_id: shop.locationId,
       plate: `RV-${tag}-${++counter}`,
       status,
@@ -77,8 +77,13 @@ async function submit(
   note = "A private note",
 ): Promise<string> {
   const { data, error } = await shop.members.owner.db.rpc(
-    "submit_model_to_catalog",
-    { p_model_id: modelId, p_type: "city_scooter", p_note: note },
+    "submit_product_to_catalog",
+    {
+      p_product_id: modelId,
+      p_year: 2024,
+      p_type: "city_scooter",
+      p_note: note,
+    },
   );
   if (error) throw error;
   catalogIds.push(data);
@@ -524,11 +529,11 @@ describe("5. review_catalog_request", () => {
     expect(error).toBeNull();
     expect(data).toMatchObject({
       decision: "reject",
-      kept_linked: [{ model_id: first }],
+      kept_linked: [{ product_id: first }],
     });
     expect((await catalogRow(entry)).status).toBe("rejected");
     const { data: models } = await service
-      .from("models")
+      .from("products")
       .select("id, catalog_id, marketplace_listed")
       .in("id", [first, second, untouched])
       .order("created_at");
@@ -544,8 +549,8 @@ describe("5. review_catalog_request", () => {
       .eq("action", "reject")
       .single();
     expect(
-      (audit!.after as { kept_linked: { model_id: string }[] }).kept_linked,
-    ).toMatchObject([{ model_id: first }]);
+      (audit!.after as { kept_linked: { product_id: string }[] }).kept_linked,
+    ).toMatchObject([{ product_id: first }]);
   });
 
   it("(b) an ordinary reject still gives the model back, and says nothing stayed linked", async () => {
@@ -553,7 +558,7 @@ describe("5. review_catalog_request", () => {
     const { data } = await review(admin, await submit(modelId), false);
     expect(data).toEqual({ decision: "reject", kept_linked: [] });
     const { data: model } = await service
-      .from("models")
+      .from("products")
       .select("catalog_id")
       .eq("id", modelId)
       .single();
@@ -593,7 +598,7 @@ describe("6. booking-mode counts follow the active bikes", () => {
   const counts = async (modelId: string) =>
     (
       await service
-        .from("models")
+        .from("products")
         .select("instant_units, request_units, ready_now")
         .eq("id", modelId)
         .single()
@@ -603,7 +608,7 @@ describe("6. booking-mode counts follow the active bikes", () => {
       await service
         .from("audit_events")
         .select("actor, before, after")
-        .eq("entity", "models")
+        .eq("entity", "products")
         .eq("entity_id", modelId)
         .eq("action", "clamp_booking_counts")
         .order("id")
@@ -617,7 +622,7 @@ describe("6. booking-mode counts follow the active bikes", () => {
       await addUnit(modelId),
     ];
     const set = await shop.members.manager.db
-      .from("models")
+      .from("products")
       .update({ instant_units: 2, request_units: 1, ready_now: 3 })
       .eq("id", modelId)
       .select("id");
@@ -668,7 +673,7 @@ describe("6. booking-mode counts follow the active bikes", () => {
     const units = [];
     for (let i = 0; i < 4; i++) units.push(await addUnit(modelId));
     await service
-      .from("models")
+      .from("products")
       .update({ instant_units: 2, request_units: 1, ready_now: 2 })
       .eq("id", modelId);
 
@@ -685,7 +690,7 @@ describe("6. booking-mode counts follow the active bikes", () => {
     // 2 -> 1: moved to another model.
     await service
       .from("units")
-      .update({ model_id: elsewhere })
+      .update({ product_id: elsewhere })
       .eq("id", units[2]);
     expect(await counts(modelId)).toEqual({
       instant_units: 1,
@@ -709,7 +714,7 @@ describe("6. booking-mode counts follow the active bikes", () => {
         await addUnit(modelId),
       ];
       await service
-        .from("models")
+        .from("products")
         .update({ instant_units: 3, ready_now: 3 })
         .eq("id", modelId);
       await Promise.all(
@@ -800,21 +805,24 @@ describe("small fixes", () => {
 
   it("9. a 49 cc moped saves as the shop's own and can be submitted for Moto Mangos", async () => {
     const { data, error } = await shop.members.manager.db
-      .from("models")
+      .from("products")
       .insert(ownModel({ cc: 49 }))
       .select("id")
       .single();
     expect(error).toBeNull();
-    const sent = await shop.members.owner.db.rpc("submit_model_to_catalog", {
-      p_model_id: data!.id,
+    const sent = await shop.members.owner.db.rpc("submit_product_to_catalog", {
+      p_product_id: data!.id,
+      p_year: 2024,
       p_type: "city_scooter",
     });
     expect(sent.error).toBeNull();
     catalogIds.push(sent.data!);
     // Both hold the same range: the limits are 1 and 20000 on each.
     for (const cc of [0, 20001]) {
-      const model = await service.from("models").insert(ownModel({ cc }));
-      expect(model.error?.message, `models ${cc}`).toContain("models_cc_check");
+      const model = await service.from("products").insert(ownModel({ cc }));
+      expect(model.error?.message, `models ${cc}`).toContain(
+        "products_cc_check",
+      );
       const entry = await service
         .schema("public")
         .from("bike_catalog")

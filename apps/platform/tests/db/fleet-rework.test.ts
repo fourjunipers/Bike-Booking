@@ -40,7 +40,7 @@ const own = (extra: object = {}) => ({
 const row = async (id: string) =>
   (
     await service
-      .from("models")
+      .from("products")
       .select(
         "catalog_id, categories, catalog_approved_at, catalog_rejected_at, catalog_reject_reason, marketplace_listed",
       )
@@ -50,7 +50,7 @@ const row = async (id: string) =>
 
 async function addModel(extra: object = {}): Promise<string> {
   const { data, error } = await shop.members.owner.db
-    .from("models")
+    .from("products")
     .insert(own(extra))
     .select("id")
     .single();
@@ -60,8 +60,8 @@ async function addModel(extra: object = {}): Promise<string> {
 
 async function submit(modelId: string): Promise<string> {
   const { data, error } = await shop.members.owner.db.rpc(
-    "submit_model_to_catalog",
-    { p_model_id: modelId, p_type: "sport" },
+    "submit_product_to_catalog",
+    { p_product_id: modelId, p_year: 2024, p_type: "sport" },
   );
   if (error) throw error;
   catalogIds.push(data);
@@ -95,7 +95,7 @@ describe("a model's categories", () => {
     expect((await row(id)).categories).toEqual(["touring", "adventure"]);
     // Cleared on a list entry, it goes back to the entry's type.
     await shop.members.owner.db
-      .from("models")
+      .from("products")
       .update({ catalog_id: presetId, categories: [] })
       .eq("id", id)
       .throwOnError();
@@ -131,7 +131,7 @@ describe("a model's categories", () => {
       Array.from({ length: 11 }, (_, i) => `key_${i}`),
     ]) {
       const { error } = await shop.members.owner.db
-        .from("models")
+        .from("products")
         .insert(own({ categories }));
       expect(error?.code, JSON.stringify(categories)).toBe("23514");
     }
@@ -161,7 +161,7 @@ describe("the shop is told when Moto Mangos adds its model", () => {
     expect(after.marketplace_listed).toBe(true);
     // The shop can still switch it off.
     await shop.members.owner.db
-      .from("models")
+      .from("products")
       .update({ marketplace_listed: false })
       .eq("id", model)
       .throwOnError();
@@ -227,7 +227,7 @@ describe("the shop is told when Moto Mangos adds its model", () => {
     await review(entry, true);
     const manager = shop.members.manager.db;
     await manager
-      .from("models")
+      .from("products")
       .update({ catalog_approved_at: null })
       .eq("id", model);
     expect((await row(model)).catalog_approved_at).not.toBeNull();
@@ -238,7 +238,7 @@ describe("the shop is told when Moto Mangos adds its model", () => {
     expect((await row(forged)).catalog_approved_at).toBeNull();
 
     await manager
-      .from("models")
+      .from("products")
       .update({ catalog_id: presetId })
       .eq("id", model);
     expect(await row(model)).toMatchObject({
@@ -269,7 +269,7 @@ describe("CSV import", () => {
       ],
       p_units: [
         {
-          model_id: carId,
+          product_id: carId,
           location_id: shop.locationId,
           plate: `IMP-${tag}`,
           plate_pending: false,
@@ -277,7 +277,7 @@ describe("CSV import", () => {
       ],
     });
     expect(error).toBeNull();
-    expect(data).toMatchObject({ models: 2, units: 1 });
+    expect(data).toMatchObject({ products: 2, units: 1 });
     expect((await row(carId)).categories).toEqual(["suv", "pickup"]);
     expect((await row(listedId)).categories).toEqual(["city_scooter"]);
   });
@@ -290,7 +290,7 @@ describe("retiring a make & model", () => {
       .from("units")
       .insert({
         tenant_id: shop.id,
-        model_id: modelId,
+        product_id: modelId,
         location_id: shop.locationId,
         plate: `RW-${tag}-${++counter}`,
         status,
@@ -302,7 +302,7 @@ describe("retiring a make & model", () => {
   };
   const retire = (id: string, on = true) =>
     owner()
-      .from("models")
+      .from("products")
       .update({ retired_at: on ? new Date().toISOString() : null })
       .eq("id", id)
       .select("retired_at, marketplace_listed");
@@ -336,7 +336,7 @@ describe("retiring a make & model", () => {
     expect(done.error).toBeNull();
     expect(done.data?.[0].marketplace_listed).toBe(false);
     const listed = await owner()
-      .from("models")
+      .from("products")
       .update({ marketplace_listed: true })
       .eq("id", model)
       .select("id");
@@ -344,7 +344,7 @@ describe("retiring a make & model", () => {
     // Restored, it can be listed again.
     expect((await retire(model, false)).error).toBeNull();
     const again = await owner()
-      .from("models")
+      .from("products")
       .update({ marketplace_listed: true })
       .eq("id", model)
       .select("marketplace_listed");
@@ -360,7 +360,7 @@ describe("retiring a make & model", () => {
       .from("units")
       .insert({
         tenant_id: shop.id,
-        model_id: model,
+        product_id: model,
         location_id: shop.locationId,
         plate: `RW-${tag}-new`,
       });
@@ -378,7 +378,7 @@ describe("retiring a make & model", () => {
   it("only an owner or a manager can retire one, and the audit trail says who", async () => {
     const model = await addModel();
     const staff = await shop.members.staff.db
-      .from("models")
+      .from("products")
       .update({ retired_at: new Date().toISOString() })
       .eq("id", model)
       .select("id");
@@ -387,7 +387,7 @@ describe("retiring a make & model", () => {
     const { data: audit } = await service
       .from("audit_events")
       .select("action, actor, after")
-      .eq("entity", "models")
+      .eq("entity", "products")
       .eq("entity_id", model)
       .order("id", { ascending: false })
       .limit(1);
@@ -410,7 +410,7 @@ describe("deleting vehicles and models", () => {
       .from("units")
       .insert({
         tenant_id: shop.id,
-        model_id: model,
+        product_id: model,
         location_id: shop.locationId,
         plate: `RW-${tag}-${kind}-${++counter}`,
       })
@@ -484,7 +484,7 @@ describe("deleting vehicles and models", () => {
     const model = await addModel();
     const entry = await submit(model);
     const { error } = await shop.members.owner.db
-      .from("models")
+      .from("products")
       .delete()
       .eq("id", model);
     expect(error).toBeNull();
@@ -504,7 +504,7 @@ describe("deleting vehicles and models", () => {
   it("deleting a model on the list leaves the list entry alone", async () => {
     const model = await addModel({ catalog_id: presetId });
     await shop.members.owner.db
-      .from("models")
+      .from("products")
       .delete()
       .eq("id", model)
       .throwOnError();

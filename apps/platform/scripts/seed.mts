@@ -418,11 +418,12 @@ async function seedBsrFleet(
   locationId: string,
   approved: CatalogRow[],
 ) {
-  const [{ data: models }, { data: units }] = await Promise.all([
+  const [{ data: products }, { data: units }] = await Promise.all([
     db
-      .from("models")
-      .select("id, name, catalog_id, make, model")
-      .eq("tenant_id", tenantId),
+      .from("products")
+      .select("id, name")
+      .eq("tenant_id", tenantId)
+      .eq("type", "vehicle"),
     db.from("units").select("plate, frame_number").eq("tenant_id", tenantId),
   ]);
   const table = parseCsv(
@@ -440,8 +441,7 @@ async function seedBsrFleet(
     currency: "THB",
     distanceUnit: "km",
     locations: [{ id: locationId, name: "BSR Bike Shop", isDefault: true }],
-    models: models ?? [],
-    catalog: approved,
+    products: products ?? [],
     plates: (units ?? []).flatMap((u) => (u.plate ? [u.plate] : [])),
     newId: randomUUID,
   });
@@ -452,11 +452,36 @@ async function seedBsrFleet(
 
   // import_fleet runs as a signed-in owner or manager; the seed has no session,
   // so it saves the same plan with the service role.
-  if (plan.models.length > 0) {
-    const { error } = await db
-      .from("models")
-      // Models on presets: the database fills in make, model and specs.
-      .insert(plan.models.map((m) => ({ ...m, tenant_id: tenantId })) as never);
+  if (plan.products.length > 0) {
+    const { error } = await db.from("products").insert(
+      plan.products.map((product) => {
+        // The demo shop's products are all on the Moto Mangos list: each is
+        // put on the entry its name starts with (the one whose years cover
+        // its first vehicle), as a shop would by picking it on the product's
+        // Moto Mangos panel. The database then fills in the list's details.
+        const year = plan.units.find(
+          (u) => u.product_id === product.id,
+        )?.model_year;
+        const entries = approved.filter((c) =>
+          product.name
+            .toLowerCase()
+            .startsWith(`${c.make} ${c.model}`.toLowerCase()),
+        );
+        const entry =
+          entries.find(
+            (c) =>
+              year != null &&
+              c.year_from !== null &&
+              year >= c.year_from &&
+              year <= (c.year_to ?? c.year_from),
+          ) ?? entries[0];
+        return {
+          ...product,
+          tenant_id: tenantId,
+          catalog_id: entry?.id ?? null,
+        };
+      }) as never,
+    );
     if (error) throw error;
   }
   for (const unit of plan.units) {
@@ -478,7 +503,7 @@ async function seedBsrFleet(
     if (moneyError) throw moneyError;
   }
   console.log(
-    `  fleet  ${plan.units.length} demo bikes in ${plan.models.length} new models (fake DEMO- plates)`,
+    `  fleet  ${plan.units.length} demo bikes in ${plan.products.length} new products (fake DEMO- plates)`,
   );
 }
 
@@ -600,7 +625,7 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
     const entry = approved.find((c) => c.slug === slug);
     if (!entry) fail(`catalog entry ${slug} is missing`);
     const { data, error: modelError } = await db
-      .from("models")
+      .from("products")
       .insert({
         tenant_id: tenantId,
         catalog_id: entry.id,
@@ -613,14 +638,14 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
       .single();
     if (modelError) throw modelError;
     models.push(data);
-    const { error: bandError } = await db.from("model_year_bands").insert(
+    const { error: bandError } = await db.from("product_year_bands").insert(
       [
         [2014, 2019],
         [2020, 2023],
         [2024, 2026],
       ].map(([year_from, year_to]) => ({
         tenant_id: tenantId,
-        model_id: data.id,
+        product_id: data.id,
         year_from,
         year_to,
       })),
@@ -632,7 +657,7 @@ async function seedBigFleet(tenantId: string, approved: CatalogRow[]) {
     const n = i + 1;
     return {
       tenant_id: tenantId,
-      model_id: models[i % 5].id,
+      product_id: models[i % 5].id,
       location_id: n % 4 === 0 ? airport.id : main.id,
       plate: `BIG-${String(n).padStart(3, "0")}`,
       frame_number: `BIGFRAME${String(n).padStart(4, "0")}`,

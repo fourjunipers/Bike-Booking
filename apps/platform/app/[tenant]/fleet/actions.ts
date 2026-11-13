@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { FormState } from "@/components/action-form";
-import { exactPresets } from "@/lib/catalog-match";
 import { CsvError, parseCsv } from "@/lib/csv";
 import { toKm } from "@/lib/distance";
 import {
@@ -12,19 +11,20 @@ import {
   catalogSubmitSchema,
   dbErrorKey,
   fieldErrors,
+  hoursToMinutes,
   isIsoDate,
+  listingSchema,
   modelSchema,
-  ownModelSchema,
   parseModelChoice,
   renewalSchema,
   runningAt,
   unitSchema,
   unitStatuses,
+  vehicleTypes,
   wholeMinute,
-  yearBandSchema,
 } from "@/lib/fleet";
-import { getCatalog, getLocations } from "@/lib/fleet-data";
-import { catalogName, planImport, type ImportError } from "@/lib/fleet-import";
+import { getLocations } from "@/lib/fleet-data";
+import { planImport, type ImportError } from "@/lib/fleet-import";
 import { parseMoney } from "@/lib/money";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
@@ -56,6 +56,7 @@ async function context(formData: FormData) {
 
 function refresh(slug: string) {
   revalidatePath(`/${slug}/fleet`, "layout");
+  revalidatePath(`/${slug}/products`, "layout");
   revalidatePath(`/${slug}/maintenance`);
   revalidatePath(`/${slug}/dashboard`);
 }
@@ -80,134 +81,88 @@ export async function saveModel(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const id = field(formData, "id");
-  // Adding a make & model on the way to adding a vehicle: back to that form.
+  // Adding a product on the way to adding a vehicle: back to that form.
   const thenInventory = field(formData, "then") === "inventory";
 
   const raw = Object.fromEntries(formData);
-  // A new make & model with no name of its own is named after what it is.
-  const wantsDefaultName = !id && field(formData, "name") === "";
   const parsed = modelSchema.safeParse({
-    name: wantsDefaultName ? "-" : raw.name,
-    catalog_id: raw.catalog_id,
+    name: raw.name,
     description: raw.description,
     bookable_online: raw.bookable_online,
-    buffer_before_minutes: raw.buffer_before_minutes,
-    buffer_after_minutes: raw.buffer_after_minutes,
     min_age: raw.min_age,
     licence_class: raw.licence_class,
-    instant_units: raw.instant_units,
-    request_units: raw.request_units,
-    ready_now: raw.ready_now,
   });
   const deposit = money(formData, "deposit", tenant.currency);
-  if (!parsed.success || deposit === "invalid") {
+  // Typed in hours, stored in minutes.
+  const bufferBefore = hoursToMinutes(field(formData, "buffer_before_hours"));
+  const bufferAfter = hoursToMinutes(field(formData, "buffer_after_hours"));
+  if (
+    !parsed.success ||
+    deposit === "invalid" ||
+    bufferBefore === "invalid" ||
+    bufferAfter === "invalid"
+  ) {
     return {
       errors: {
         ...(parsed.success ? {} : fieldErrors(parsed.error)),
         ...(deposit === "invalid" ? { deposit: "invalidMoney" } : {}),
+        ...(bufferBefore === "invalid"
+          ? { buffer_before_hours: "invalidHours" }
+          : {}),
+        ...(bufferAfter === "invalid"
+          ? { buffer_after_hours: "invalidHours" }
+          : {}),
       },
     };
   }
 
-  // What the model is. Three cases:
-  //  - a preset: its make, model and specs come from the catalog entry;
-  //  - the shop's own: typed in, with the specs Moto Mangos search needs;
-  //  - waiting on its own submission to Moto Mangos: left as it is.
-  const { catalog_id: presetId, ...rest } = parsed.data;
-  let what: {
-    catalog_id: string | null;
-    make: string;
-    model: string;
-    vehicle_type: string;
-    cc: number | null;
-    transmission: "automatic" | "semi_auto" | "manual" | null;
-  } | null = null;
-  // The kind of vehicle decides which categories there are. A model waiting
-  // on Moto Mangos keeps its kind; the form sends it along.
-  let kind = field(formData, "vehicle_type");
-  if (field(formData, "waiting") !== "1") {
-    const catalog = await getCatalog();
-    if (presetId) {
-      const entry = catalog.find((c) => c.id === presetId);
-      if (!entry) return { errors: { catalog_id: "catalog_entry_not_usable" } };
-      kind = "motorbike";
-      what = {
-        catalog_id: entry.id,
-        make: entry.make,
-        model: entry.model,
-        vehicle_type: "motorbike",
-        cc: entry.cc,
-        transmission: entry.transmission,
-      };
-    } else {
-      const own = ownModelSchema.safeParse({
-        make: raw.make,
-        model: raw.model,
-        vehicle_type: raw.vehicle_type,
-        cc: raw.cc,
-        transmission: raw.transmission,
-      });
-      if (!own.success) return { errors: fieldErrors(own.error) };
-      // One of the shop's own can't be a preset under another spelling.
-      const presets = exactPresets(own.data.make, own.data.model, catalog);
-      if (presets.length > 0)
-        return {
-          errors: { model: "inPresets" },
-          suggestions: presets.map((c) => ({
-            label: catalogName(c),
-            href: `/${slug}/fleet/models/new?catalog=${c.id}`,
-          })),
-        };
-      kind = own.data.vehicle_type;
-      what = { catalog_id: null, ...own.data };
-    }
-  }
+  // A product is a kind and a name (owner, 13 Nov 2026). Its make, model,
+  // engine size and transmission are asked for when it is sent to Moto
+  // Mangos, or come from the list entry it is put on.
+  const kind = field(formData, "vehicle_type");
+  if (!(vehicleTypes as readonly string[]).includes(kind))
+    return { errors: { vehicle_type: "required" } };
   // One or more categories (the chips are checkboxes named "category"). A
-  // motorbike or a car needs at least one, list model or not: until 12 Nov
-  // 2026 a list model with none ticked was let through here ("as Moto Mangos
-  // files it") and the database filled it in, so the form never refused it.
+  // motorbike or a car needs at least one.
   const checked = checkCategories(kind, formData.getAll("category"));
   if ("error" in checked) return { errors: { category: checked.error } };
 
-  const defaultName = what ? `${what.make} ${what.model}` : "";
   const common = {
-    ...rest,
-    ...(wantsDefaultName ? { name: defaultName } : {}),
+    ...parsed.data,
+    buffer_before_minutes: bufferBefore,
+    buffer_after_minutes: bufferAfter,
     categories: checked.categories,
     deposit,
     deposit_currency: deposit === null ? null : tenant.currency,
   };
   const failed = (error: Parameters<typeof dbErrorKey>[0]): FormState => {
     const key = dbErrorKey(error);
-    if (key === "ownModelExists") return { errors: { model: key } };
     if (key === "nameExists") return { errors: { name: key } };
     return { errors: { form: key } };
   };
 
   if (!id) {
-    if (!what) return { errors: { form: "saveFailed" } };
     const { data, error } = await supabase
-      .from("models")
-      .insert({ ...common, ...what, tenant_id: tenant.id })
+      .from("products")
+      .insert({ ...common, vehicle_type: kind, tenant_id: tenant.id })
       .select("id")
       .single();
     if (error) return failed(error);
     refresh(slug);
     redirect(
       thenInventory
-        ? `/${slug}/fleet/units/new?model=${data.id}`
-        : `/${slug}/fleet/models/${data.id}?added=1`,
+        ? `/${slug}/fleet/units/new?product=${data.id}`
+        : `/${slug}/products/${data.id}?added=1`,
     );
   }
 
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .update({
       ...common,
-      ...(what ?? {}),
-      ...(common.ready_now > 0
-        ? { ready_updated_at: new Date().toISOString() }
-        : {}),
+      // On a list entry (or waiting on one) the kind is the entry's: the
+      // form sends it back unchanged and the database keeps it either way.
+      ...(field(formData, "locked") === "1" ? {} : { vehicle_type: kind }),
     })
     .eq("tenant_id", tenant.id)
     .eq("id", id)
@@ -229,7 +184,7 @@ export async function setModelRetired(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .update({
       retired_at:
         field(formData, "retired") === "1" ? new Date().toISOString() : null,
@@ -250,59 +205,19 @@ export async function deleteModel(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .delete()
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");
+  // A vehicle points at its product, so the database refuses while any
+  // remain, retired and sold ones included.
+  if (error?.code === "23503")
+    return { errors: { form: "productHasVehicles" } };
   if (error || data.length !== 1)
     return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
-  redirect(`/${slug}/fleet`);
-}
-
-/** One of a model's year bands, for grouping the fleet list. */
-export async function addYearBand(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const { slug, tenant, role, supabase } = await context(formData);
-  if (!canManageFleet(role)) return notAllowed;
-  const parsed = yearBandSchema.safeParse({
-    year_from: field(formData, "year_from"),
-    year_to: field(formData, "year_to"),
-  });
-  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-
-  const { error } = await supabase.from("model_year_bands").insert({
-    ...parsed.data,
-    tenant_id: tenant.id,
-    model_id: field(formData, "id"),
-  });
-  if (error) {
-    const key = dbErrorKey(error);
-    return { errors: key === "bandOverlap" ? { year_to: key } : { form: key } };
-  }
-  refresh(slug);
-  return { ok: true };
-}
-
-export async function deleteYearBand(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const { slug, tenant, role, supabase } = await context(formData);
-  if (!canManageFleet(role)) return notAllowed;
-  const { data, error } = await supabase
-    .from("model_year_bands")
-    .delete()
-    .eq("tenant_id", tenant.id)
-    .eq("id", field(formData, "band"))
-    .select("id");
-  if (error || data.length !== 1)
-    return { errors: { form: dbErrorKey(error) } };
-  refresh(slug);
-  return { ok: true };
+  redirect(`/${slug}/products`);
 }
 
 // Units ----------------------------------------------------------------------------
@@ -319,7 +234,7 @@ async function resolveModel(
   const picked = parseModelChoice(choice);
   if (!picked) return null;
   const { data } = await supabase
-    .from("models")
+    .from("products")
     .select("id")
     .eq("tenant_id", tenantId)
     .eq("id", picked.id)
@@ -369,7 +284,7 @@ export async function saveUnit(
       .insert({
         ...parsed.data,
         tenant_id: tenant.id,
-        model_id: modelId,
+        product_id: modelId,
         current_odometer_km: odometer ?? 0,
       })
       .select("id")
@@ -383,7 +298,7 @@ export async function saveUnit(
     .from("units")
     .update({
       ...parsed.data,
-      model_id: modelId,
+      product_id: modelId,
       current_odometer_km: odometer ?? 0,
     })
     .eq("tenant_id", tenant.id)
@@ -736,7 +651,7 @@ export async function endDowntime(
 // CSV import -------------------------------------------------------------------------
 
 export type ImportState = {
-  done?: { models: number; units: number };
+  done?: { products: number; units: number };
   /** A problem with the file as a whole. */
   fileError?: string;
   problems?: ImportError[];
@@ -777,13 +692,13 @@ export async function importFleet(
     throw error;
   }
 
-  const [locations, catalog, models, units] = await Promise.all([
+  const [locations, products, units] = await Promise.all([
     getLocations(tenant.id),
-    getCatalog(),
     supabase
-      .from("models")
-      .select("id, name, catalog_id, make, model")
-      .eq("tenant_id", tenant.id),
+      .from("products")
+      .select("id, name")
+      .eq("tenant_id", tenant.id)
+      .eq("type", "vehicle"),
     supabase.from("units").select("plate").eq("tenant_id", tenant.id),
   ]);
   const plan = planImport(table, {
@@ -794,8 +709,7 @@ export async function importFleet(
       name: l.name,
       isDefault: l.is_default,
     })),
-    models: models.data ?? [],
-    catalog,
+    products: products.data ?? [],
     plates: (units.data ?? []).flatMap((u) => (u.plate ? [u.plate] : [])),
     newId: randomUUID,
   });
@@ -804,12 +718,12 @@ export async function importFleet(
   // One transaction in the database: the file is saved whole or not at all.
   const { data, error } = await supabase.rpc("import_fleet", {
     p_tenant_id: tenant.id,
-    p_models: plan.models,
+    p_models: plan.products,
     p_units: plan.units,
   });
   if (error) return { fileError: "saveFailed" };
   refresh(slug);
-  return { done: data as { models: number; units: number } };
+  return { done: data as { products: number; units: number } };
 }
 
 // Listing on Moto Mangos -------------------------------------------------------------------
@@ -822,7 +736,7 @@ export async function linkModelToPreset(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const { data, error } = await supabase
-    .from("models")
+    .from("products")
     .update({ catalog_id: field(formData, "catalog_id") })
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
@@ -844,10 +758,10 @@ export async function submitModelToCatalog(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const raw = Object.fromEntries(formData);
-  // Moto Mangos files a motorbike under one type: the model's first category
-  // (in the order of the list in lib/vehicle-kinds.ts).
+  // Moto Mangos files a motorbike under one type: the product's first
+  // category (in the order of the list in lib/vehicle-kinds.ts).
   const { data: model } = await supabase
-    .from("models")
+    .from("products")
     .select("categories")
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
@@ -855,35 +769,65 @@ export async function submitModelToCatalog(
   const type =
     bikeTypes.find((bikeType) => model?.categories.includes(bikeType)) ?? null;
   if (!type) return { errors: { form: "categoryFirst" } };
+  // Make, model, engine size, transmission and the year of the shop's bike
+  // are given with the request: all five are required.
   const parsed = catalogSubmitSchema.safeParse({
-    year_from: raw.year_from,
-    year_to: raw.year_to,
+    make: raw.make,
+    model: raw.model,
+    cc: raw.cc,
+    transmission: raw.transmission,
+    year: raw.year,
     note: raw.note,
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
-  const { error } = await supabase.rpc("submit_model_to_catalog", {
-    p_model_id: field(formData, "id"),
+  // One transaction in the database: the details are saved on the product
+  // and the request is made, or neither.
+  const { error } = await supabase.rpc("submit_product_to_catalog", {
+    p_product_id: field(formData, "id"),
     p_type: type,
-    p_year_from: parsed.data.year_from ?? undefined,
-    p_year_to: parsed.data.year_to ?? undefined,
+    p_year: parsed.data.year,
     p_note: parsed.data.note ?? undefined,
+    p_make: parsed.data.make,
+    p_model: parsed.data.model,
+    p_cc: parsed.data.cc,
+    p_transmission: parsed.data.transmission,
   });
   if (error) return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   return { ok: true };
 }
 
-/** Switches a model's Moto Mangos listing on or off. Only a model on an approved preset can be on. */
-export async function setMarketplaceListed(
+/**
+ * The Moto Mangos listing switch and settings: listed or not, and how many
+ * units confirm instantly, need the shop's OK, or stand ready for walk-ins.
+ * The database lets a product be listed only on an approved list entry, and
+ * keeps the counts within its active vehicles.
+ */
+export async function saveListing(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
+  const raw = Object.fromEntries(formData);
+  const parsed = listingSchema.safeParse({
+    listed: raw.listed,
+    instant_units: raw.instant_units,
+    request_units: raw.request_units,
+    ready_now: raw.ready_now,
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { listed, ...counts } = parsed.data;
   const { data, error } = await supabase
-    .from("models")
-    .update({ marketplace_listed: field(formData, "listed") === "on" })
+    .from("products")
+    .update({
+      marketplace_listed: listed,
+      ...counts,
+      ...(counts.ready_now > 0
+        ? { ready_updated_at: new Date().toISOString() }
+        : {}),
+    })
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");

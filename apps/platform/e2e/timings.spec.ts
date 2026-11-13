@@ -24,7 +24,7 @@ test("server response time per page", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "DEMO-001" })).toBeVisible();
   const unit = new URL(page.url()).pathname;
   await page.getByRole("link", { name: "Honda PCX 160" }).first().click();
-  await expect(page).toHaveURL(/\/fleet\/models\//);
+  await expect(page).toHaveURL(/\/products\//);
   const model = new URL(page.url()).pathname;
   await page.goto("/bsr/locations");
   await page.getByRole("link", { name: /BSR Bike Shop/ }).click();
@@ -38,7 +38,7 @@ test("server response time per page", async ({ page }) => {
     ["Fleet", "/bsr/fleet"],
     ["Model", model],
     ["Vehicle", unit],
-    ["Add to inventory", "/bsr/fleet/units/new"],
+    ["Add vehicle", "/bsr/fleet/units/new"],
     ["Import CSV", "/bsr/fleet/import"],
     ["QR stickers (all)", "/bsr/fleet/stickers"],
     ["Locations", "/bsr/locations"],

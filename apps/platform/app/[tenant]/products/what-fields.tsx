@@ -1,20 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Lightbulb } from "lucide-react";
-import {
-  SelectInput,
-  TextInput,
-  useFieldError,
-} from "@/components/action-form";
+import { useFieldError } from "@/components/action-form";
 import { kindIcons } from "@/components/fleet/kind-icon";
-import {
-  MakeModelPicker,
-  type ModelOption,
-} from "@/components/fleet/make-model-picker";
-import { Button } from "@/components/ui/button";
-import { needsEngineSize, needsTransmission, transmissions } from "@/lib/fleet";
 import { cn } from "@/lib/utils";
 import {
   categoriesFor,
@@ -23,19 +13,9 @@ import {
   kindTypes,
 } from "@/lib/vehicle-kinds";
 
-/** Outlined in Moto Mangos leaf green; 44 px tall. AA: see globals.css. */
-const leafButton =
-  "h-11 border-leaf bg-card px-4 text-leaf hover:bg-leaf-soft hover:text-leaf dark:border-leaf dark:bg-card dark:hover:bg-leaf-soft";
-
 export type WhatValues = {
   vehicle_type: string;
-  /** A list (catalog) entry's id; blank for a make and model typed in. */
-  catalog_id: string;
-  make: string;
-  model: string;
-  cc: string;
-  transmission: string;
-  /** Keys from lib/vehicle-kinds; a model can have several. */
+  /** Keys from lib/vehicle-kinds; a product can have several. */
   categories: string[];
 };
 
@@ -49,55 +29,32 @@ export function useCategoryLabel() {
 }
 
 /**
- * What a make & model is (owner, 12 Nov 2026). The kind of vehicle comes
- * first and the rest of the form follows it:
- * - a motorbike is picked from the Moto Mangos list, or typed in;
- * - anything else is typed in;
- * - each kind has its own categories (lib/vehicle-kinds.ts).
+ * What kind of product it is, and its categories. The name is the form's own
+ * field (owner, 13 Nov 2026: a product is a kind and a name; make, model,
+ * engine size and transmission are asked for when it is sent to Moto Mangos).
+ * `children` sits between the two: the name, on the product form.
  */
 export function WhatFields({
   values,
-  listOptions,
-  listTypes,
-  makes,
   showTip,
+  children,
 }: {
   values: WhatValues;
-  /** The Moto Mangos list: make, then model. */
-  listOptions: ModelOption[];
-  /** How the list files each entry (entry id to motorbike category). */
-  listTypes: Record<string, string>;
-  /** Makes on the list, offered as suggestions when typing one in. */
-  makes: string[];
-  /** The Moto Mangos tip: on the add form only (the model page has its own panel). */
+  /** The Moto Mangos tip: on the add form only (the product page has its own panel). */
   showTip?: boolean;
+  children?: ReactNode;
 }) {
   const t = useTranslations("Fleet.what");
   const tFleet = useTranslations("Fleet");
   const [kind, setKind] = useState(values.vehicle_type || "motorbike");
-  // A motorbike starts on the list unless it was typed in before.
-  const [typed, setTyped] = useState(!values.catalog_id && values.make !== "");
   const [chosen, setChosen] = useState(values.categories);
+  const kindError = useFieldError("vehicle_type");
 
-  const fromList = kind === "motorbike" && !typed;
   const chooseKind = (next: string) => {
     setKind(next);
     // A category belongs to its kind.
     setChosen((keys) => keys.filter((k) => categoriesFor(next).includes(k)));
   };
-  // Beside the make and model, motorbikes only (Moto Mangos lists motorbikes).
-  const tip = showTip && kind === "motorbike" && (
-    <aside
-      aria-label={t("tip.label")}
-      className="flex items-start gap-3 rounded-lg border border-primary/25 bg-accent p-3 text-sm text-accent-foreground md:col-span-2"
-    >
-      <Lightbulb aria-hidden className="mt-0.5 size-5 shrink-0" />
-      <p>
-        <strong className="font-semibold">{t("tip.label")}:</strong>{" "}
-        {t(fromList ? "tip.fromList" : "tip.typed")}
-      </p>
-    </aside>
-  );
 
   return (
     <div className="space-y-5">
@@ -132,101 +89,27 @@ export function WhatFields({
             );
           })}
         </div>
+        {kindError && (
+          <p role="alert" className="mt-2 text-sm text-destructive">
+            {kindError}
+          </p>
+        )}
       </fieldset>
 
-      {fromList ? (
-        <div className="grid gap-5 md:grid-cols-2">
-          <MakeModelPicker
-            modelName="catalog_id"
-            makeLabel={t("make")}
-            modelLabel={t("model")}
-            models={listOptions}
-            defaultModel={values.catalog_id}
-            required
-            onModelChange={(id) => {
-              // Filed the way the list files it, until the shop says otherwise.
-              if (listTypes[id]) setChosen([listTypes[id]]);
-            }}
-            footer={
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {t("notInList")}
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setTyped(true)}
-                  className={leafButton}
-                >
-                  {t("typeIt")}
-                </Button>
-              </div>
-            }
-          />
-          {tip}
-        </div>
-      ) : (
-        <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <TextInput
-              name="make"
-              label={t("make")}
-              help={t("makeHelp")}
-              required
-              maxLength={40}
-              list="known-makes"
-              defaultValue={values.make}
-            />
-            <datalist id="known-makes">
-              {makes.map((make) => (
-                <option key={make} value={make} />
-              ))}
-            </datalist>
-          </div>
-          <div>
-            <TextInput
-              name="model"
-              label={t("model")}
-              required
-              maxLength={60}
-              defaultValue={values.model}
-            />
-            {kind === "motorbike" && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setTyped(false)}
-                className={cn("mt-3", leafButton)}
-              >
-                {t("useList")}
-              </Button>
-            )}
-          </div>
-          {tip}
-          <TextInput
-            name="cc"
-            label={t("cc")}
-            help={needsEngineSize(kind) ? undefined : t("optional")}
-            required={needsEngineSize(kind)}
-            inputMode="numeric"
-            maxLength={5}
-            defaultValue={values.cc}
-          />
-          <SelectInput
-            name="transmission"
-            label={t("transmission")}
-            help={needsTransmission(kind) ? undefined : t("optional")}
-            required={needsTransmission(kind)}
-            defaultValue={values.transmission}
-            options={[
-              { value: "", label: "—" },
-              ...transmissions.map((value) => ({
-                value,
-                label: tFleet(`transmission.${value}`),
-              })),
-            ]}
-          />
-        </div>
+      {children}
+
+      {/* Motorbikes only: Moto Mangos lists motorbikes. */}
+      {showTip && kind === "motorbike" && (
+        <aside
+          aria-label={t("tip.label")}
+          className="flex items-start gap-3 rounded-lg border border-primary/25 bg-accent p-3 text-sm text-accent-foreground"
+        >
+          <Lightbulb aria-hidden className="mt-0.5 size-5 shrink-0" />
+          <p>
+            <strong className="font-semibold">{t("tip.label")}:</strong>{" "}
+            {t("tip.text")}
+          </p>
+        </aside>
       )}
 
       <CategoryChips kind={kind} chosen={chosen} onChange={setChosen} />

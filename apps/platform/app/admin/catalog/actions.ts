@@ -6,6 +6,9 @@ import { createClient } from "@mango/db/platform-server";
 
 export type ReviewState = { failed?: boolean };
 
+const year = (value: FormDataEntryValue | null) =>
+  /^\d{4}$/.test(String(value ?? "")) ? Number(value) : undefined;
+
 // Approve: the entry becomes a preset for every shop, and listable on Moto
 // Mangos. Merge: it was a preset already under another spelling. Reject: the
 // shop keeps its own model, unlisted.
@@ -23,6 +26,9 @@ export async function reviewRequest(
     p_catalog_id: String(formData.get("id") ?? ""),
     p_approve: formData.get("decision") === "approve",
     p_notes: String(formData.get("notes") ?? "") || undefined,
+    // The model years the entry covers: the reviewer's to set when approving.
+    p_year_from: year(formData.get("year_from")),
+    p_year_to: year(formData.get("year_to")),
     // "Merge": every model waiting on this moves to the chosen preset.
     p_merge_into:
       formData.get("decision") === "merge"

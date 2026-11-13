@@ -210,7 +210,7 @@ export default async function DashboardPage({
             {reviews.map(({ model, news }) => (
               <li key={model.id}>
                 <Link
-                  href={`/${slug}/fleet/models/${model.id}`}
+                  href={`/${slug}/products/${model.id}`}
                   className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 py-2 text-sm hover:underline"
                 >
                   <span className="font-medium">{model.name}</span>

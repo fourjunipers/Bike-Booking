@@ -103,20 +103,41 @@ const optionalPhone = z.preprocess(
 export const modelSchema = z
   .object({
     name: z.string().trim().min(1, "required").max(120, "tooLong"),
-    // Blank for one of the shop's own models (not a preset).
-    catalog_id: z.preprocess(blankToNull, uuid.nullable()),
     description: optionalText(2000),
     bookable_online: checkbox,
-    buffer_before_minutes: optionalInt(0, 10080),
-    buffer_after_minutes: optionalInt(0, 10080),
     min_age: optionalInt(14, 99),
     licence_class: optionalText(60),
+  })
+  .strict();
+export type ModelInput = z.infer<typeof modelSchema>;
+
+/**
+ * Buffers are typed in hours, decimals allowed ("0.5", "1,5"), and stored in
+ * minutes. Blank is null (the shop default); up to a week; to the minute.
+ */
+export function hoursToMinutes(text: string): number | null | "invalid" {
+  const typed = text.trim().replace(",", ".");
+  if (!typed) return null;
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(typed)) return "invalid";
+  const minutes = Math.round(Number(typed) * 60);
+  return minutes > 10080 ? "invalid" : minutes;
+}
+
+/** Stored minutes as the hours to show in the form: 30 → "0.5", 90 → "1.5". */
+export function minutesToHours(minutes: number | null): string {
+  if (minutes === null) return "";
+  return String(Math.round((minutes / 60) * 100) / 100);
+}
+
+/** The Moto Mangos listing settings on a product's panel. */
+export const listingSchema = z
+  .object({
+    listed: checkbox,
     instant_units: count,
     request_units: count,
     ready_now: count,
   })
   .strict();
-export type ModelInput = z.infer<typeof modelSchema>;
 
 /** A bike's details. Its status and odometer have their own controls. */
 export const unitSchema = z
@@ -288,17 +309,47 @@ export type OwnModelInput = z.infer<typeof ownModelSchema>;
 /** Sending one of the shop's own models to Moto Mangos for a catalog entry. */
 export const catalogSubmitSchema = z
   .object({
-    year_from: optionalInt(1950, 2100, "invalidYear"),
-    year_to: optionalInt(1950, 2100, "invalidYear"),
+    // Asked for at this moment (owner, 13 Nov 2026): a product is created
+    // with a name only, and Moto Mangos search needs all four.
+    make: z.string().trim().min(1, "required").max(40, "tooLong"),
+    model: z.string().trim().min(1, "required").max(60, "tooLong"),
+    cc: z.preprocess(
+      (value) => (value === "" || value == null ? undefined : value),
+      z.coerce
+        .number("ccRange")
+        .int("ccRange")
+        .min(1, "ccRange")
+        .max(20000, "ccRange")
+        .optional(),
+    ),
+    transmission: z.preprocess(
+      (value) => (value === "" || value == null ? undefined : value),
+      z.enum(transmissions, "required").optional(),
+    ),
+    // The year of the shop's own bike. The range of years the list entry
+    // covers is the reviewer's to set at approval.
+    year: z.preprocess(
+      (value) => (value === "" || value == null ? undefined : value),
+      z.coerce
+        .number("invalidYear")
+        .int("invalidYear")
+        .min(1950, "invalidYear")
+        .max(2100, "invalidYear")
+        .optional(),
+    ),
     note: optionalText(500),
   })
   .strict()
   .superRefine((c, ctx) => {
-    if (c.year_from && c.year_to && c.year_to < c.year_from)
+    if (c.year === undefined)
+      ctx.addIssue({ code: "custom", path: ["year"], message: "required" });
+    if (c.cc === undefined)
+      ctx.addIssue({ code: "custom", path: ["cc"], message: "required" });
+    if (c.transmission === undefined)
       ctx.addIssue({
         code: "custom",
-        path: ["year_to"],
-        message: "endBeforeStart",
+        path: ["transmission"],
+        message: "required",
       });
   });
 
@@ -348,15 +399,14 @@ export function dbErrorKey(
 ): string {
   if (!error) return "saveFailed";
   const message = error.message ?? "";
-  if (message.includes("model_year_bands_no_overlap")) return "bandOverlap";
+  if (message.includes("product_year_bands_no_overlap")) return "bandOverlap";
   // The availability lock: two blocks of one unit overlap.
   if (error.code === "23P01") return "blockOverlap";
   if (message.includes("units_plate_idx")) return "plateExists";
-  if (message.includes("models_name_idx")) return "nameExists";
-  if (message.includes("models_own_make_model_idx")) return "ownModelExists";
-  if (message.includes("models_required_specs_check")) return "requiredSpecs";
+  if (message.includes("products_name_idx")) return "nameExists";
+  if (message.includes("products_own_make_model_idx")) return "ownModelExists";
   // Engine size outside 1 to 20000 cc, on a model or on the catalog entry made from it.
-  if (/(models|bike_catalog)_cc_check/.test(message)) return "ccRange";
+  if (/(products|bike_catalog)_cc_check/.test(message)) return "ccRange";
   if (message.includes("locations_name_idx")) return "nameExists";
   // A row other rows still point at (a model with units, a unit with blocks).
   if (error.code === "23503") return "inUse";
@@ -373,6 +423,7 @@ export function dbErrorKey(
     "currency_locked",
     "model_has_active_units",
     "model_retired",
+    "specs_required",
   ])
     if (message.includes(known)) return known;
   if (message.includes("time zone")) return "timezoneOwnerOnly";

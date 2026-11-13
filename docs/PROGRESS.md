@@ -13,6 +13,133 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Products, stage A (branch `platform/products-stage-a`, 13 Nov 2026)
+
+The first build stage of the products redesign. The design and the owner's decisions are in `docs/products-redesign.md` (PR #15, docs only). Platform only: nothing in `apps/marketplace`, nothing pushed to staging or live. `docs/platform/SPEC.md` does not have this yet (the owner maintains it).
+
+**What changed**
+
+- **`platform.models` is `platform.products`** (migration `20261113000200_platform_products`), with `units.model_id` → `product_id` and `model_year_bands` → `product_year_bands`, and their constraints, indexes, triggers, policies and trigger functions renamed to match. PR 13's migration (`20261113000100`) is untouched.
+- **A product has a `type`** (vehicle, gear, sale_item, service) **and a `tracking` mode** (unit, bulk, consumable, none). Only the pairs that make sense are accepted, the type can never change, and every existing row is a vehicle tracked by unit. Make, model and kind are required for a vehicle and must be empty for anything else (`products_vehicle_fields_check`), so those three columns are no longer NOT NULL.
+- **A unit carries its product's type** (`units.product_type`), kept equal by a composite foreign key. Only vehicles and gear can have units.
+- **Functions re-created: ten, not the fifteen the design guessed.** Read from the database, these name the old table or column in their bodies: `products_guard`, `products_retire_guard`, `products_withdraw_request`, `units_clamp_product_counts`, `units_product_not_retired`, `tenants_lock_currency`, `currency_locked`, `import_fleet`, `review_catalog_request`, `submit_product_to_catalog`. Two more were only renamed (`products_keep_catalog_outcome`, `products_default_category`). `units_guard`, `unit_blocks_guard`, `catalog_requests` and the reminder queue never named the table and are unchanged.
+- **`submit_model_to_catalog(p_model_id)` is `submit_product_to_catalog(p_product_id)`**: dropped and created again (a parameter name can't be changed in place), with its grant restated. `import_fleet()` reads `product_id` from each unit and answers `{"products": n, "units": n}`.
+- **Audit rows written before today were relabelled** from entity `models` to `products` (and `model_year_bands` to `product_year_bands`), so a product's history is found in one place. Nothing else in those rows changed. Say if the old label should have been kept.
+- **Grants:** no new table. The renamed tables keep their grants; the migration restates them under the new names, because `default-grants.test.ts` looks for each reachable table's grant by name.
+- **Screens.** New **Products** list (`/[tenant]/products`: one row per product with type, kind, categories, vehicles in the fleet and the Moto Mangos chip; search and filters in the address). The product page has three tabs: **Details** (the form, the Moto Mangos panel, retire and delete), **Units** (its vehicles, "Add vehicle", year bands) and **History**. **Fleet** keeps the vehicle-unit list, the unit page, stickers and import. "Products" is in the menu before "Fleet", for every role.
+- **The create form is a kind and a name** (second round, below). The first version of this stage had one make-and-model type-ahead here; the owner's click-through removed it. The linked dropdowns, "Manually enter" and "Choose from the list instead" are gone either way.
+- **History tab** (owners and managers): who changed what on the product, its vehicles and its year bands, newest first, the latest 100. It is the first screen that shows the audit trail to a shop.
+- **Old addresses redirect:** `/fleet/models/[id]` and `/fleet/models/new`; `/fleet/units/new?model=` still works beside `?product=`.
+- **Wording:** "product" in place of "make & model" and "model"; "Add vehicle" in place of "Add to inventory" and "Add product to inventory" (the owner chose those two names on 13 Nov, before the redesign: say if "Add vehicle" should go back). Thai uses สินค้า, provisional; every new or changed Thai line is in `docs/platform/thai-review-products.md` for Korn or BSR's admin.
+- **Kept from the fleet rework:** categories (several per product, required for motorbikes and cars), retire and restore, the delete rules, the rejected-model flow with its two next steps, the Moto Mangos tip on the create form and the panel on the product page.
+
+**Second round, after the owner's click-through (13 Nov 2026)**
+
+Stage A passed except for the create form. Changed on the owner's instruction:
+
+- **Create form:** headed "Product details". The kind ("What kind of product is it?"), one line for the product name (placeholder "e.g. Honda PCX 160", required), then categories and the rest. The type-ahead and the make, model, engine size and transmission inputs are gone from it.
+- **Names are unique ignoring case and all spacing** (`products_name_idx` now on the name with every space removed, in lower case; before, lower case and trimmed only). "Honda PCX 160" and "honda pcx160" are one name.
+- **Make, model, engine size and transmission stay as columns, nullable.** Migrated demo data keeps its values. A motorbike no longer needs engine size and transmission to be saved: `products_required_specs_check` (from `20261111000500`, which is on live and so can't be edited) is dropped by the Stage A migration. A make and a model come together or not at all.
+- **Moto Mangos panel:** sending a motorbike for review now asks for make, model, engine size and transmission at that moment, all four required, with the model years and note as before. The make and model start from the product's name; a rejected product's form holds what was sent before. `submit_product_to_catalog()` takes the four with the request and saves them on the product and the request in one transaction; without all four it answers `specs_required` and saves nothing. "Did you mean" suggests list entries from the name until the product has a make. Choosing an approved model from the list, the rejected-model buttons and the listing switch work as before; "Edit and send again" now opens the review form (`#send-for-review`).
+- **On a list entry, or waiting on one, the kind is fixed**: the Details form shows the name and categories, not the kind chips (the database already kept the entry's kind).
+- **Tip on the create form:** one text for motorbikes, saying the model is chosen or sent for review from the product page. It no longer speaks of a list on this form.
+- **Off-road has Dirt bike** beside ATV and UTV (`dirt_bike`; Thai รถวิบาก, for approval). The motorbike category "Off-road" is unchanged.
+- **The Stage A migration was amended in place** (not on `main` or live), on the owner's instruction: the vehicle-fields check, the dropped specs check, the two indexes and the submit function. Nothing from an earlier migration was edited.
+- **Staging, by hand, exactly this:** in one transaction, `products_vehicle_fields_check` was dropped and re-added with the new rule; `products_required_specs_check` was dropped; `products_own_make_model_idx` and `products_name_idx` were dropped and re-created; `submit_product_to_catalog` (5 arguments) was dropped and the 9-argument one created with its grant. The statements were cut from the migration file itself. The migration stays recorded as applied (55 of 55). This differs from earlier rounds, where a migration was taken back whole and pushed again: taking back the rename of every fleet table was the larger risk, and the result is the same. Checked: staging's `platform` and `platform_private` schemas, dumped with their grants, are line for line identical to a database built fresh from the amended migration (1,622 lines each); staging's data counts and checksums are identical before and after; no duplicate names stood in the way. The demo seed was re-run: nothing added. Live is untouched.
+- **Left as it was:** the CSV import still takes `make` and `model` per row and, for a motorbike that isn't on the list, still asks for `cc` and `transmission`. It is the bulk path and was not part of this change; say if it should take a name only too. The unit form still has a Make dropdown above the Product one; a product with no make is chosen from the Product dropdown directly.
+- **docs/products-redesign.md** (merged with PR #15, brought in from `main`): decision 3 (the type-ahead) is marked superseded by new decision 17; the create-form and type-ahead paragraphs are rewritten; decision 18 and §5.7 record the Stage B direction and plan (not started).
+
+**Third round, after the owner's second click-through (13 Nov 2026)**
+
+- **The "Vespa GTX300" report** (sent to Moto Mangos without seeing the details form). Staging's audit trail shows the product was created with a name only at 05:32 UTC and sent at 05:39 with make Vespa, model GTX300, 300 cc and automatic: the engine size and transmission can only have come from the review form, so the form was on screen and was filled in. It sat open inside the panel with the make and model already filled from the name and the button reading "Switch on and send for review", which did not read as a separate step. Fixed by the new panel order below: the form is closed until "Don't see your bike above?" is opened, and nothing can be sent before that. Browser test: the send button and the year field are hidden, and "Sent" never shows, until the line is opened; the server refuses a request without all five details.
+- **Review form: "Year of your bike"**, one required year, beside make, model, engine size and transmission. The shop no longer enters a year range. `submit_product_to_catalog()` takes `p_year` in place of `p_year_from` and `p_year_to` and refuses without it; the request is stored with that year as both ends of its range. **The range is set at approval**: `review_catalog_request()` takes `p_year_from` and `p_year_to` (left out, the bike's year stands), and the Moto Mangos admin page shows "The shop's own bike is a 2023" with first and last model year to set before approving. No table changed: `public.bike_catalog` already had both year columns.
+- **Moto Mangos panel, top to bottom:** the logo; "List it on Moto Mangos"; one picker, "Select your make and model from the list" (the approved list, A to Z, with years); "Don't see your bike above? Send us the details and we'll get it added", which opens the review form; then "Listing": the switch and the instant, request and ready-now counts, disabled with a line saying why until the product is on an approved entry (a model selected, or a request approved).
+- **Buffers are typed in hours**, decimals allowed ("0.5", "1,5"), up to 168; stored in minutes as before (`buffer_before_minutes`, `buffer_after_minutes`: no migration). What was saved in minutes reads back to the nearest hundredth of an hour.
+- **Retire product and Delete product** are the last things on the product page.
+- **No make or model on the platform's screens.** Removed: the make and model line under a product's name, the engine size and transmission beside it, the Make dropdown on Add vehicle and on stickers (each is one Product dropdown, A to Z by name), the make, engine-size and transmission filters, group-by and sort on Fleet, the make and model search on Products (it searches the name), the "Make" line on a vehicle's page, the list of makes and models on the import page, and make, model, engine size, transmission and list entry in a product's History. A product without a make shows nothing in its place. "Model year" on a vehicle reads "Year". The only place the five are asked is the Moto Mangos review form; the database columns stay, nullable.
+- **CSV import takes a product name per row** (`product`, required): a name the shop has puts the vehicle on that product, ignoring case and spacing; a new name creates the product, with `vehicle_type` (blank is motorbike) and `category` (required for a motorbike or a car). No make, model, cc or transmission column; `model_year` is `year`; `name` is gone. The page tells the shop to put the make, model and years in the name or description if it wants them. `import_fleet()` in the database is unchanged: it simply receives no make or model.
+- **Fleet is one line per product**, A to Z by name, no group headings: the product's name, "N vehicles · M available", "Open product" and "Add vehicle". A line opens to its vehicles. One search box finds a product by name or a vehicle by plate, frame or engine number. Filters: show, product, kind, category, status, location (with more than one), year. A retired product is not in the product dropdown.
+- **Create-form placeholder:** "e.g. Honda CB500X 2022-2024".
+- **Duplicate** on the product page opens the create form with the product's kind, categories, description, online-booking tick, buffers, deposit, minimum age and licence class, and its name filled in and selected. It copies no vehicles and no Moto Mangos listing. Saved under the same name it is refused, as any duplicate name is.
+- **The Stage A migration was amended in place again** (not on `main` or live): only the two functions above. **Staging, by hand, in one transaction, exactly this:** `review_catalog_request(uuid, boolean, text, uuid)` dropped and the six-argument one created with its grant; `submit_product_to_catalog` (nine arguments) dropped and the eight-argument one created with its grant. Texts cut from the migration file. Afterwards staging's `platform` and `platform_private` schemas with their grants are line for line identical to a fresh build (1,628 lines each), its data counts and checksums unchanged, the migration still recorded as applied (55 of 55), the demo seed re-run with nothing added. Live untouched.
+
+Decided here without being asked (say if any should change):
+
+- **"Did you mean" is gone** from the panel. The owner's order has one picker and one review form; a third way to choose would have sat between them.
+- **The listing counts moved** from the Details form into the panel's "Listing" part, with the switch. They were the "listing settings" the owner placed there.
+- **The year-band panel is gone from the product page.** Fleet no longer splits a product by year band, so the setting had nothing to act on. The table and its data are kept.
+- **Fleet lines start closed** when more than 12 vehicles would show, and open when a search or filter is on. The Moto Mangos chip is on the Products list only. The remembered last view (a cookie) is gone with group and sort.
+- **"Available"** is an active vehicle that no block (downtime, later a booking) holds at this moment.
+- **A new product from the CSV needs its kind and category** in the row, because the name alone can't say what it is.
+- **The demo seed** (`scripts/demo/bsr-fleet.csv`) is in the new shape. The seed then puts each demo product on the Moto Mangos list entry its name starts with, as a shop would with the picker, so the demo still shows listed-ready products.
+- **A product's page shows no make or model even when it is on a list entry.** The panel's line "On the Moto Mangos list as Honda Forza 350 (2023)" is the one place it is named.
+
+Still depending on make and model, and left alone (nothing a shop sees):
+
+- `products_guard` copies make, model, engine size and transmission from the list entry onto a product put on it; `review_catalog_request` on reject keeps a product linked if the shop has another of its own with the same make and model; `products_own_make_model_idx` still stops two own products with the same make and model where both have one. All three only act on products that have been through the Moto Mangos panel.
+- Staging and demo products keep the values they had.
+- `lib/catalog-match.ts` (used by the Moto Mangos admin page to offer merge targets), and `ownModelSchema` and `exactPresets` with their unit tests, are no longer used by any shop screen. Kept; removable in a tidy-up.
+- The marketplace adapter switch (3M) will read a listed product's make, model and specs through its list entry, as planned.
+
+**Fourth round, after the owner's third click-through (13 Nov 2026)**
+
+Items 3 to 7 of the third round passed. Changed now (no migration and nothing on staging needed changing this round):
+
+- **The Moto Mangos panel shows for motorcycles only**: the kind Motorbike, with any of its categories (Scooter, Touring, Adventure, Sport, Classic, Off-road). It is hidden, not greyed, for the Off-road kind (ATV, UTV, Dirt bike), Car, Boat or jet ski and Other; the product form then takes the page's width. The tip on the create form and the Moto Mangos chip follow the same rule, as before. **No listed product can lose its panel:** a product is listed only on an approved list entry, an entry is always a motorbike, and the database keeps a product's kind equal to its entry's, so a product on the list is always a Motorbike. Checked on staging: 0 products that are not motorbikes are listed or on a list entry, and 0 list entries are not motorbikes. Nothing had to be changed.
+- **Listing texts.** "Set bike quantities per booking type", then three lines, each with its field: Instant units ("Future bookings that receive instant approval"), Request units ("Future bookings that require your approval"), Walk-ins ("Bookings that are ready for immediate pickup today (overrides the booking buffer)"). The old sentence is gone. The field was labelled "Ready for walk-ins now".
+- **The list picker is two dropdowns**: Make, then Model with the years it covers, the second filtered by the first and disabled until a make is chosen. Its legend is still "Select your make and model from the list"; the button reads "Select". This is the Moto Mangos list only; the rest of the platform still has no make or model.
+- **Delete only, and only when empty.** "Retire product" is gone from the product page. "Delete product" is always there, last on the page. With any vehicle left, whatever its status, it shows a pop-up, "This product still has vehicles. Remove all its vehicles first.", and does nothing. **The database already refused this** and still does: a vehicle points at its product (`units_tenant_id_product_id_type_fkey`), so a delete with any vehicle left fails for everyone, the service role included; the server turns that refusal into the same sentence. No new rule was needed, so no migration change. The retired status stays in the database (`products.retired_at` and its rules), and a product that is already retired still shows its "Retired" note with "Restore product", so it is not stuck.
+- **Fleet lines carry the same tags as the Products list**: Retired, the Moto Mangos chip (owners and managers; motorcycles), and the categories. One shared component draws both.
+- **The edit pencil** replaces "Open product" on Fleet and is added beside the title on the Products list. It is a link named "Edit product: <name>", 44 px square, with a focus ring. On the Products list the title is also a link to the product; the whole row is no longer one link.
+
+Can a product be undeletable? Today, no: no vehicle has bookings yet, so every vehicle can be deleted and then its product. From Phase 3, a vehicle with bookings can't be deleted (past orders need it), so its product can't be either until the planned "Remove for good" step exists. The pop-up says the same sentence in that case; it does not yet say that a vehicle with bookings can only be retired. That wording belongs with Phase 3.
+
+Decided here without being asked:
+
+- A product that is already retired keeps "Restore product" (there is no other way back from that state on screen).
+- The pop-up is the browser's own message box, like the confirmations already used on these pages.
+- The retired-product browser steps (retire, see it under "Retired", restore) are gone with the button. The rules are still tested in the database and unit tests.
+
+**Not built: manual order (drag to reorder, item 7).** The owner asked to be told before building if it looked risky or too big for this PR. It is both, for one part: long-press and hold-and-drag on lines that are also buttons (a Fleet line opens on a tap and holds links), working alike on phone and desktop, with a browser test for touch dragging that doesn't flake. The repo has no drag library, and adding one needs the owner's say (root CLAUDE.md). Proposed split: first the dependable part (a `sort_position` on the product, one function to move a product or reset to A–Z, owner and manager only, both lists reading the one order, "Move up" and "Move down" on each line, "Reset to A–Z", new products at the bottom, off while a search or filter is on), with its database and browser tests; then dragging on top of that, either hand-written or with a small library the owner approves. Waiting on the owner's choice.
+
+**Demo data carried across.** A database built at `main` (54 migrations) was seeded with the three demo shops, given two listed products and three downtime blocks, and migrated. Per shop, before and after: products 5 / 11 / 0, vehicles 150 / 20 / 0, year bands 15, listed 2, blocks 3, renewals 8, purchase records 20, audit rows 174 / 89 / 5, and checksums over every product's id, name, make, model, list entry, categories and listing, and every vehicle's id, product, plate and status: identical. All 16 products came out as vehicle / unit and all 170 units as vehicle units.
+
+**Decisions and notes**
+
+- Existing database tests whose assertions changed, not just a name: a vehicle without a kind (or with a make and no model) now fails `products_vehicle_fields_check` where a missing make failed NOT NULL; and "a motorbike needs engine size and transmission" became "specs are optional on a product", because the owner changed that rule.
+- TypeScript names inside the app (`getModel`, `saveModel`, `FleetModel` and the like) were left: they are internal, and renaming them would have doubled the diff with no change a user or the database sees. The `Fleet.model.*` message keys kept their key names for the same reason; their texts say "product".
+- The Moto Mangos listing fields (instant, request and ready-now counts, the switch) are still on the product and on the Details tab. They move to `product_listings` and their own tab in stage C.
+- The deposit is still on the product and readable by every member, as before. It moves to `product_pricing` in stage D, where mechanics and drivers stop seeing prices.
+- This worktree runs its own local Supabase (`Bike_Booking_products_a`, ports 563xx) so it does not disturb the other two. Its `supabase/config.toml` change is local only (`git update-index --skip-worktree`).
+
+**Tests (all passing locally, 13 Nov 2026)**
+
+- Database: 185 (fourth round: a product with any vehicle left, whatever its status, can't be deleted by anyone, the service role included; a retired product with a retired vehicle is no exception; it goes once its last vehicle is gone, for owners and managers only; another shop can't delete it). Run on a database rebuilt from scratch with all 55 migrations.
+- Unit: platform 145, marketplace 202, core 86.
+- Playwright: 72 passed at 375 px and 1280 px, 2 skipped (the timing measurement). Fourth round: no panel for a car, a boat or a dirt bike; the two-dropdown picker; the new listing texts; the delete pop-up with a retired vehicle left; the pencil's name, size and focus; the tags on a Fleet line.
+- `npm run typecheck && npm run lint && npm test` from the root: clean.
+
+**On staging, not on live (13 Nov 2026).** PR 13's migration (`20261113000100_platform_fleet_rework`) and PR 16's (`20261113000200_platform_products`) are both on staging: staging records 55 of 55. **Neither is on live**, which stays at 53 of 53; live gets them only from `main`, by the runbook, after stage C.
+
+- Pushed from this branch on the owner's instruction with `supabase db push --db-url` after a dry run that listed exactly one pending migration (`20261113000200`); staging already had PR 13's.
+- Staging's data came through unchanged: per shop, the same counts and checksums before and after (big-fleet 9 products and 150 vehicles, bsr 18 and 26, saigon-scooters none; year bands, listings, blocks, renewals, purchase records and audit rows the same). All 27 products are vehicle / unit and all 176 units vehicle units; no function is left naming `models`; the reminder queue function runs.
+- The demo seed was re-run on staging (`npm run seed:staging`): everything was already there, nothing added.
+- PR 16's Netlify preview (`deploy-preview-16--mango-works-platform.netlify.app`) was opened signed in as the BSR demo owner at phone and desktop width: the Products list, the new-product form with its suggestions, a product's Details, Units and History tabs, and Fleet all load. That pass only read; it saved nothing.
+- Until PR 16 merges, the platform site's main deploy and any other branch's preview still run the old code against staging and will fail on the fleet pages, because the table they read was renamed.
+
+**Not truly tested**
+
+- The full browser suite was not run against the Netlify preview, only the read-only pass above. The suite ran on a local production build with a local database, and in CI.
+- A real phone: phone width in a desktop browser only. Thai wording: key parity only.
+- The live push: not done, by instruction. It follows the runbook after stage C.
+
+**Found on the way**
+
+- A product address that isn't an id (`/products/abc`) gave "Something went wrong"; it is "Page not found" now. The old model page had the same fault.
+- Port 3300, which the browser tests use, was held by a server from the `Bike Booking-ui-refresh` checkout. A first test run was pointed at it for about two minutes before this was noticed and stopped; it may have left a few test rows in that checkout's local demo database (local only). The tests were then run against this worktree's own server on port 3310.
+
+**Not built here (later stages):** gear, services and items for sale on screen, quantities, the `lost` status (B); the Moto Mangos tab and `product_listings` (C); prices (D).
+
 ## Products redesign: design review (branch `docs/products-redesign`, 13 Nov 2026)
 
 Docs only: `docs/products-redesign.md`. No code, no migration, nothing applied to local, staging or live.

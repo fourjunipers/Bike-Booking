@@ -82,42 +82,44 @@ No second catalog. The table stays where it is, with its UUIDs and slugs, and pl
 
 **Path for cars.** A car is a catalog row with `vehicle_type = 'car'` and its specs in `specs`, validated against the car's spec schema. `cc` and `type` (the bike-style enum) are required today; when the first car entry is needed, one migration makes them required for motorbikes only. The table is renamed `vehicle_catalog` at 3M, when the marketplace's SQL functions that name it are retired. Phase 1a adds the three columns and the `vehicle_types` table, and nothing else.
 
-## 4. `bike_models` → `models` (and `units`)
+## 4. `bike_models` → `products` (and `units`)
+
+**13 Nov 2026:** `platform.models` was renamed `platform.products` (migration `20261113000200_platform_products`, docs/products-redesign.md). A product has a `type` (vehicle, gear, sale_item, service) and a `tracking` mode; every legacy listing maps to a product of type vehicle, tracked by unit. The targets below use the new name; nothing else about the mapping changed.
 
 A legacy row is a shop's listing of one catalog entry with a quantity. On the platform it becomes one model plus one unit per vehicle.
 
 | Legacy column | Target | Phase | Notes |
 | --- | --- | --- | --- |
-| `id` | `models.id` | 1a | Same UUID (the marketplace's `listingId`) |
-| `shop_id` | `models.tenant_id` | 1a | |
-| `catalog_id` | `models.catalog_id` | 1a | Optional since 11 Nov 2026: a model is on a preset (an approved catalog entry) or is the shop's own. Every legacy listing has one, so every mapped model is on a preset. A shop may have several models on one entry, each with its own display name |
-| (from the catalog entry) | `models.make`, `model`, `vehicle_type`, `cc`, `transmission` | 1a | Copied from the catalog entry by the database when the model is linked |
-| `visible` (with the shop live) | `models.marketplace_listed` | 1a | The shop's per-model switch for Moto Mangos; only a model on an approved entry can have it on. Read by the marketplace from 3M |
-| (none) | `models.name` | 1a | Display name, unique within the shop. At 3M: the catalog entry's make, model and years |
-| `photos` | `models.photos` | 1a | Same storage paths |
-| `visible` | `models.bookable_online` | 1a | The shop's own booking page (Phase 8). The Moto Mangos switch is the row above |
+| `id` | `products.id` | 1a | Same UUID (the marketplace's `listingId`) |
+| `shop_id` | `products.tenant_id` | 1a | |
+| `catalog_id` | `products.catalog_id` | 1a | Optional since 11 Nov 2026: a model is on a preset (an approved catalog entry) or is the shop's own. Every legacy listing has one, so every mapped model is on a preset. A shop may have several models on one entry, each with its own display name |
+| (from the catalog entry) | `products.make`, `model`, `vehicle_type`, `cc`, `transmission` | 1a | Copied from the catalog entry by the database when the model is linked |
+| `visible` (with the shop live) | `products.marketplace_listed` | 1a | The shop's per-model switch for Moto Mangos; only a model on an approved entry can have it on. Read by the marketplace from 3M |
+| (none) | `products.name` | 1a | Display name, unique within the shop. At 3M: the catalog entry's make, model and years |
+| `photos` | `products.photos` | 1a | Same storage paths |
+| `visible` | `products.bookable_online` | 1a | The shop's own booking page (Phase 8). The Moto Mangos switch is the row above |
 | `qty` | Count of the model's `units` rows | 1a | No quantity column. At 3M, `qty` units are created per model at the default location, status active, with no plate and `plate_pending` set; the shop fills in plates afterwards |
-| `instant_qty`, `request_qty` | `models.instant_units`, `request_units` | 1a | Walk-in-only = active units − instant − request. Checked on save (can't exceed active units) |
-| `ready_today_count` | `models.ready_now` | 1a | |
+| `instant_qty`, `request_qty` | `products.instant_units`, `request_units` | 1a | Walk-in-only = active units − instant − request. Checked on save (can't exceed active units) |
+| `ready_today_count` | `products.ready_now` | 1a | |
 | `ready_today_on` | Dropped | — | `ready_now > 0` means the same |
-| `ready_today_updated_at` | `models.ready_updated_at` | 1a | |
-| `buffer_before_h`, `buffer_after_h` | `models.buffer_before_minutes`, `buffer_after_minutes` | 1a | ×60. Null = shop default |
-| `deposit_amount` | `models.deposit` (bigint minor units) | 1a | ×100 for THB. Null = shop default |
-| `min_days_booking`, `min_days_walkin`, `notice_h` | `models.min_days_advance`, `min_days_walkin`, `min_notice_hours` | 2 | Null = location default |
+| `ready_today_updated_at` | `products.ready_updated_at` | 1a | |
+| `buffer_before_h`, `buffer_after_h` | `products.buffer_before_minutes`, `buffer_after_minutes` | 1a | ×60. Null = shop default |
+| `deposit_amount` | `products.deposit` (bigint minor units) | 1a | ×100 for THB. Null = shop default |
+| `min_days_booking`, `min_days_walkin`, `notice_h` | `products.min_days_advance`, `min_days_walkin`, `min_notice_hours` | 2 | Null = location default |
 | `flagged_for_review` | Marketplace-owned approval record | 3M | |
 | `created_at`, `updated_at` | Same names | 1a | |
-| (none) | `models.description`, `min_age`, `licence_class` | 1a | New on the platform; `min_age` and licence also arrive from the policy override below |
+| (none) | `products.description`, `min_age`, `licence_class` | 1a | New on the platform; `min_age` and licence also arrive from the policy override below |
 
 `bike_model_policies` (per-model overrides of "What's included"):
 
 | Legacy column | Target | Phase |
 | --- | --- | --- |
-| `bike_model_id` | `models.id` | 1a |
-| `min_age` | `models.min_age` | 1a |
-| `licence_required` | `models.licence_class` | 1a |
-| `deposit_methods` and every other column | `models.inclusions_override` (JSON; only the overridden fields) | 2 |
+| `bike_model_id` | `products.id` | 1a |
+| `min_age` | `products.min_age` | 1a |
+| `licence_required` | `products.licence_class` | 1a |
+| `deposit_methods` and every other column | `products.inclusions_override` (JSON; only the overridden fields) | 2 |
 
-`units` has no legacy source beyond the count above. New in 1a: `tenant_id`, `model_id`, `location_id`, `plate`, `plate_pending`, `frame_number`, `engine_number`, `colour`, `model_year`, `current_odometer_km`, `status` (active, maintenance, retired, sold), `qr_token`, `notes`. (`first_registered`, the `borrowed` status and its `active_from` / `active_to` window were removed on 11 Nov 2026, owner decision.) Purchase and sale details live in `unit_financials` (owner and manager only). Tax and insurance renewals (`unit_renewals`, costs in `unit_renewal_costs`) and each shop's model-year bands (`model_year_bands`) were added on 11 Nov 2026; none has a legacy source. Keys, GPS and service data arrive in Phase 1b.
+`units` has no legacy source beyond the count above. New in 1a: `tenant_id`, `product_id` (`model_id` until 13 Nov 2026), `product_type`, `location_id`, `plate`, `plate_pending`, `frame_number`, `engine_number`, `colour`, `model_year`, `current_odometer_km`, `status` (active, maintenance, retired, sold), `qr_token`, `notes`. (`first_registered`, the `borrowed` status and its `active_from` / `active_to` window were removed on 11 Nov 2026, owner decision.) Purchase and sale details live in `unit_financials` (owner and manager only). Tax and insurance renewals (`unit_renewals`, costs in `unit_renewal_costs`) and each shop’s model-year bands (`product_year_bands`, `model_year_bands` until 13 Nov 2026) were added on 11 Nov 2026; none has a legacy source. Keys, GPS and service data arrive in Phase 1b.
 
 ## 5. `bike_model_downtime` → `unit_blocks`
 

@@ -21,10 +21,12 @@ export const staffTabs = [
 export type StaffTab = (typeof staffTabs)[number];
 
 /** Desktop-admin areas beside the tabs. */
-export type AdminArea = "fleet" | "locations" | "team" | "settings";
+export type AdminArea =
+  "products" | "fleet" | "locations" | "team" | "settings";
 
 /** Shop areas in menu order. */
 export const adminAreas = [
+  "products",
   "fleet",
   "locations",
   "team",
@@ -56,11 +58,11 @@ export function canSeeTab(role: Role, tab: string): tab is StaffTab {
 }
 
 /**
- * Fleet: every role reads it (drivers read-only). Locations, team and shop
- * settings: owners and managers (SPEC › Who uses it).
+ * Products and Fleet: every role reads them (drivers read-only). Locations,
+ * team and shop settings: owners and managers (SPEC › Who uses it).
  */
 export function canSeeArea(role: Role, area: AdminArea): boolean {
-  if (area === "fleet") return true;
+  if (area === "fleet" || area === "products") return true;
   return role === "owner" || role === "manager";
 }
 

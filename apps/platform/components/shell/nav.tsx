@@ -3,6 +3,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   MapPin,
+  Package,
   PlusCircle,
   Settings,
   UserCircle,
@@ -36,6 +37,8 @@ export function NavIcon({
       return <PlusCircle {...props} />;
     case "maintenance":
       return <Wrench {...props} />;
+    case "products":
+      return <Package {...props} />;
     case "fleet":
       return <Bike {...props} />;
     case "locations":

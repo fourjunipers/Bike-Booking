@@ -43,8 +43,10 @@ export default async function NewUnitPage({
     fleet.filter((model) => model.retired_at === null),
   );
   // Arriving from a model's row or page, or from adding a make & model.
-  const wanted = typeof query.model === "string" ? `model:${query.model}` : "";
-  const addModelHref = `/${slug}/fleet/models/new?then=inventory`;
+  // "?model=" is the old name of "?product=" (links from before 13 Nov 2026).
+  const asked = query.product ?? query.model;
+  const wanted = typeof asked === "string" ? `model:${asked}` : "";
+  const addModelHref = `/${slug}/products/new?then=inventory`;
 
   return (
     <>

@@ -31,7 +31,7 @@ describe("review fix 9: engine size, one range and a readable message", () => {
   });
 
   it("turns the database's own refusal into the same message, never a raw error", () => {
-    for (const constraint of ["models_cc_check", "bike_catalog_cc_check"])
+    for (const constraint of ["products_cc_check", "bike_catalog_cc_check"])
       expect(
         dbErrorKey({
           code: "23514",

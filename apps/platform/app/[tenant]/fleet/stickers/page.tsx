@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { BackLink } from "@/components/back-link";
-import { MakeModelPicker } from "@/components/fleet/make-model-picker";
 import { Field, inputClass } from "@/components/form";
 import { PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -38,8 +37,8 @@ export default async function StickersPage({
   ]);
   const text = (value: unknown) => (typeof value === "string" ? value : "");
   const only = text(query.unit);
-  const make = text(query.make);
-  const model = text(query.model);
+  // "model" is the old name of "product" (links from before 13 Nov 2026).
+  const product = text(query.product) || text(query.model);
   const sort = text(query.sort) === "plate" ? "plate" : "recent";
 
   const units = fleet
@@ -47,15 +46,13 @@ export default async function StickersPage({
       m.units.map((unit) => ({
         ...unit,
         modelName: m.name,
-        make: m.catalog?.make ?? "",
       })),
     )
     .filter(
       (unit) =>
         // A bike opened by its own link is listed even when sold or retired.
         (unit.id === only || !hasLeftFleet(unit.status)) &&
-        (!make || unit.make === make) &&
-        (!model || unit.model_id === model),
+        (!product || unit.product_id === product),
     )
     .sort((a, b) =>
       sort === "plate"
@@ -84,20 +81,25 @@ export default async function StickersPage({
         />
         <PageHeader title={t("sheetTitle")} intro={t("sheetIntro")} />
         <form
-          key={`${make}|${model}|${sort}`}
+          key={`${product}|${sort}`}
           action={`${base}/stickers`}
           className="mb-4 grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-4"
         >
-          <MakeModelPicker
-            makeName="make"
-            modelName="model"
-            makeLabel={tFleet("unit.make")}
-            modelLabel={tFleet("unit.model")}
-            anyLabel={tFleet("view.any")}
-            models={shopModelOptions(fleet)}
-            defaultMake={make}
-            defaultModel={model}
-          />
+          <Field id="product" label={tFleet("unit.model")}>
+            <select
+              id="product"
+              name="product"
+              defaultValue={product}
+              className={inputClass}
+            >
+              <option value="">{tFleet("view.any")}</option>
+              {shopModelOptions(fleet).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field id="sort" label={tFleet("view.sortBy")}>
             <select
               id="sort"
@@ -124,7 +126,7 @@ export default async function StickersPage({
       </div>
       <StickerPicker
         // A new list (other filter or order) starts from its own selection.
-        key={`${make}|${model}|${sort}|${only}`}
+        key={`${product}|${sort}|${only}`}
         items={items}
         preselected={only ? [only] : []}
       />

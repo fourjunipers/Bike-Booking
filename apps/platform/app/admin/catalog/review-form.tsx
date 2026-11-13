@@ -9,8 +9,13 @@ import { reviewRequest, type ReviewState } from "./actions";
 export function ReviewForm({
   id,
   presets,
+  yearFrom,
+  yearTo,
 }: {
   id: string;
+  /** The request's years: the one year of the shop's own bike, as both. */
+  yearFrom: number | null;
+  yearTo: number | null;
   /** Approved entries to merge into, closest matches first. */
   presets: { value: string; label: string }[];
 }) {
@@ -36,6 +41,47 @@ export function ReviewForm({
       <p id={`notes-help-${id}`} className="text-xs text-muted-foreground">
         {t("notesHelp")}
       </p>
+      {/* The model years the entry covers are set here, at approval. */}
+      <fieldset className="space-y-1.5">
+        <legend className="text-sm font-medium">{t("years")}</legend>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label
+              htmlFor={`year-from-${id}`}
+              className="mb-1.5 block text-xs text-muted-foreground"
+            >
+              {t("yearFrom")}
+            </label>
+            <input
+              id={`year-from-${id}`}
+              name="year_from"
+              inputMode="numeric"
+              maxLength={4}
+              defaultValue={yearFrom ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor={`year-to-${id}`}
+              className="mb-1.5 block text-xs text-muted-foreground"
+            >
+              {t("yearTo")}
+            </label>
+            <input
+              id={`year-to-${id}`}
+              name="year_to"
+              inputMode="numeric"
+              maxLength={4}
+              defaultValue={yearTo ?? ""}
+              className={inputClass}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t("yearsHelp", { year: yearFrom ?? "?" })}
+        </p>
+      </fieldset>
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
