@@ -7,7 +7,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import { addYearBand, deleteYearBand, saveModel } from "../fleet/actions";
+import { saveModel } from "../fleet/actions";
 import { CategoryField, WhatFields, type WhatValues } from "./what-fields";
 
 export type ProductFormValues = {
@@ -15,14 +15,12 @@ export type ProductFormValues = {
   name: string;
   description: string;
   bookable_online: boolean;
-  buffer_before_minutes: string;
-  buffer_after_minutes: string;
+  /** In hours, as typed ("0.5"); stored in minutes. */
+  buffer_before_hours: string;
+  buffer_after_hours: string;
   deposit: string;
   min_age: string;
   licence_class: string;
-  instant_units: string;
-  request_units: string;
-  ready_now: string;
 };
 
 /**
@@ -36,6 +34,7 @@ export function ProductForm({
   what,
   locked,
   then,
+  focusName,
 }: {
   slug: string;
   currency: string;
@@ -45,6 +44,8 @@ export function ProductForm({
   locked?: boolean;
   /** Added on the way to adding a vehicle: saving goes back to that form. */
   then?: "inventory";
+  /** A copy of another product: the name is selected, ready to be changed. */
+  focusName?: boolean;
 }) {
   const t = useTranslations("Fleet.model");
   const isNew = !values.id;
@@ -58,6 +59,8 @@ export function ProductForm({
       required
       maxLength={120}
       defaultValue={values.name}
+      autoFocus={focusName}
+      onFocus={focusName ? (event) => event.target.select() : undefined}
     />
   );
   return (
@@ -100,17 +103,19 @@ export function ProductForm({
       />
       <div className="grid gap-5 md:grid-cols-2">
         <TextInput
-          name="buffer_before_minutes"
+          name="buffer_before_hours"
           label={t("bufferBefore")}
-          inputMode="numeric"
-          defaultValue={values.buffer_before_minutes}
+          inputMode="decimal"
+          maxLength={6}
+          defaultValue={values.buffer_before_hours}
         />
         <TextInput
-          name="buffer_after_minutes"
+          name="buffer_after_hours"
           label={t("bufferAfter")}
           help={t("bufferHelp")}
-          inputMode="numeric"
-          defaultValue={values.buffer_after_minutes}
+          inputMode="decimal"
+          maxLength={6}
+          defaultValue={values.buffer_after_hours}
         />
         <TextInput
           name="deposit"
@@ -132,82 +137,7 @@ export function ProductForm({
           defaultValue={values.licence_class}
         />
       </div>
-      {values.id && (
-        <fieldset className="space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">{t("modes")}</legend>
-          <p className="text-sm text-muted-foreground">{t("modesHelp")}</p>
-          <div className="grid gap-5 md:grid-cols-3">
-            <TextInput
-              name="instant_units"
-              label={t("instantUnits")}
-              inputMode="numeric"
-              defaultValue={values.instant_units}
-            />
-            <TextInput
-              name="request_units"
-              label={t("requestUnits")}
-              inputMode="numeric"
-              defaultValue={values.request_units}
-            />
-            <TextInput
-              name="ready_now"
-              label={t("readyNow")}
-              inputMode="numeric"
-              defaultValue={values.ready_now}
-            />
-          </div>
-        </fieldset>
-      )}
       <p className="text-sm text-muted-foreground">{t("photosLater")}</p>
     </ActionForm>
-  );
-}
-
-/** Add one year band to a model, e.g. 2020 to 2023. */
-export function YearBandForm({ slug, id }: { slug: string; id: string }) {
-  const t = useTranslations("Fleet.bands");
-  return (
-    <ActionForm
-      action={addYearBand}
-      hidden={{ slug, id }}
-      submitLabel={t("add")}
-    >
-      <div className="grid grid-cols-2 gap-3">
-        <TextInput
-          name="year_from"
-          label={t("from")}
-          inputMode="numeric"
-          maxLength={4}
-          required
-        />
-        <TextInput
-          name="year_to"
-          label={t("to")}
-          inputMode="numeric"
-          maxLength={4}
-          required
-        />
-      </div>
-    </ActionForm>
-  );
-}
-
-export function DeleteYearBandButton({
-  slug,
-  band,
-  label,
-}: {
-  slug: string;
-  band: string;
-  label: string;
-}) {
-  return (
-    <ActionForm
-      action={deleteYearBand}
-      hidden={{ slug, band }}
-      submitLabel={label}
-      destructive
-      className="space-y-1"
-    />
   );
 }

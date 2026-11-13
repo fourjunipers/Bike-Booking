@@ -61,7 +61,7 @@ async function addModel(extra: object = {}): Promise<string> {
 async function submit(modelId: string): Promise<string> {
   const { data, error } = await shop.members.owner.db.rpc(
     "submit_product_to_catalog",
-    { p_product_id: modelId, p_type: "sport" },
+    { p_product_id: modelId, p_year: 2024, p_type: "sport" },
   );
   if (error) throw error;
   catalogIds.push(data);

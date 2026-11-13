@@ -746,8 +746,8 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
   const submit = (db: Db, modelId: string) =>
     db.rpc("submit_product_to_catalog", {
       p_product_id: modelId,
+      p_year: 2024,
       p_type: "city_scooter",
-      p_year_from: 2024,
       p_note: "Please add",
     });
   const model = async (id: string) => {
@@ -888,6 +888,7 @@ describe("presets, a shop's own models, and listing on Moto Mangos", () => {
         "submit_product_to_catalog",
         {
           p_product_id: data!.id,
+          p_year: 2024,
           p_type: "city_scooter",
         },
       );

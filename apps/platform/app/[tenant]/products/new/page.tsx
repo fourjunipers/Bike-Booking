@@ -4,6 +4,9 @@ import { getTranslations } from "next-intl/server";
 import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
+import { minutesToHours } from "@/lib/fleet";
+import { getModel } from "@/lib/fleet-data";
+import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
 import { ProductForm } from "../product-form";
 
@@ -30,6 +33,14 @@ export default async function NewProductPage({
     getTranslations("Fleet"),
     getTranslations("Products"),
   ]);
+  // "Duplicate" on a product's page: its settings, with its name ready to
+  // be changed (the year range, say). No vehicles and no Moto Mangos listing
+  // come with it.
+  const from = typeof query.from === "string" ? query.from : "";
+  const source = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(from)
+    ? await getModel(membership.tenant.id, from)
+    : null;
+  const text = (value: number | null) => (value === null ? "" : String(value));
   // Arriving from "Add vehicle": back there once it is saved.
   const then = query.then === "inventory" ? "inventory" : undefined;
 
@@ -51,19 +62,27 @@ export default async function NewProductPage({
           slug={slug}
           currency={membership.tenant.currency}
           then={then}
-          what={{ vehicle_type: "motorbike", categories: [] }}
+          focusName={Boolean(source)}
+          what={{
+            vehicle_type: source?.vehicle_type ?? "motorbike",
+            categories: source?.categories ?? [],
+          }}
           values={{
-            name: "",
-            description: "",
-            bookable_online: false,
-            buffer_before_minutes: "",
-            buffer_after_minutes: "",
-            deposit: "",
-            min_age: "",
-            licence_class: "",
-            instant_units: "0",
-            request_units: "0",
-            ready_now: "0",
+            name: source?.name ?? "",
+            description: source?.description ?? "",
+            bookable_online: source?.bookable_online ?? false,
+            buffer_before_hours: minutesToHours(
+              source?.buffer_before_minutes ?? null,
+            ),
+            buffer_after_hours: minutesToHours(
+              source?.buffer_after_minutes ?? null,
+            ),
+            deposit:
+              source && source.deposit !== null
+                ? moneyInputValue(source.deposit, membership.tenant.currency)
+                : "",
+            min_age: text(source?.min_age ?? null),
+            licence_class: source?.licence_class ?? "",
           }}
         />
       </section>

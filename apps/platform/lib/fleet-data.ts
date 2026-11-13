@@ -161,6 +161,22 @@ export const getYearBands = cache(async (tenantId: string) => {
   return data;
 });
 
+/**
+ * The units held by a block (downtime, a booking, a hold) at this moment:
+ * "available" on the Fleet list is an active vehicle that isn't one of these.
+ */
+export async function getBlockedUnitIds(tenantId: string, now: Date) {
+  const supabase = await createClient();
+  const at = now.toISOString();
+  const { data, error } = await supabase
+    .from("unit_blocks")
+    .select("unit_id")
+    .eq("tenant_id", tenantId)
+    .overlaps("period", `[${at},${at}]`);
+  if (error) throw error;
+  return new Set(data.map((block) => block.unit_id));
+}
+
 /** Purchase dates by unit, for sorting. Empty for roles that may not see money (RLS). */
 export async function getPurchaseDates(tenantId: string) {
   const supabase = await createClient();
@@ -317,7 +333,7 @@ export async function getCatalogEntry(id: string) {
 }
 
 /**
- * The audit trail for one product, its vehicles and its year bands, newest
+ * The audit trail for one product and its vehicles, newest
  * first. Empty for roles that may not read the audit log (RLS: owners and
  * managers only).
  */
@@ -329,7 +345,7 @@ export async function getProductHistory(
 ): Promise<AuditRow[]> {
   const supabase = await createClient();
   const columns = "id, entity, entity_id, action, actor, before, after, at";
-  const [product, units, bands] = await Promise.all([
+  const [product, units] = await Promise.all([
     supabase
       .from("audit_events")
       .select(columns)
@@ -348,22 +364,10 @@ export async function getProductHistory(
           .in("entity_id", unitIds)
           .order("at", { ascending: false })
           .limit(limit),
-    // A band's audit row holds its product in the snapshot, not in entity_id.
-    supabase
-      .from("audit_events")
-      .select(columns)
-      .eq("tenant_id", tenantId)
-      .eq("entity", "product_year_bands")
-      .or(
-        `after->>product_id.eq.${productId},before->>product_id.eq.${productId}`,
-      )
-      .order("at", { ascending: false })
-      .limit(limit),
   ]);
   if (product.error) throw product.error;
   if (units.error) throw units.error;
-  if (bands.error) throw bands.error;
-  return [...product.data, ...units.data, ...bands.data]
+  return [...product.data, ...units.data]
     .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id)
     .slice(0, limit);
 }

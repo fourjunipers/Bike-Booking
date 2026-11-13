@@ -28,7 +28,7 @@ const products = (page: Page) => page.getByRole("list", { name: "Products" });
 async function openPcx(page: Page): Promise<string> {
   await page.goto("/bsr/products");
   await products(page)
-    .getByRole("link", { name: "Open Honda PCX 160" })
+    .getByRole("link", { name: "Open Honda PCX 160", exact: true })
     .click();
   await expect(page).toHaveURL(/\/bsr\/products\/[0-9a-f-]{36}$/);
   return new URL(page.url()).pathname.split("/").pop()!;
@@ -61,7 +61,10 @@ test("products list: one row per product, filters, and a product's three tabs", 
 
   // One row per product: what it is, its vehicles in the fleet, and where
   // it stands on Moto Mangos.
-  const row = products(page).getByRole("link", { name: "Open Honda PCX 160" });
+  const row = products(page).getByRole("link", {
+    name: "Open Honda PCX 160",
+    exact: true,
+  });
   await expect(row).toBeVisible();
   await expect(row).toContainText("Vehicle · Motorbike");
   await expect(row.getByText(/^\d+ vehicles? in the fleet$/)).toBeVisible();
@@ -140,29 +143,90 @@ test("products list: one row per product, filters, and a product's three tabs", 
   ).toBeVisible();
   // ...and the product's title there opens the product.
   await page
-    .getByRole("link", { name: "Honda PCX 160", exact: true })
-    .first()
+    .getByRole("link", { name: /^Open product\s*: Honda PCX 160$/ })
     .click();
   await expect(page).toHaveURL(productUrl);
 
-  // History: who changed what. A rename shows with the person and both names.
-  const renamed = `PCX ${stamp()}`;
-  await page.getByLabel("Name").fill(renamed);
+  // History: who changed what. A rename shows with the person and both
+  // names. On a copy of its own, so other tests still find the demo product.
+  await page.goto(
+    `${productUrl.replace(/\/[^/]+$/, "")}/new?from=${productUrl.split("/").pop()}`,
+  );
+  const first = `PCX copy ${stamp()}`;
+  await page.getByLabel("Product name").fill(first);
+  await page.getByRole("button", { name: "Save product" }).click();
+  await expect(
+    page.getByRole("heading", { name: first, level: 1 }),
+  ).toBeVisible();
+  const copyUrl = page.url().replace(/\?.*$/, "");
+  await page.goto(copyUrl);
+  const renamed = `PCX renamed ${stamp()}`;
+  await page.getByLabel("Product name").fill(renamed);
   await page.getByRole("button", { name: "Save" }).first().click();
-  await expect(page.getByText("Saved").first()).toBeVisible();
-  await page.goto(`${productUrl}?tab=history`);
+  await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible();
+  await page.goto(`${copyUrl}?tab=history`);
   const history = page.getByRole("listitem").filter({ hasText: renamed });
   await expect(history.first()).toContainText("changed this product");
-  await expect(history.first()).toContainText(
-    `Name: Honda PCX 160 → ${renamed}`,
-  );
+  await expect(history.first()).toContainText(`Name: ${first} → ${renamed}`);
   await expect(history.first()).toContainText(/BSR|Owner|owner/);
   await noSidewaysScroll(page);
-  // Put the name back.
-  await page.goto(productUrl);
-  await page.getByLabel("Name").fill("Honda PCX 160");
-  await page.getByRole("button", { name: "Save" }).first().click();
-  await expect(page.getByText("Saved").first()).toBeVisible();
+  // Clean up.
+  await page.goto(copyUrl);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "Delete product" }).click();
+  await expect(page).toHaveURL(/\/bsr\/products(\?.*)?$/);
+});
+
+test("Duplicate copies a product's settings into the create form, name ready to change, and no vehicles", async ({
+  page,
+}) => {
+  await signIn(page, demo.bsrOwner);
+  await openPcx(page);
+  await page.getByRole("link", { name: "Duplicate" }).click();
+  await expect(page).toHaveURL(/\/bsr\/products\/new\?from=[0-9a-f-]{36}$/);
+  await expect(
+    page.getByRole("heading", { name: "Product details" }),
+  ).toBeVisible();
+  // The name is filled in and focused, so the year range can be typed over.
+  const name = page.getByLabel("Product name");
+  await expect(name).toHaveValue("Honda PCX 160");
+  await expect(name).toBeFocused();
+  // Its kind and category came with it.
+  await expect(page.getByRole("radio", { name: "Motorbike" })).toBeChecked();
+  await expect(
+    page
+      .getByRole("group", { name: "Categories" })
+      .getByRole("checkbox", { checked: true }),
+  ).toHaveCount(1);
+  // Saved under the same name: refused, it is a new product and needs its own.
+  await page.getByRole("button", { name: "Save product" }).click();
+  await expect(
+    page.getByText("That name is already used in this shop."),
+  ).toBeVisible();
+  const copy = `Honda PCX 160 ${stamp()}`;
+  await name.fill(copy);
+  await page.getByLabel("Buffer after return (hours)").fill("2");
+  await page.getByRole("button", { name: "Save product" }).click();
+  await expect(
+    page.getByRole("heading", { name: copy, level: 1 }),
+  ).toBeVisible();
+  const copyUrl = page.url().replace(/\?.*$/, "");
+  // No vehicles came with it, and it is not on Moto Mangos.
+  await expect(tabs(page).getByRole("link", { name: /^Units/ })).toHaveText(
+    /^Units\s*0$/,
+  );
+  await expect(
+    page
+      .getByRole("region", { name: "Moto Mangos", exact: true })
+      .getByLabel("List this product on Moto Mangos"),
+  ).toBeDisabled();
+  // A copy of the copy carries the buffer over.
+  await page.getByRole("link", { name: "Duplicate" }).click();
+  await expect(page.getByLabel("Buffer after return (hours)")).toHaveValue("2");
+  await page.goto(copyUrl);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "Delete product" }).click();
+  await expect(page).toHaveURL(/\/bsr\/products(\?.*)?$/);
 });
 
 test("old addresses still open: the product page, New product, and Add vehicle with ?model=", async ({
@@ -208,6 +272,7 @@ test("a mechanic and a driver read products and can't change them; staff neither
     await expect(page.getByLabel("Moto Mangos")).toHaveCount(0);
     const row = products(page).getByRole("link", {
       name: "Open Honda PCX 160",
+      exact: true,
     });
     await expect(row.getByText(/Moto Mangos$/)).toHaveCount(0);
     await row.click();

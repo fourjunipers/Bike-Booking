@@ -49,7 +49,7 @@ test("the distance unit stays as saved, and bikes show it", async ({
   await expect(page.getByLabel("Distances")).toHaveValue("mi");
 
   if (shop.slug === "big-fleet") {
-    await page.goto(`/${shop.slug}/fleet?group=none`);
+    await page.goto(`/${shop.slug}/fleet?status=active`);
     await expect(page.getByText(/\d mi\b/).first()).toBeVisible();
   }
 

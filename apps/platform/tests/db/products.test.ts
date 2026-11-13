@@ -340,11 +340,25 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
       p_type: "sport",
     });
     expect(sent.error?.message).toContain("specs_required");
+    // All four details but no year of the bike: not enough either.
+    const noYear = await shop.members.owner.db.rpc(
+      "submit_product_to_catalog",
+      {
+        p_product_id: data!.id,
+        p_type: "sport",
+        p_make: "Prodmake",
+        p_model: `Bare ${tag}`,
+        p_cc: 125,
+        p_transmission: "automatic",
+      },
+    );
+    expect(noYear.error?.message).toContain("specs_required");
     // Three of the four is not enough either.
     const partly = await shop.members.owner.db.rpc(
       "submit_product_to_catalog",
       {
         p_product_id: data!.id,
+        p_year: 2024,
         p_type: "sport",
         p_make: "Prodmake",
         p_model: `Bare ${tag}`,
@@ -370,6 +384,7 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
     const { data } = await add(`Send full ${tag}`, { categories: ["sport"] });
     const sent = await shop.members.owner.db.rpc("submit_product_to_catalog", {
       p_product_id: data!.id,
+      p_year: 2024,
       p_type: "sport",
       p_make: "  Prodmake ",
       p_model: `Full ${tag}`,
@@ -394,9 +409,10 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
     const { data: entry } = await service
       .schema("public")
       .from("bike_catalog")
-      .select("make, model, cc, transmission, status, type")
+      .select("make, model, cc, transmission, status, type, year_from, year_to")
       .eq("id", sent.data!)
       .single();
+    // The one year of the shop's bike is both ends of the request's range.
     expect(entry).toEqual({
       make: "Prodmake",
       model: `Full ${tag}`,
@@ -404,6 +420,8 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
       transmission: "manual",
       status: "requested",
       type: "sport",
+      year_from: 2024,
+      year_to: 2024,
     });
     // Rejected: it comes back to the shop with its details kept, ready to
     // be corrected and sent again with what it already has.
@@ -415,6 +433,7 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
     expect(rejected.error).toBeNull();
     const again = await shop.members.owner.db.rpc("submit_product_to_catalog", {
       p_product_id: data!.id,
+      p_year: 2024,
       p_type: "sport",
       p_cc: 320,
     });
@@ -431,6 +450,80 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
       cc: 320,
       transmission: "manual",
     });
+  });
+
+  it("the reviewer sets the model years at approval; left alone, the bike's year stands", async () => {
+    const send = async (name: string, year: number) => {
+      const { data } = await add(name, { categories: ["sport"] });
+      const sent = await shop.members.owner.db.rpc(
+        "submit_product_to_catalog",
+        {
+          p_product_id: data!.id,
+          p_type: "sport",
+          p_year: year,
+          p_make: "Prodmake",
+          p_model: name,
+          p_cc: 150,
+          p_transmission: "automatic",
+        },
+      );
+      if (sent.error) throw sent.error;
+      catalogIds.push(sent.data!);
+      return sent.data!;
+    };
+    const years = async (id: string) =>
+      (
+        await service
+          .schema("public")
+          .from("bike_catalog")
+          .select("status, year_from, year_to")
+          .eq("id", id)
+          .single()
+      ).data;
+
+    const ranged = await send(`Years A ${tag}`, 2022);
+    const approved = await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: ranged,
+      p_approve: true,
+      p_year_from: 2021,
+      p_year_to: 2024,
+    });
+    expect(approved.error).toBeNull();
+    expect(await years(ranged)).toEqual({
+      status: "approved",
+      year_from: 2021,
+      year_to: 2024,
+    });
+
+    const alone = await send(`Years B ${tag}`, 2019);
+    await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: alone,
+      p_approve: true,
+    });
+    expect(await years(alone)).toEqual({
+      status: "approved",
+      year_from: 2019,
+      year_to: 2019,
+    });
+
+    // A range the wrong way round is refused, and the request still waits.
+    const backwards = await send(`Years C ${tag}`, 2020);
+    const refused = await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: backwards,
+      p_approve: true,
+      p_year_from: 2024,
+      p_year_to: 2020,
+    });
+    expect(refused.error).not.toBeNull();
+    expect((await years(backwards))?.status).toBe("requested");
+    // A shop can't approve its own, with or without years.
+    const byShop = await shop.members.owner.db.rpc("review_catalog_request", {
+      p_catalog_id: backwards,
+      p_approve: true,
+      p_year_from: 2020,
+      p_year_to: 2020,
+    });
+    expect(byShop.error?.code).toBe("42501");
   });
 
   it("a product with a name alone takes its details from the list entry it is put on, and can then be listed", async () => {
@@ -455,6 +548,7 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
     const { data } = await add(`Staff send ${tag}`, { categories: ["sport"] });
     const details = {
       p_product_id: data!.id,
+      p_year: 2024,
       p_type: "sport" as const,
       p_make: "Prodmake",
       p_model: `Staff ${tag}`,
@@ -471,6 +565,7 @@ describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
     const sent = await shop.members.owner.db.rpc("submit_product_to_catalog", {
       ...details,
       p_product_id: car!.id,
+      p_year: 2024,
     });
     expect(sent.error?.message).toContain("only_motorbikes");
   });
@@ -576,7 +671,7 @@ describe("every re-created function runs", () => {
     const submit = async (productId: string) => {
       const { data, error } = await shop.members.owner.db.rpc(
         "submit_product_to_catalog",
-        { p_product_id: productId, p_type: "sport" },
+        { p_product_id: productId, p_year: 2024, p_type: "sport" },
       );
       if (error) throw error;
       catalogIds.push(data);

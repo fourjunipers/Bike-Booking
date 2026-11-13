@@ -53,6 +53,12 @@ const quiet = new Set([
   "location_id",
   "photos",
   "created_by",
+  // Asked for on the Moto Mangos review form only; not shown on the platform.
+  "make",
+  "model",
+  "cc",
+  "transmission",
+  "catalog_id",
 ]);
 
 const record = (value: unknown): Record<string, unknown> =>

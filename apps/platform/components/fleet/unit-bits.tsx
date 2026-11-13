@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { formatDistance, type DistanceUnit } from "@/lib/distance";
 import { cn } from "@/lib/utils";
 
-export { matchesText as matchesUnit } from "@/lib/fleet-view";
+export { matchesText as matchesUnit } from "@/lib/fleet-list";
 
 const statusClass: Record<string, string> = {
   active:

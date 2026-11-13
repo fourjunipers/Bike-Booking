@@ -1,10 +1,14 @@
-import type { ModelOption } from "@/components/fleet/make-model-picker";
-
 /**
- * Choices for the linked make and model dropdowns (owner, 11 Nov 2026).
- * "+ Make & model" offers the Moto Mangos list (motorbikes); everything else
- * offers the makes & models the shop already has.
+ * Choices for the dropdowns that pick a product or a Moto Mangos list entry.
+ * A product is known by its name alone on the platform (owner, 13 Nov 2026:
+ * no make or model anywhere but the Moto Mangos review form), so every list
+ * of products is one dropdown, A to Z by name.
  */
+
+export type Option = { value: string; label: string };
+
+const byLabel = (a: Option, b: Option) =>
+  a.label.localeCompare(b.label, undefined, { numeric: true });
 
 type Entry = {
   id: string;
@@ -12,59 +16,48 @@ type Entry = {
   model: string;
   year_from: number | null;
   year_to: number | null;
-  status: string;
 };
 
-/** "PCX 160 (2026)" / "CB500X (2019–2021)": a catalog entry without its make. */
-export function entryLabel(entry: Entry, pendingLabel?: string): string {
+/** "Honda PCX 160 (2026)" / "Honda CB500X (2019–2021)": a Moto Mangos list entry. */
+export function entryLabel(entry: Entry): string {
   const years =
     entry.year_from && entry.year_to && entry.year_to !== entry.year_from
       ? ` (${entry.year_from}–${entry.year_to})`
       : entry.year_from
         ? ` (${entry.year_from})`
         : "";
-  const pending =
-    entry.status === "requested" && pendingLabel ? ` · ${pendingLabel}` : "";
-  return `${entry.model}${years}${pending}`;
+  return `${entry.make} ${entry.model}${years}`;
 }
-
-/** Catalog entries, for choosing what a model is. Values are catalog ids. */
-export function catalogOptions(
-  catalog: Entry[],
-  pendingLabel?: string,
-): ModelOption[] {
-  return catalog.map((entry) => ({
-    value: entry.id,
-    make: entry.make,
-    label: entryLabel(entry, pendingLabel),
-  }));
-}
-
-/** A shop's model, with what it is (from the list or typed in). */
-type ShopModel = {
-  id: string;
-  name: string;
-  catalog: { id: string | null; make: string };
-};
 
 /**
- * For a vehicle: the shop's own makes & models, and nothing else. Adding to
- * the inventory never creates one (owner, 12 Nov 2026). Values are
- * "model:<id>" (lib/fleet parseModelChoice).
+ * The Moto Mangos list, for "Select your make and model from the list" on a
+ * product's Moto Mangos panel. Values are list entry ids.
  */
-export function inventoryModelOptions(models: ShopModel[]): ModelOption[] {
-  return models.map((model) => ({
-    value: `model:${model.id}`,
-    make: model.catalog?.make ?? "",
-    label: model.name,
-  }));
+export function catalogOptions(catalog: Entry[]): Option[] {
+  return catalog
+    .map((entry) => ({ value: entry.id, label: entryLabel(entry) }))
+    .sort(byLabel);
 }
 
-/** For filters: the shop's models only. Values are model ids. */
-export function shopModelOptions(models: ShopModel[]): ModelOption[] {
-  return models.map((model) => ({
-    value: model.id,
-    make: model.catalog?.make ?? "",
-    label: model.name,
-  }));
+type ShopProduct = { id: string; name: string; retired_at?: string | null };
+
+/**
+ * For a vehicle: the shop's own products, and nothing else. Values are
+ * "model:<id>" (lib/fleet parseModelChoice).
+ */
+export function inventoryModelOptions(products: ShopProduct[]): Option[] {
+  return products
+    .map((product) => ({ value: `model:${product.id}`, label: product.name }))
+    .sort(byLabel);
+}
+
+/**
+ * For filters: the shop's products in use. A retired product is left out
+ * (owner, 13 Nov 2026). Values are product ids.
+ */
+export function shopModelOptions(products: ShopProduct[]): Option[] {
+  return products
+    .filter((product) => !product.retired_at)
+    .map((product) => ({ value: product.id, label: product.name }))
+    .sort(byLabel);
 }

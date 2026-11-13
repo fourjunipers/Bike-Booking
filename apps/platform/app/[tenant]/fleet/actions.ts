@@ -11,7 +11,9 @@ import {
   catalogSubmitSchema,
   dbErrorKey,
   fieldErrors,
+  hoursToMinutes,
   isIsoDate,
+  listingSchema,
   modelSchema,
   parseModelChoice,
   renewalSchema,
@@ -20,9 +22,8 @@ import {
   unitStatuses,
   vehicleTypes,
   wholeMinute,
-  yearBandSchema,
 } from "@/lib/fleet";
-import { getCatalog, getLocations } from "@/lib/fleet-data";
+import { getLocations } from "@/lib/fleet-data";
 import { planImport, type ImportError } from "@/lib/fleet-import";
 import { parseMoney } from "@/lib/money";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
@@ -88,20 +89,29 @@ export async function saveModel(
     name: raw.name,
     description: raw.description,
     bookable_online: raw.bookable_online,
-    buffer_before_minutes: raw.buffer_before_minutes,
-    buffer_after_minutes: raw.buffer_after_minutes,
     min_age: raw.min_age,
     licence_class: raw.licence_class,
-    instant_units: raw.instant_units,
-    request_units: raw.request_units,
-    ready_now: raw.ready_now,
   });
   const deposit = money(formData, "deposit", tenant.currency);
-  if (!parsed.success || deposit === "invalid") {
+  // Typed in hours, stored in minutes.
+  const bufferBefore = hoursToMinutes(field(formData, "buffer_before_hours"));
+  const bufferAfter = hoursToMinutes(field(formData, "buffer_after_hours"));
+  if (
+    !parsed.success ||
+    deposit === "invalid" ||
+    bufferBefore === "invalid" ||
+    bufferAfter === "invalid"
+  ) {
     return {
       errors: {
         ...(parsed.success ? {} : fieldErrors(parsed.error)),
         ...(deposit === "invalid" ? { deposit: "invalidMoney" } : {}),
+        ...(bufferBefore === "invalid"
+          ? { buffer_before_hours: "invalidHours" }
+          : {}),
+        ...(bufferAfter === "invalid"
+          ? { buffer_after_hours: "invalidHours" }
+          : {}),
       },
     };
   }
@@ -119,6 +129,8 @@ export async function saveModel(
 
   const common = {
     ...parsed.data,
+    buffer_before_minutes: bufferBefore,
+    buffer_after_minutes: bufferAfter,
     categories: checked.categories,
     deposit,
     deposit_currency: deposit === null ? null : tenant.currency,
@@ -151,9 +163,6 @@ export async function saveModel(
       // On a list entry (or waiting on one) the kind is the entry's: the
       // form sends it back unchanged and the database keeps it either way.
       ...(field(formData, "locked") === "1" ? {} : { vehicle_type: kind }),
-      ...(common.ready_now > 0
-        ? { ready_updated_at: new Date().toISOString() }
-        : {}),
     })
     .eq("tenant_id", tenant.id)
     .eq("id", id)
@@ -205,50 +214,6 @@ export async function deleteModel(
     return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   redirect(`/${slug}/products`);
-}
-
-/** One of a model's year bands, for grouping the fleet list. */
-export async function addYearBand(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const { slug, tenant, role, supabase } = await context(formData);
-  if (!canManageFleet(role)) return notAllowed;
-  const parsed = yearBandSchema.safeParse({
-    year_from: field(formData, "year_from"),
-    year_to: field(formData, "year_to"),
-  });
-  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-
-  const { error } = await supabase.from("product_year_bands").insert({
-    ...parsed.data,
-    tenant_id: tenant.id,
-    product_id: field(formData, "id"),
-  });
-  if (error) {
-    const key = dbErrorKey(error);
-    return { errors: key === "bandOverlap" ? { year_to: key } : { form: key } };
-  }
-  refresh(slug);
-  return { ok: true };
-}
-
-export async function deleteYearBand(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const { slug, tenant, role, supabase } = await context(formData);
-  if (!canManageFleet(role)) return notAllowed;
-  const { data, error } = await supabase
-    .from("product_year_bands")
-    .delete()
-    .eq("tenant_id", tenant.id)
-    .eq("id", field(formData, "band"))
-    .select("id");
-  if (error || data.length !== 1)
-    return { errors: { form: dbErrorKey(error) } };
-  refresh(slug);
-  return { ok: true };
 }
 
 // Units ----------------------------------------------------------------------------
@@ -723,12 +688,11 @@ export async function importFleet(
     throw error;
   }
 
-  const [locations, catalog, models, units] = await Promise.all([
+  const [locations, products, units] = await Promise.all([
     getLocations(tenant.id),
-    getCatalog(),
     supabase
       .from("products")
-      .select("id, name, catalog_id, make, model")
+      .select("id, name")
       .eq("tenant_id", tenant.id)
       .eq("type", "vehicle"),
     supabase.from("units").select("plate").eq("tenant_id", tenant.id),
@@ -741,12 +705,7 @@ export async function importFleet(
       name: l.name,
       isDefault: l.is_default,
     })),
-    models: (models.data ?? []).map((m) => ({
-      ...m,
-      make: m.make ?? "",
-      model: m.model ?? "",
-    })),
-    catalog,
+    products: products.data ?? [],
     plates: (units.data ?? []).flatMap((u) => (u.plate ? [u.plate] : [])),
     newId: randomUUID,
   });
@@ -755,7 +714,7 @@ export async function importFleet(
   // One transaction in the database: the file is saved whole or not at all.
   const { data, error } = await supabase.rpc("import_fleet", {
     p_tenant_id: tenant.id,
-    p_models: plan.models,
+    p_models: plan.products,
     p_units: plan.units,
   });
   if (error) return { fileError: "saveFailed" };
@@ -806,15 +765,14 @@ export async function submitModelToCatalog(
   const type =
     bikeTypes.find((bikeType) => model?.categories.includes(bikeType)) ?? null;
   if (!type) return { errors: { form: "categoryFirst" } };
-  // Make, model, engine size and transmission are given with the request:
-  // all four are required for a motorbike.
+  // Make, model, engine size, transmission and the year of the shop's bike
+  // are given with the request: all five are required.
   const parsed = catalogSubmitSchema.safeParse({
     make: raw.make,
     model: raw.model,
     cc: raw.cc,
     transmission: raw.transmission,
-    year_from: raw.year_from,
-    year_to: raw.year_to,
+    year: raw.year,
     note: raw.note,
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
@@ -824,8 +782,7 @@ export async function submitModelToCatalog(
   const { error } = await supabase.rpc("submit_product_to_catalog", {
     p_product_id: field(formData, "id"),
     p_type: type,
-    p_year_from: parsed.data.year_from ?? undefined,
-    p_year_to: parsed.data.year_to ?? undefined,
+    p_year: parsed.data.year,
     p_note: parsed.data.note ?? undefined,
     p_make: parsed.data.make,
     p_model: parsed.data.model,
@@ -837,16 +794,36 @@ export async function submitModelToCatalog(
   return { ok: true };
 }
 
-/** Switches a model's Moto Mangos listing on or off. Only a model on an approved preset can be on. */
-export async function setMarketplaceListed(
+/**
+ * The Moto Mangos listing switch and settings: listed or not, and how many
+ * units confirm instantly, need the shop's OK, or stand ready for walk-ins.
+ * The database lets a product be listed only on an approved list entry, and
+ * keeps the counts within its active vehicles.
+ */
+export async function saveListing(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
+  const raw = Object.fromEntries(formData);
+  const parsed = listingSchema.safeParse({
+    listed: raw.listed,
+    instant_units: raw.instant_units,
+    request_units: raw.request_units,
+    ready_now: raw.ready_now,
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const { listed, ...counts } = parsed.data;
   const { data, error } = await supabase
     .from("products")
-    .update({ marketplace_listed: field(formData, "listed") === "on" })
+    .update({
+      marketplace_listed: listed,
+      ...counts,
+      ...(counts.ready_now > 0
+        ? { ready_updated_at: new Date().toISOString() }
+        : {}),
+    })
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");

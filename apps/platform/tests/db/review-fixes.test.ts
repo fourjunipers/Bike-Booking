@@ -78,7 +78,12 @@ async function submit(
 ): Promise<string> {
   const { data, error } = await shop.members.owner.db.rpc(
     "submit_product_to_catalog",
-    { p_product_id: modelId, p_type: "city_scooter", p_note: note },
+    {
+      p_product_id: modelId,
+      p_year: 2024,
+      p_type: "city_scooter",
+      p_note: note,
+    },
   );
   if (error) throw error;
   catalogIds.push(data);
@@ -807,6 +812,7 @@ describe("small fixes", () => {
     expect(error).toBeNull();
     const sent = await shop.members.owner.db.rpc("submit_product_to_catalog", {
       p_product_id: data!.id,
+      p_year: 2024,
       p_type: "city_scooter",
     });
     expect(sent.error).toBeNull();

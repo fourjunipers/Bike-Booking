@@ -3,12 +3,6 @@ import en from "../messages/en.json";
 import th from "../messages/th.json";
 import { buildHistory, historyValue, type AuditRow } from "./history";
 import {
-  knownModels,
-  splitMakeModel,
-  suggestKnown,
-  type KnownModel,
-} from "./known-models";
-import {
   buildProductsView,
   defaultProductsView,
   parseProductsView,
@@ -19,63 +13,13 @@ import { catalogSubmitSchema, modelSchema } from "./fleet";
 import { adminAreas, canSeeArea, roles } from "./roles";
 import { categoriesFor } from "./vehicle-kinds";
 
-const catalog = [
-  {
-    id: "pcx-21",
-    make: "Honda",
-    model: "PCX 160",
-    year_from: 2021,
-    year_to: 2024,
-    cc: 157,
-    transmission: "automatic" as const,
-    type: "city_scooter",
-  },
-  {
-    id: "pcx-25",
-    make: "Honda",
-    model: "PCX 160",
-    year_from: 2025,
-    year_to: null,
-    cc: 157,
-    transmission: "automatic" as const,
-    type: "city_scooter",
-  },
-  {
-    id: "click",
-    make: "Honda",
-    model: "Click 160",
-    year_from: null,
-    year_to: null,
-    cc: 157,
-    transmission: "automatic" as const,
-    type: "city_scooter",
-  },
-  {
-    id: "classic",
-    make: "Royal Enfield",
-    model: "Classic 350",
-    year_from: 2022,
-    year_to: 2022,
-    cc: 349,
-    transmission: "manual" as const,
-    type: "classic",
-  },
-];
-const known: KnownModel[] = knownModels(catalog);
-const ids = (models: KnownModel[]) => models.map((m) => m.id);
-
 describe("a product is a kind and a name; details come with the Moto Mangos request", () => {
   const base = {
     name: " Honda PCX 160 ",
     description: "",
     bookable_online: undefined,
-    buffer_before_minutes: "",
-    buffer_after_minutes: "",
     min_age: "",
     licence_class: "",
-    instant_units: "0",
-    request_units: "0",
-    ready_now: "0",
   };
 
   it("the product form needs a name and takes no make, model or list entry", () => {
@@ -91,13 +35,10 @@ describe("a product is a kind and a name; details come with the Moto Mangos requ
       model: "PCX 160",
       cc: "157",
       transmission: "automatic",
-      year_from: "",
-      year_to: "",
+      year: "2023",
       note: "",
     };
     expect(catalogSubmitSchema.safeParse(full).data).toMatchObject({
-      make: "Honda",
-      model: "PCX 160",
       cc: 157,
       transmission: "automatic",
     });
@@ -109,71 +50,18 @@ describe("a product is a kind and a name; details come with the Moto Mangos requ
       ["cc", "abc"],
       ["transmission", ""],
       ["transmission", "cvt"],
+      ["year", ""],
+      ["year", "23"],
+      ["year", "1900"],
     ] as const) {
       const result = catalogSubmitSchema.safeParse({ ...full, [field]: value });
       expect(result.success, `${field}=${value}`).toBe(false);
     }
+    // The shop gives one year; a range is no longer its to give.
     expect(
-      catalogSubmitSchema.safeParse({
-        ...full,
-        year_from: "2024",
-        year_to: "2020",
-      }).success,
+      catalogSubmitSchema.safeParse({ ...full, year_from: "2020" }).success,
     ).toBe(false);
-  });
-});
-
-describe("matching a product's name against known models (the Moto Mangos panel)", () => {
-  it("labels a known model with its make, model and years", () => {
-    expect(known.map((m) => m.label)).toEqual([
-      "Honda PCX 160 (2021–2024)",
-      "Honda PCX 160 (2025)",
-      "Honda Click 160",
-      "Royal Enfield Classic 350 (2022)",
-    ]);
-  });
-
-  it("suggests nothing until two characters are typed", () => {
-    expect(suggestKnown("", known)).toEqual([]);
-    expect(suggestKnown("h", known)).toEqual([]);
-    expect(suggestKnown("ho", known)).toHaveLength(3);
-  });
-
-  it("matches every typed word, in any order and any case", () => {
-    expect(ids(suggestKnown("pcx", known))).toEqual(["pcx-21", "pcx-25"]);
-    expect(ids(suggestKnown("PCX hon", known))).toEqual(["pcx-21", "pcx-25"]);
-    expect(ids(suggestKnown("160 click", known))).toEqual(["click"]);
-    expect(ids(suggestKnown("enfield", known))).toEqual(["classic"]);
-  });
-
-  it("ignores spacing, so pcx160 finds PCX 160", () => {
-    expect(ids(suggestKnown("pcx160", known))).toEqual(["pcx-21", "pcx-25"]);
-  });
-
-  it("puts labels that start with the text first, and stops at the limit", () => {
-    expect(ids(suggestKnown("honda c", known))[0]).toBe("click");
-    expect(suggestKnown("honda", known, 2)).toHaveLength(2);
-  });
-
-  it("suggests nothing for a model nobody knows: the owner keeps typing", () => {
-    expect(suggestKnown("Yamaha Aerox 155", known)).toEqual([]);
-  });
-
-  it("splits typed text into make and model", () => {
-    expect(splitMakeModel("Yamaha Aerox 155")).toEqual({
-      make: "Yamaha",
-      model: "Aerox 155",
-    });
-    expect(splitMakeModel("  Vespa  ")).toEqual({ make: "Vespa", model: "" });
-    expect(splitMakeModel("")).toEqual({ make: "", model: "" });
-    // A make of two words is kept whole when the list knows it.
-    expect(
-      splitMakeModel("royal enfield Hunter 350", ["Honda", "Royal Enfield"]),
-    ).toEqual({ make: "Royal Enfield", model: "Hunter 350" });
-    expect(splitMakeModel("Royal Enfield Hunter 350")).toEqual({
-      make: "Royal",
-      model: "Enfield Hunter 350",
-    });
+    expect(catalogSubmitSchema.safeParse(full).data?.year).toBe(2023);
   });
 });
 
@@ -181,12 +69,8 @@ const product = (extra: Partial<ProductInput> = {}): ProductInput => ({
   id: extra.name ?? "p",
   name: "Honda PCX 160",
   type: "vehicle",
-  make: "Honda",
-  model: "PCX 160",
   vehicle_type: "motorbike",
   categories: ["city_scooter"],
-  cc: 157,
-  transmission: "automatic",
   photos: [],
   retired_at: null,
   marketplace_listed: false,
@@ -210,26 +94,18 @@ describe("the Products list", () => {
     }),
     product({
       name: "Aerox",
-      make: "Yamaha",
-      model: "Aerox 155",
       categories: ["sport", "city_scooter"],
       entry_status: "requested",
     }),
     product({
       name: "Old Wave",
-      make: "Honda",
-      model: "Wave 110",
       retired_at: "2026-11-01T00:00:00Z",
       units: [{ status: "retired" }],
     }),
     product({
       name: "Yaris",
-      make: "Toyota",
-      model: "Yaris",
       vehicle_type: "car",
       categories: ["hatchback"],
-      cc: null,
-      transmission: null,
     }),
   ];
   const names = (view: Partial<typeof defaultProductsView>) =>
@@ -255,11 +131,12 @@ describe("the Products list", () => {
     expect(names({ scope: "all" })).toHaveLength(4);
   });
 
-  it("filters by kind, by any of a product's categories, and by text", () => {
+  it("filters by kind, by any of a product's categories, and by name", () => {
     expect(names({ kind: "car" })).toEqual(["Yaris"]);
     expect(names({ category: "city_scooter" })).toEqual(["Aerox", "PCX red"]);
-    expect(names({ q: "yamaha" })).toEqual(["Aerox"]);
-    expect(names({ q: "pcx 160" })).toEqual(["PCX red"]);
+    // By name only: a product has no make or model on the platform.
+    expect(names({ q: "aer" })).toEqual(["Aerox"]);
+    expect(names({ q: "red pcx" })).toEqual(["PCX red"]);
     expect(names({ q: "nothing like it" })).toEqual([]);
   });
 
@@ -411,7 +288,7 @@ describe("menu and wording", () => {
   it("the create form asks for a kind and a name: the type-ahead texts are gone", () => {
     expect(en.Fleet.what.kindLegend).toBe("What kind of product is it?");
     expect(en.Fleet.model.detailsTitle).toBe("Product details");
-    expect(en.Fleet.model.namePlaceholder).toBe("e.g. Honda PCX 160");
+    expect(en.Fleet.model.namePlaceholder).toBe("e.g. Honda CB500X 2022-2024");
     for (const gone of [
       "typeIt",
       "useList",

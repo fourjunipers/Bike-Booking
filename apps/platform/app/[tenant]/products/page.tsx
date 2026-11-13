@@ -236,17 +236,6 @@ export default async function ProductsPage({
               // Only a web address can be shown as it is; photos are uploaded
               // with the online booking page (Phase 3).
               const photo = row.photos.find((url) => /^https?:\/\//.test(url));
-              const facts = [
-                !row.make || row.name === `${row.make} ${row.model}`
-                  ? null
-                  : `${row.make} ${row.model}`,
-                row.cc ? `${row.cc} cc` : null,
-                row.transmission
-                  ? tFleet(
-                      `transmission.${row.transmission}` as "transmission.manual",
-                    )
-                  : null,
-              ].filter(Boolean);
               return (
                 <li key={row.id} className="even:bg-accent/40">
                   <Link
@@ -276,7 +265,6 @@ export default async function ProductsPage({
                         {[
                           t(`type.${row.type}` as "type.vehicle"),
                           tFleet(`kind.${row.vehicle_type}` as "kind.car"),
-                          ...facts,
                         ].join(" · ")}
                       </span>
                     </span>

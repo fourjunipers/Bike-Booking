@@ -105,16 +105,39 @@ export const modelSchema = z
     name: z.string().trim().min(1, "required").max(120, "tooLong"),
     description: optionalText(2000),
     bookable_online: checkbox,
-    buffer_before_minutes: optionalInt(0, 10080),
-    buffer_after_minutes: optionalInt(0, 10080),
     min_age: optionalInt(14, 99),
     licence_class: optionalText(60),
+  })
+  .strict();
+export type ModelInput = z.infer<typeof modelSchema>;
+
+/**
+ * Buffers are typed in hours, decimals allowed ("0.5", "1,5"), and stored in
+ * minutes. Blank is null (the shop default); up to a week; to the minute.
+ */
+export function hoursToMinutes(text: string): number | null | "invalid" {
+  const typed = text.trim().replace(",", ".");
+  if (!typed) return null;
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(typed)) return "invalid";
+  const minutes = Math.round(Number(typed) * 60);
+  return minutes > 10080 ? "invalid" : minutes;
+}
+
+/** Stored minutes as the hours to show in the form: 30 → "0.5", 90 → "1.5". */
+export function minutesToHours(minutes: number | null): string {
+  if (minutes === null) return "";
+  return String(Math.round((minutes / 60) * 100) / 100);
+}
+
+/** The Moto Mangos listing settings on a product's panel. */
+export const listingSchema = z
+  .object({
+    listed: checkbox,
     instant_units: count,
     request_units: count,
     ready_now: count,
   })
   .strict();
-export type ModelInput = z.infer<typeof modelSchema>;
 
 /** A bike's details. Its status and odometer have their own controls. */
 export const unitSchema = z
@@ -303,12 +326,23 @@ export const catalogSubmitSchema = z
       (value) => (value === "" || value == null ? undefined : value),
       z.enum(transmissions, "required").optional(),
     ),
-    year_from: optionalInt(1950, 2100, "invalidYear"),
-    year_to: optionalInt(1950, 2100, "invalidYear"),
+    // The year of the shop's own bike. The range of years the list entry
+    // covers is the reviewer's to set at approval.
+    year: z.preprocess(
+      (value) => (value === "" || value == null ? undefined : value),
+      z.coerce
+        .number("invalidYear")
+        .int("invalidYear")
+        .min(1950, "invalidYear")
+        .max(2100, "invalidYear")
+        .optional(),
+    ),
     note: optionalText(500),
   })
   .strict()
   .superRefine((c, ctx) => {
+    if (c.year === undefined)
+      ctx.addIssue({ code: "custom", path: ["year"], message: "required" });
     if (c.cc === undefined)
       ctx.addIssue({ code: "custom", path: ["cc"], message: "required" });
     if (c.transmission === undefined)
@@ -316,12 +350,6 @@ export const catalogSubmitSchema = z
         code: "custom",
         path: ["transmission"],
         message: "required",
-      });
-    if (c.year_from && c.year_to && c.year_to < c.year_from)
-      ctx.addIssue({
-        code: "custom",
-        path: ["year_to"],
-        message: "endBeforeStart",
       });
   });
 

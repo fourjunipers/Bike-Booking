@@ -88,6 +88,8 @@ export default async function AdminCatalogPage({
                 <div className="mt-4">
                   <ReviewForm
                     id={entry.id}
+                    yearFrom={entry.year_from}
+                    yearTo={entry.year_to}
                     presets={[
                       // "Did you mean" first, then every preset.
                       ...suggestCatalog(entry.make, entry.model, presets),

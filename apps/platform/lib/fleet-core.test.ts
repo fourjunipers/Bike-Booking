@@ -163,23 +163,14 @@ describe("form rules", () => {
       name: " PCX 160 white ",
       description: "",
       bookable_online: "on",
-      buffer_before_minutes: "",
-      buffer_after_minutes: "1440",
       min_age: "21",
       licence_class: "",
-      instant_units: "",
-      request_units: "2",
-      ready_now: "0",
     });
     expect(ok.data).toMatchObject({
       name: "PCX 160 white",
       description: null,
       bookable_online: true,
-      buffer_before_minutes: null,
-      buffer_after_minutes: 1440,
       min_age: 21,
-      instant_units: 0,
-      request_units: 2,
     });
     const bad = modelSchema.safeParse({ name: " " });
     expect(bad.error?.issues.map((i) => i.message)).toEqual(

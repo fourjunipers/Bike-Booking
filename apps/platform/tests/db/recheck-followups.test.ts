@@ -67,7 +67,12 @@ async function addUnit(modelId: string): Promise<string> {
 async function submit(modelId: string): Promise<string> {
   const { data, error } = await shop.members.owner.db.rpc(
     "submit_product_to_catalog",
-    { p_product_id: modelId, p_type: "city_scooter", p_note: "Please add" },
+    {
+      p_product_id: modelId,
+      p_year: 2024,
+      p_type: "city_scooter",
+      p_note: "Please add",
+    },
   );
   if (error) throw error;
   catalogIds.push(data);

@@ -10,10 +10,6 @@ import {
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import {
-  MakeModelPicker,
-  type ModelOption,
-} from "@/components/fleet/make-model-picker";
 import { renewalKinds, unitStatuses, workStatuses } from "@/lib/fleet";
 import {
   addDowntime,
@@ -46,8 +42,8 @@ export type UnitFormValues = {
 };
 
 /**
- * A bike's details: owners and managers. The model is chosen make first, then
- * model. The odometer sits here too (a lower reading asks to confirm); the
+ * A vehicle's details: owners and managers. Its product is one dropdown, A
+ * to Z by name. The odometer sits here too (a lower reading asks to confirm); the
  * location is the last field. Status has its own control on the bike page.
  */
 export function UnitForm({
@@ -60,7 +56,7 @@ export function UnitForm({
 }: {
   slug: string;
   values: UnitFormValues;
-  models: ModelOption[];
+  models: Option[];
   locations: Option[];
   distanceUnit: string;
   addModelHref: string;
@@ -89,23 +85,22 @@ export function UnitForm({
       }}
     >
       <div className="grid gap-5 md:grid-cols-2">
-        <MakeModelPicker
-          modelName="model_choice"
-          makeLabel={t("make")}
-          modelLabel={t("model")}
-          models={models}
-          defaultModel={values.model_choice}
-          required
-          help={t("modelHelp")}
-          footer={
-            <Link
-              href={addModelHref}
-              className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
-            >
-              {t("makeOrModelMissing")}
-            </Link>
-          }
-        />
+        <div>
+          <SelectInput
+            name="model_choice"
+            label={t("model")}
+            help={t("modelHelp")}
+            required
+            defaultValue={values.model_choice}
+            options={[{ value: "", label: "—" }, ...models]}
+          />
+          <Link
+            href={addModelHref}
+            className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
+          >
+            {t("makeOrModelMissing")}
+          </Link>
+        </div>
         <TextInput
           name="model_year"
           label={t("modelYear")}

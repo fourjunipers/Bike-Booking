@@ -203,9 +203,14 @@ alter table platform.units
 -- else changes, except: the clamp's audit row is filed under 'products';
 -- import_fleet() answers {"products": n, "units": n} and reads "product_id"
 -- from each unit; and submit_product_to_catalog() (written out at the end)
--- takes the make, model, engine size and transmission with the request.
+-- takes the make, model, engine size, transmission and the year of the
+-- shop's bike with the request; and review_catalog_request() takes the model
+-- years the entry covers when it approves.
 
 drop function platform.submit_model_to_catalog(uuid, public.bike_type, integer, integer, text);
+-- Two parameters are added (the year range, set at approval), which needs a
+-- drop; it is granted again at the end of this file.
+drop function platform.review_catalog_request(uuid, boolean, text, uuid);
 
 create or replace function platform_private.products_guard()
  RETURNS trigger
@@ -519,7 +524,7 @@ end;
 $function$
 ;
 
-create or replace function platform.review_catalog_request(p_catalog_id uuid, p_approve boolean, p_notes text DEFAULT NULL::text, p_merge_into uuid DEFAULT NULL::uuid)
+create or replace function platform.review_catalog_request(p_catalog_id uuid, p_approve boolean, p_notes text DEFAULT NULL::text, p_merge_into uuid DEFAULT NULL::uuid, p_year_from integer DEFAULT NULL::integer, p_year_to integer DEFAULT NULL::integer)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -571,6 +576,11 @@ begin
     set status = 'approved',
         review_notes = v_notes,
         reviewed_at = now(),
+        -- The model years the entry covers are the reviewer's to set (owner,
+        -- 13 Nov 2026). A request arrives with the one year of the shop's
+        -- own bike as both ends; left alone, that stands.
+        year_from = coalesce(p_year_from, year_from),
+        year_to = coalesce(p_year_to, year_to),
         -- The entry is public from here on.
         request_note = null,
         requested_by_tenant_id = null
@@ -636,15 +646,17 @@ $function$
 ;
 
 -- Sending a motorbike to Moto Mangos. The shop gives its make, model, engine
--- size and transmission at this moment (a product is created with a name
--- only); what it already has is used where nothing is given. Everything
--- happens in one transaction: the details are saved on the product and the
--- request is made, or neither.
+-- size, transmission and the year of its bike at this moment (a product is
+-- created with a name only); what the product already has is used where
+-- nothing is given, except the year, which is always given. The request
+-- carries that one year as both ends of its range; the reviewer sets the
+-- range the entry covers when approving. Everything happens in one
+-- transaction: the details are saved on the product and the request is
+-- made, or neither.
 create function platform.submit_product_to_catalog(
   p_product_id uuid,
   p_type public.bike_type,
-  p_year_from integer default null,
-  p_year_to integer default null,
+  p_year integer default null,
   p_note text default null,
   p_make text default null,
   p_model text default null,
@@ -679,6 +691,7 @@ begin
   -- Moto Mangos search filters by all four.
   if v_model.make is null or v_model.model is null
     or v_model.cc is null or v_model.transmission is null
+    or p_year is null
   then
     raise exception 'specs_required' using errcode = 'P0001';
   end if;
@@ -688,7 +701,7 @@ begin
     request_note, status, requested_by_tenant_id
   )
   values (
-    btrim(v_model.make), btrim(v_model.model), p_year_from, p_year_to, p_type,
+    btrim(v_model.make), btrim(v_model.model), p_year, p_year, p_type,
     v_model.transmission, v_model.cc, v_model.vehicle_type,
     nullif(btrim(p_note), ''), 'requested', v_model.tenant_id
   )
@@ -703,10 +716,13 @@ begin
       transmission = v_model.transmission
   where id = p_product_id;
   perform platform_private.audit(v_model.tenant_id, 'bike_catalog', v_id::text, 'submit',
-    null, jsonb_build_object('product_id', p_product_id, 'make', v_model.make, 'model', v_model.model));
+    null, jsonb_build_object('product_id', p_product_id, 'make', v_model.make, 'model', v_model.model, 'year', p_year));
   return v_id;
 end;
 $$;
 
-revoke all on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, integer, text, text, text, integer, public.transmission) from public, anon;
-grant execute on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, integer, text, text, text, integer, public.transmission) to authenticated;
+revoke all on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, text, text, text, integer, public.transmission) from public, anon;
+grant execute on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, text, text, text, integer, public.transmission) to authenticated;
+
+revoke all on function platform.review_catalog_request(uuid, boolean, text, uuid, integer, integer) from public, anon;
+grant execute on function platform.review_catalog_request(uuid, boolean, text, uuid, integer, integer) to authenticated;

@@ -9,6 +9,8 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 
 **Second round (13 Nov 2026, after the owner's click-through).** The create form is a kind and a product name; the make-and-model type-ahead and its texts are gone (`Fleet.what.makeModel*`, `suggestions`, `filled*`, `notKnown`, `makeHelp`, `optional`, `tip.fromList`, `tip.typed`, `Fleet.model.nameHelpNew`, `FormErrors.inPresets`, `FormErrors.requiredSpecs`, and earlier `Fleet.what.typeIt`, `useList`, `notInList`). New or changed in this round: `Fleet.what.kindLegend`, `Fleet.what.tip.text`, `Fleet.category.dirt_bike` (Dirt bike, รถวิบาก: for approval), `Fleet.model.detailsTitle`, `name`, `namePlaceholder`, `nameHelp`, `Fleet.motoMangos.submitHelp`, `categoryFirst`, `FormErrors.specs_required`.
 
+**Third round (13 Nov 2026).** Make and model are gone from the platform's screens; the Moto Mangos panel has a new order and new texts; buffers are in hours; Fleet is one line per product. New or changed in this round: `Fleet.list`, `vehicleCounts`, `searchPlaceholder`, `Fleet.unit.modelYear` (now "Year", ปี), `modelYearHelp`, `Fleet.model.removeTitle`, `namePlaceholder`, `nameHelp`, `bufferBefore`, `bufferAfter`, `bufferHelp`, `modesHelp`, `Products.duplicate`, `Products.searchPlaceholder`, `FormErrors.invalidHours`, `specs_required`, `Fleet.motoMangos.selectFromList`, `notInList`, `submitHelp`, `submit`, `bikeYear`, `bikeYearHelp`, `listingTitle`, `listingLocked`, `list`, `Fleet.what.tip.text`, `Fleet.import.columnsHelp`, and `Admin.years`, `yearFrom`, `yearTo`, `yearsHelp` (the Moto Mangos admin page). Gone: the make, model, engine-size and transmission labels and filters, the group-by and sort texts, "Did you mean", the year range on the shop's review form.
+
 | Key | English | Thai |
 | --- | --- | --- |
 | `Nav.products` | Products | สินค้า |
@@ -17,7 +19,6 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Products.new` | New product | สินค้าใหม่ |
 | `Products.empty` | Nothing here yet. Start with “New product”, then add your vehicles to it, or import them all from a CSV file on the Fleet page. | ยังไม่มีสินค้า เริ่มที่ “สินค้าใหม่” แล้วเพิ่มรถของร้านไว้ใต้สินค้านั้น หรือนำเข้าทั้งหมดจากไฟล์ CSV ที่หน้ารถทั้งหมด |
 | `Products.searchLabel` | Find a product | ค้นหาสินค้า |
-| `Products.searchPlaceholder` | Name, make or model | ชื่อ ยี่ห้อ หรือรุ่น |
 | `Products.show` | Show | แสดง |
 | `Products.scope.current` | In use | ใช้งานอยู่ |
 | `Products.scope.retired` | Retired | ปลดระวาง |
@@ -59,10 +60,6 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Products.history.no` | no | ไม่ |
 | `Products.history.field.name` | Name | ชื่อ |
 | `Products.history.field.description` | Description | คำอธิบาย |
-| `Products.history.field.make` | Make | ยี่ห้อ |
-| `Products.history.field.model` | Model | รุ่น |
-| `Products.history.field.cc` | Engine size | ขนาดเครื่องยนต์ |
-| `Products.history.field.transmission` | Transmission | ระบบเกียร์ |
 | `Products.history.field.categories` | Categories | หมวดหมู่ |
 | `Products.history.field.deposit` | Deposit (minor units) | เงินมัดจำ (หน่วยย่อย) |
 | `Products.history.field.bookable_online` | Can be booked online | จองออนไลน์ได้ |
@@ -71,7 +68,6 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Products.history.field.request_units` | Request units | จำนวนคันที่ต้องขออนุมัติ |
 | `Products.history.field.ready_now` | Ready for walk-ins | พร้อมสำหรับลูกค้าหน้าร้าน |
 | `Products.history.field.retired_at` | Retired | ปลดระวาง |
-| `Products.history.field.catalog_id` | Known model | รุ่นในรายการ |
 | `Products.history.field.plate` | Plate | ทะเบียน |
 | `Products.history.field.status` | Status | สถานะ |
 | `Products.history.field.current_odometer_km` | Odometer (km) | เลขไมล์ (กม.) |
@@ -106,16 +102,41 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `FormErrors.model_retired` | This product is retired. Restore it first. | สินค้านี้ปลดระวางแล้ว กรุณานำกลับมาใช้ก่อน |
 | `FormErrors.model_has_active_units` | Retire or sell its vehicles first. A product can be retired once none of its vehicles is in the fleet. | ปลดระวางหรือขายรถของสินค้านี้ก่อน สินค้าจะปลดระวางได้เมื่อไม่มีรถคันใดอยู่ในฟลีตแล้ว |
 | `FormErrors.ownModelExists` | You already have a product with this make and model. | ร้านมีสินค้ายี่ห้อและรุ่นนี้อยู่แล้ว |
-| `Fleet.import.columnsHelp` | “make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a product of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the product. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}. | ต้องมี “make” และ “model” หากตรงกับรายการของ Moto Mangos ด้านล่าง รถจะอยู่ในรายการนั้น หากรุ่นมีหลายเจเนอเรชัน “model_year” จะเลือกรายการที่ถูกต้อง หากไม่ตรง รถจะอยู่ในสินค้าของร้านเอง ซึ่งจะถูกสร้างให้ถ้ายังไม่มี: ระบุ “vehicle_type” (motorbike, car, atv, boat หรือ other เว้นว่างหมายถึง motorbike) และ “category” (ตัวเลือกอยู่ใต้หัวข้อ หมวด ด้านล่าง บังคับสำหรับมอเตอร์ไซค์และรถยนต์ หากมีหลายหมวดให้คั่นด้วยเครื่องหมาย ; เช่น “adventure; touring”) มอเตอร์ไซค์ต้องมี “cc” และ “transmission” (automatic, semi_auto หรือ manual) ด้วย สำหรับยานพาหนะประเภทอื่นไม่บังคับ “name” ไม่บังคับ: ชื่อที่ร้านใช้เรียกสินค้า เว้น “plate” ว่างสำหรับรถที่ยังไม่มีทะเบียน วันที่เป็น YYYY-MM-DD เลขไมล์เป็น {unit} ราคาซื้อเป็น {currency} |
 | `Fleet.view.group.model` | Product | สินค้า |
 | `Fleet.bands.intro` | How the Fleet list splits this product by model year. With none, it shows one group for all years. | วิธีที่หน้ารถทั้งหมดแบ่งสินค้านี้ตามปีของรุ่น หากไม่มี จะแสดงกลุ่มเดียวสำหรับทุกปี |
 | `Fleet.what.kindLegend` | What kind of product is it? | สินค้านี้เป็นประเภทใด |
 | `Fleet.category.dirt_bike` | Dirt bike | รถวิบาก |
 | `Fleet.model.detailsTitle` | Product details | รายละเอียดสินค้า |
 | `Fleet.model.name` | Product name | ชื่อสินค้า |
-| `Fleet.model.namePlaceholder` | e.g. Honda PCX 160 | เช่น Honda PCX 160 |
-| `Fleet.model.nameHelp` | What you call it. No two products can have the same name. | ชื่อที่ร้านใช้เรียก สินค้าสองรายการใช้ชื่อเดียวกันไม่ได้ |
-| `Fleet.what.tip.text` | To put this vehicle on the Moto Mangos marketplace, save it first. Then, on its product page, choose its model from the Moto Mangos list or send its details for review. | หากต้องการลงรถคันนี้ในตลาด Moto Mangos ให้บันทึกก่อน จากนั้นที่หน้าสินค้า ให้เลือกรุ่นจากรายการของ Moto Mangos หรือส่งรายละเอียดให้ตรวจ |
-| `Fleet.motoMangos.submitHelp` | Give its make, model, engine size and transmission: all four are needed for a motorbike. We review it first because it is new to our list. | ระบุยี่ห้อ รุ่น ขนาดเครื่องยนต์ และระบบเกียร์ มอเตอร์ไซค์ต้องมีครบทั้งสี่อย่าง เราจะตรวจก่อนเพราะยังไม่อยู่ในรายการของเรา |
 | `Fleet.motoMangos.categoryFirst` | Choose a category for this product on the Details tab, save, and then you can send it to Moto Mangos. | เลือกหมวดหมู่ของสินค้านี้ที่แท็บรายละเอียด บันทึก แล้วจึงส่งให้ Moto Mangos ได้ |
-| `FormErrors.specs_required` | Give the make, model, engine size and transmission first. | กรุณาระบุยี่ห้อ รุ่น ขนาดเครื่องยนต์ และระบบเกียร์ก่อน |
+| `Fleet.list` | Vehicles by product | รถตามสินค้า |
+| `Fleet.vehicleCounts` | {vehicles, plural, =0 {No vehicles} one {# vehicle} other {# vehicles}} · {available} available | {vehicles, plural, =0 {ไม่มีรถ} other {รถ # คัน}} · พร้อมใช้ {available} คัน |
+| `Fleet.searchPlaceholder` | Product name, plate or frame number | ชื่อสินค้า ทะเบียน หรือเลขตัวถัง |
+| `Fleet.unit.modelYear` | Year | ปี |
+| `Fleet.unit.modelYearHelp` | The year of this vehicle. | ปีของรถคันนี้ |
+| `Fleet.model.removeTitle` | Take this product out of use | เลิกใช้สินค้านี้ |
+| `Fleet.model.namePlaceholder` | e.g. Honda CB500X 2022-2024 | เช่น Honda CB500X 2022-2024 |
+| `Fleet.model.nameHelp` | What you call it. Put the make, model and years in the name if you want them. No two products can have the same name. | ชื่อที่ร้านใช้เรียก ใส่ยี่ห้อ รุ่น และปีไว้ในชื่อได้หากต้องการ สินค้าสองรายการใช้ชื่อเดียวกันไม่ได้ |
+| `Fleet.model.bufferBefore` | Buffer before pickup (hours) | เวลาเผื่อก่อนรับรถ (ชั่วโมง) |
+| `Fleet.model.bufferAfter` | Buffer after return (hours) | เวลาเผื่อหลังคืนรถ (ชั่วโมง) |
+| `Fleet.model.bufferHelp` | Decimals are fine: 0.5 is half an hour. Blank uses the shop default (set in Phase 2). | ใส่ทศนิยมได้ เช่น 0.5 คือครึ่งชั่วโมง เว้นว่างเพื่อใช้ค่าเริ่มต้นของร้าน (ตั้งค่าในเฟส 2) |
+| `Fleet.model.modesHelp` | How many of the active vehicles confirm instantly, how many need your OK, and how many stand ready for walk-ins now. The rest are for walk-ins only. | จำนวนรถที่ใช้งานอยู่ซึ่งยืนยันทันที จำนวนที่ต้องรอร้านอนุมัติ และจำนวนที่พร้อมสำหรับลูกค้าหน้าร้านตอนนี้ ที่เหลือสำหรับลูกค้าหน้าร้านเท่านั้น |
+| `Products.duplicate` | Duplicate | ทำสำเนา |
+| `Products.searchPlaceholder` | Product name | ชื่อสินค้า |
+| `FormErrors.invalidHours` | Enter the hours as a number, like 2 or 0.5 (168 at most). | กรอกจำนวนชั่วโมงเป็นตัวเลข เช่น 2 หรือ 0.5 (ไม่เกิน 168) |
+| `FormErrors.specs_required` | Give the make, model, engine size, transmission and year first. | กรุณาระบุยี่ห้อ รุ่น ขนาดเครื่องยนต์ ระบบเกียร์ และปีก่อน |
+| `Fleet.motoMangos.selectFromList` | Select your make and model from the list | เลือกยี่ห้อและรุ่นของคุณจากรายการ |
+| `Fleet.motoMangos.notInList` | Don’t see your bike above? Send us the details and we’ll get it added | ไม่เห็นรถของคุณด้านบน? ส่งรายละเอียดมาให้เรา แล้วเราจะเพิ่มให้ |
+| `Fleet.motoMangos.submitHelp` | Give its make, model, engine size, transmission and year: all five are needed. We review it first because it is new to our list. | ระบุยี่ห้อ รุ่น ขนาดเครื่องยนต์ ระบบเกียร์ และปี ต้องมีครบทั้งห้าอย่าง เราจะตรวจก่อนเพราะยังไม่อยู่ในรายการของเรา |
+| `Fleet.motoMangos.submit` | Send for review | ส่งให้ตรวจ |
+| `Fleet.motoMangos.bikeYear` | Year of your bike | ปีของรถคุณ |
+| `Fleet.motoMangos.bikeYearHelp` | One year, like 2023. | ปีเดียว เช่น 2023 |
+| `Fleet.motoMangos.listingTitle` | Listing | การลงประกาศ |
+| `Fleet.motoMangos.listingLocked` | You can switch this on once a model is selected from the list above, or your request is approved. | เปิดใช้ได้เมื่อเลือกรุ่นจากรายการด้านบนแล้ว หรือเมื่อคำขอของคุณได้รับอนุมัติ |
+| `Fleet.motoMangos.list` | List this product on Moto Mangos | ลงประกาศสินค้านี้บน Moto Mangos |
+| `Fleet.what.tip.text` | To put this vehicle on the Moto Mangos marketplace, save it first. Then, on its product page, select its make and model from the Moto Mangos list or send us its details. | หากต้องการลงรถคันนี้ในตลาด Moto Mangos ให้บันทึกก่อน จากนั้นที่หน้าสินค้า ให้เลือกยี่ห้อและรุ่นจากรายการของ Moto Mangos หรือส่งรายละเอียดมาให้เรา |
+| `Fleet.import.columnsHelp` | “product” is required: the product’s name, as it is on your Products page. A name you don’t have yet creates the product: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). There is no make, model, engine size or transmission column: put the make, model and years in the product’s name or description if you want them. “year” is the vehicle’s own year. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}. | ต้องมี “product”: ชื่อสินค้าตามที่อยู่ในหน้าสินค้าของร้าน ชื่อที่ร้านยังไม่มีจะสร้างสินค้าใหม่: ระบุ “vehicle_type” (motorbike, car, atv, boat หรือ other เว้นว่างหมายถึง motorbike) และ “category” (ตัวเลือกอยู่ใต้หัวข้อ หมวด ด้านล่าง บังคับสำหรับมอเตอร์ไซค์และรถยนต์ หากมีหลายหมวดให้คั่นด้วยเครื่องหมาย ; เช่น “adventure; touring”) ไม่มีคอลัมน์ยี่ห้อ รุ่น ขนาดเครื่องยนต์ หรือระบบเกียร์: ใส่ยี่ห้อ รุ่น และปีไว้ในชื่อหรือคำอธิบายของสินค้าได้หากต้องการ “year” คือปีของรถคันนั้น เว้น “plate” ว่างสำหรับรถที่ยังไม่มีทะเบียน วันที่เป็น YYYY-MM-DD เลขไมล์เป็น {unit} ราคาซื้อเป็น {currency} |
+| `Admin.years` | Model years this entry covers | ปีรุ่นที่รายการนี้ครอบคลุม |
+| `Admin.yearFrom` | First model year | ปีรุ่นแรก |
+| `Admin.yearTo` | Last model year | ปีรุ่นสุดท้าย |
+| `Admin.yearsHelp` | The shop’s own bike is a {year}. Set the range of years before you approve. | รถของร้านเป็นปี {year} กำหนดช่วงปีก่อนอนุมัติ |

@@ -129,7 +129,6 @@ export default async function UnitPage({
   };
 
   const facts: [string, string | null][] = [
-    [tUnit("make"), model?.catalog?.make ?? null],
     [tUnit("model"), model?.name ?? null],
     [tUnit("modelYear"), unit.model_year ? String(unit.model_year) : null],
     [tUnit("colour"), unit.colour],

@@ -3,14 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { Plus } from "lucide-react";
+import { Copy, Plus } from "lucide-react";
 import { ActionForm, Panel } from "@/components/action-form";
 import { BackLink } from "@/components/back-link";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { PageHeader } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
 import { requireArea } from "@/lib/access";
-import { suggestCatalog } from "@/lib/catalog-match";
 import {
   catalogName,
   getCatalog,
@@ -20,11 +19,11 @@ import {
   getMemberNames,
   getModel,
   getProductHistory,
-  getYearBands,
 } from "@/lib/fleet-data";
 import { buildHistory, historyValue } from "@/lib/history";
 import { splitMakeModel } from "@/lib/known-models";
 import { catalogOptions } from "@/lib/model-options";
+import { minutesToHours } from "@/lib/fleet";
 import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
 import { humanizeKey, reviewNews } from "@/lib/vehicle-kinds";
@@ -32,16 +31,11 @@ import { formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
 import { deleteModel, setModelRetired } from "../../fleet/actions";
 import {
+  ChooseFromListForm,
   ListingForm,
-  ChoosePresetForm,
-  SubmitToCatalogForm,
-  UsePresetButton,
+  ReviewRequest,
 } from "../moto-mangos-forms";
-import {
-  DeleteYearBandButton,
-  ProductForm,
-  YearBandForm,
-} from "../product-form";
+import { ProductForm } from "../product-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Fleet.model");
@@ -57,7 +51,7 @@ type Tab = (typeof tabs)[number];
  * One product (docs/products-redesign.md §4.1), in tabs:
  * - Details: what it is and its settings, the Moto Mangos panel, retire and
  *   delete (owners and managers);
- * - Units: its vehicles and their year bands (everyone);
+ * - Units: its vehicles (everyone);
  * - History: who changed what (owners and managers).
  * The tab is in the address (?tab=units), so a tab can be linked to.
  */
@@ -82,35 +76,21 @@ export default async function ProductPage({
     ? (asked as Tab)
     : allowed[0];
 
-  const [
-    t,
-    tFleet,
-    tProducts,
-    tCommon,
-    locale,
-    model,
-    fleet,
-    catalog,
-    allBands,
-    locations,
-  ] = await Promise.all([
-    getTranslations("Fleet.model"),
-    getTranslations("Fleet"),
-    getTranslations("Products"),
-    getTranslations("Common"),
-    getLocale(),
-    getModel(tenant.id, id),
-    getFleet(tenant.id),
-    getCatalog(),
-    getYearBands(tenant.id),
-    getLocations(tenant.id),
-  ]);
+  const [t, tFleet, tProducts, locale, model, fleet, catalog, locations] =
+    await Promise.all([
+      getTranslations("Fleet.model"),
+      getTranslations("Fleet"),
+      getTranslations("Products"),
+      getLocale(),
+      getModel(tenant.id, id),
+      getFleet(tenant.id),
+      getCatalog(),
+      getLocations(tenant.id),
+    ]);
   if (!model) notFound();
-  const bands = allBands.filter((band) => band.product_id === id);
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   const units = fleet.find((m) => m.id === id)?.units ?? [];
   const here = `/${slug}/products/${model.id}`;
-  const makeModel = [model.make, model.model].filter(Boolean).join(" ");
 
   return (
     <>
@@ -119,12 +99,6 @@ export default async function ProductPage({
         title={model.name}
         intro={[
           tProducts(`type.${model.type}` as "type.vehicle"),
-          // Its make and model, once it has them and they aren't its name.
-          makeModel && makeModel !== model.name ? makeModel : null,
-          model.cc ? `${model.cc} cc` : null,
-          model.transmission
-            ? tFleet(`transmission.${model.transmission}`)
-            : null,
           model.vehicle_type === "motorbike"
             ? null
             : tFleet(`kind.${model.vehicle_type}` as "kind.car"),
@@ -136,6 +110,20 @@ export default async function ProductPage({
         ]
           .filter(Boolean)
           .join(" · ")}
+        actions={
+          manage && (
+            <Link
+              href={`/${slug}/products/new?from=${model.id}`}
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "h-11 px-4",
+              )}
+            >
+              <Copy aria-hidden />
+              {tProducts("duplicate")}
+            </Link>
+          )
+        }
       />
       {query.added === "1" && (
         <p
@@ -186,7 +174,7 @@ export default async function ProductPage({
       )}
 
       {tab === "units" && (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="max-w-3xl">
           <section
             aria-labelledby="model-units"
             className="overflow-hidden rounded-lg border bg-card"
@@ -241,41 +229,6 @@ export default async function ProductPage({
               </p>
             )}
           </section>
-          <Panel title={tFleet("bands.title")} intro={tFleet("bands.intro")}>
-            {bands.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {tFleet("bands.none")}
-              </p>
-            ) : (
-              <ul className="divide-y rounded-md border">
-                {bands.map((band) => (
-                  <li
-                    key={band.id}
-                    className="flex items-center justify-between gap-3 p-3"
-                  >
-                    <span className="font-medium">
-                      {tFleet("bands.range", {
-                        from: band.year_from,
-                        to: band.year_to,
-                      })}
-                    </span>
-                    {manage && (
-                      <DeleteYearBandButton
-                        slug={slug}
-                        band={band.id}
-                        label={tCommon("delete")}
-                      />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {manage && (
-              <div className="mt-5 border-t pt-5">
-                <YearBandForm slug={slug} id={model.id} />
-              </div>
-            )}
-          </Panel>
         </div>
       )}
 
@@ -295,7 +248,15 @@ export default async function ProductPage({
 type Product = NonNullable<Awaited<ReturnType<typeof getModel>>>;
 type Catalog = Awaited<ReturnType<typeof getCatalog>>;
 
-/** What the product is, its Moto Mangos panel, and taking it out of use. */
+/**
+ * What the product is, its Moto Mangos panel, and, at the very bottom of the
+ * page, taking it out of use.
+ *
+ * The Moto Mangos panel, top to bottom (owner, 13 Nov 2026): the logo; "List
+ * it on Moto Mangos"; a picker of the list; "Don't see your bike above?",
+ * which opens the review form; then the listing switch and settings, usable
+ * only once a model is selected or approved.
+ */
 async function DetailsTab({
   slug,
   model,
@@ -317,27 +278,20 @@ async function DetailsTab({
     getTranslations("Fleet.model"),
     getTranslations("Fleet"),
   ]);
-  // The list entry it is linked to: a known model, or its own submission.
+  // The list entry it is on: one picked from the list, or its own request.
   const entry = model.catalog_id
     ? (catalog.find((c) => c.id === model.catalog_id) ??
       (await getCatalogEntry(model.catalog_id)))
     : null;
   const waiting = entry?.status === "requested";
+  const approved = entry?.status === "approved";
   const news = reviewNews(model, new Date());
   const own = !model.catalog_id;
+  const motorbike = model.vehicle_type === "motorbike";
   // A first guess at the make and model from the name, for the review form.
   const guess = splitMakeModel(model.name, [
-    ...new Set(catalog.map((entry) => entry.make)),
+    ...new Set(catalog.map((c) => c.make)),
   ]);
-  // Close matches on the list: by its make and model once it has them, by
-  // its name until then.
-  const matches = own
-    ? suggestCatalog(
-        model.make || guess.make,
-        model.make ? model.model : guess.model,
-        catalog,
-      )
-    : [];
   // Once none of its vehicles is in the fleet (or it has none).
   const canRetire = units.every(
     (unit) => unit.status === "sold" || unit.status === "retired",
@@ -348,40 +302,37 @@ async function DetailsTab({
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <Panel id="model-details">
-        <ProductForm
-          what={{
-            vehicle_type: model.vehicle_type,
-            categories: model.categories,
-          }}
-          // On a list entry, or waiting on one: its kind is the entry's.
-          locked={!own}
-          slug={slug}
-          currency={currency}
-          values={{
-            id: model.id,
-            name: model.name,
-            description: model.description ?? "",
-            bookable_online: model.bookable_online,
-            buffer_before_minutes: text(model.buffer_before_minutes),
-            buffer_after_minutes: text(model.buffer_after_minutes),
-            deposit:
-              model.deposit === null
-                ? ""
-                : moneyInputValue(model.deposit, currency),
-            min_age: text(model.min_age),
-            licence_class: model.licence_class ?? "",
-            instant_units: String(model.instant_units),
-            request_units: String(model.request_units),
-            ready_now: String(model.ready_now),
-          }}
-        />
-      </Panel>
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Panel id="model-details">
+          <ProductForm
+            what={{
+              vehicle_type: model.vehicle_type,
+              categories: model.categories,
+            }}
+            // On a list entry, or waiting on one: its kind is the entry's.
+            locked={!own}
+            slug={slug}
+            currency={currency}
+            values={{
+              id: model.id,
+              name: model.name,
+              description: model.description ?? "",
+              bookable_online: model.bookable_online,
+              buffer_before_hours: minutesToHours(model.buffer_before_minutes),
+              buffer_after_hours: minutesToHours(model.buffer_after_minutes),
+              deposit:
+                model.deposit === null
+                  ? ""
+                  : moneyInputValue(model.deposit, currency),
+              min_age: text(model.min_age),
+              licence_class: model.licence_class ?? "",
+            }}
+          />
+        </Panel>
         <Panel
           id="moto-mangos"
-          // The logo is the heading (its alt text is the name). On a white
+          // The logo first (its alt text is the panel's name). On a white
           // plate, so it reads on the dark theme too.
           title={
             <span className="inline-flex rounded-md bg-white px-2 py-1">
@@ -394,10 +345,16 @@ async function DetailsTab({
               />
             </span>
           }
-          intro={tFleet("motoMangos.intro")}
         >
-          {/* What Moto Mangos decided about this model's last request, until
-              it is sent again or put on a known model. */}
+          <h3 className="text-lg font-semibold">
+            {tFleet("motoMangos.submitTitle")}
+          </h3>
+          <p className="mt-1 mb-4 text-sm text-muted-foreground">
+            {tFleet("motoMangos.intro")}
+          </p>
+
+          {/* What Moto Mangos decided about its last request, until it is
+              sent again or put on a list entry. */}
           {model.catalog_rejected_at && !waiting && (
             <div
               role="status"
@@ -420,7 +377,7 @@ async function DetailsTab({
               ) : (
                 <p className="mt-2">{tFleet("motoMangos.rejectNoReason")}</p>
               )}
-              {/* What to do next: only a model that came back to the shop
+              {/* What to do next: only a product that came back to the shop
                   can be changed and sent again. */}
               {own && (
                 <div className="mt-3 border-t border-amber-300 pt-3">
@@ -454,66 +411,35 @@ async function DetailsTab({
               })}
             </p>
           )}
-          {waiting ? (
+
+          {!motorbike ? (
+            <p className="text-sm">{tFleet("motoMangos.bikesOnly")}</p>
+          ) : waiting ? (
             <p className="text-sm">{tFleet("motoMangos.waiting")}</p>
           ) : entry?.status === "rejected" ? (
             <p className="text-sm">{tFleet("motoMangos.rejectedLinked")}</p>
-          ) : entry ? (
-            <>
-              <p className="mb-3 text-sm">
-                {tFleet("motoMangos.ready", { name: catalogName(entry) })}
-              </p>
-              <ListingForm
-                slug={slug}
-                id={model.id}
-                listed={model.marketplace_listed}
-              />
-              <p className="mt-3 text-xs text-muted-foreground">
-                {tFleet("motoMangos.later")}
-              </p>
-            </>
-          ) : model.vehicle_type !== "motorbike" ? (
-            <p className="text-sm">{tFleet("motoMangos.bikesOnly")}</p>
-          ) : model.categories.length === 0 ? (
-            <p className="text-sm">{tFleet("motoMangos.categoryFirst")}</p>
+          ) : approved && entry ? (
+            <p className="text-sm">
+              {tFleet("motoMangos.ready", { name: catalogName(entry) })}
+            </p>
           ) : (
-            <>
-              <p className="text-sm">{tFleet("motoMangos.notOnList")}</p>
-              {matches.length > 0 && (
-                <div className="mt-4">
-                  <p className="mb-2 font-medium">
-                    {tFleet("motoMangos.didYouMean")}
-                  </p>
-                  <ul className="space-y-2">
-                    {matches.map((match) => (
-                      <li key={match.id}>
-                        <UsePresetButton
-                          slug={slug}
-                          id={model.id}
-                          catalogId={match.id}
-                          label={tFleet("motoMangos.use", {
-                            name: catalogName(match),
-                          })}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <div
-                id="send-for-review"
-                className="mt-5 scroll-mt-20 border-t pt-5"
-              >
-                <h3 className="mb-1 font-medium">
-                  {tFleet("motoMangos.submitTitle")}
-                </h3>
-                <p className="mb-3 text-sm text-muted-foreground">
-                  {tFleet("motoMangos.submitHelp")}
-                </p>
-                <SubmitToCatalogForm
+            <div className="space-y-4">
+              <div id="choose-from-list" className="scroll-mt-20">
+                <ChooseFromListForm
+                  slug={slug}
+                  id={model.id}
+                  options={catalogOptions(catalog)}
+                />
+              </div>
+              {model.categories.length === 0 ? (
+                <p className="text-sm">{tFleet("motoMangos.categoryFirst")}</p>
+              ) : (
+                <ReviewRequest
                   slug={slug}
                   id={model.id}
                   again={Boolean(model.catalog_rejected_at)}
+                  // A request being corrected starts open, with what was sent.
+                  open={Boolean(model.catalog_rejected_at)}
                   values={{
                     make: model.make || guess.make,
                     model: model.make ? model.model : guess.model,
@@ -521,66 +447,77 @@ async function DetailsTab({
                     transmission: model.transmission ?? "",
                   }}
                 />
-              </div>
-              <div
-                id="choose-from-list"
-                className="mt-5 scroll-mt-20 border-t pt-5"
-              >
-                <h3 className="mb-1 font-medium">
-                  {tFleet("motoMangos.chooseTitle")}
-                </h3>
-                <p className="mb-3 text-sm text-muted-foreground">
-                  {tFleet("motoMangos.chooseHelp")}
-                </p>
-                <ChoosePresetForm
-                  slug={slug}
-                  id={model.id}
-                  options={catalogOptions(catalog)}
-                />
-              </div>
-            </>
+              )}
+            </div>
           )}
-        </Panel>
-        {/* Out of use: retire it (kept, hidden) once none of its vehicles is
-            in the fleet; delete it when it has no vehicles at all. */}
-        {model.retired_at && (
-          <Panel title={t("retiredTitle")}>
-            <p className="mb-3 text-sm">
-              {t("retiredOn", {
-                date: formatInstant(
-                  new Date(model.retired_at),
-                  timezone,
-                  locale,
-                ),
-              })}
-            </p>
-            <ActionForm
-              action={setModelRetired}
-              hidden={{ slug, id: model.id, retired: "0" }}
-              submitLabel={t("restore")}
-              className="space-y-1"
+
+          {/* The listing switch and settings: below, and only usable once a
+              model is selected or approved. */}
+          <div className="mt-5 border-t pt-5">
+            <h3 className="mb-3 font-medium">
+              {tFleet("motoMangos.listingTitle")}
+            </h3>
+            <ListingForm
+              slug={slug}
+              id={model.id}
+              enabled={Boolean(approved) && !model.retired_at}
+              values={{
+                listed: model.marketplace_listed,
+                instant_units: String(model.instant_units),
+                request_units: String(model.request_units),
+                ready_now: String(model.ready_now),
+              }}
             />
-          </Panel>
-        )}
-        {!model.retired_at && canRetire && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {tFleet("motoMangos.later")}
+            </p>
+          </div>
+        </Panel>
+      </div>
+
+      {/* The very bottom of the page. Out of use: retire it (kept, hidden)
+          once none of its vehicles is in the fleet; delete it when it has no
+          vehicles at all. */}
+      {model.retired_at && (
+        <Panel title={t("retiredTitle")} className="max-w-3xl">
+          <p className="mb-3 text-sm">
+            {t("retiredOn", {
+              date: formatInstant(new Date(model.retired_at), timezone, locale),
+            })}
+          </p>
           <ActionForm
             action={setModelRetired}
-            hidden={{ slug, id: model.id, retired: "1" }}
-            submitLabel={t("retire")}
-            confirm={t("retireConfirm")}
-            destructive
+            hidden={{ slug, id: model.id, retired: "0" }}
+            submitLabel={t("restore")}
+            className="space-y-1"
           />
-        )}
-        {units.length === 0 && (
-          <ActionForm
-            action={deleteModel}
-            hidden={{ slug, id: model.id }}
-            submitLabel={t("delete")}
-            confirm={t(waiting ? "deleteConfirmWaiting" : "deleteConfirm")}
-            destructive
-          />
-        )}
-      </div>
+        </Panel>
+      )}
+      {((!model.retired_at && canRetire) || units.length === 0) && (
+        <section
+          aria-label={t("removeTitle")}
+          className="flex flex-wrap gap-3 border-t pt-6"
+        >
+          {!model.retired_at && canRetire && (
+            <ActionForm
+              action={setModelRetired}
+              hidden={{ slug, id: model.id, retired: "1" }}
+              submitLabel={t("retire")}
+              confirm={t("retireConfirm")}
+              destructive
+            />
+          )}
+          {units.length === 0 && (
+            <ActionForm
+              action={deleteModel}
+              hidden={{ slug, id: model.id }}
+              submitLabel={t("delete")}
+              confirm={t(waiting ? "deleteConfirmWaiting" : "deleteConfirm")}
+              destructive
+            />
+          )}
+        </section>
+      )}
     </div>
   );
 }
@@ -623,9 +560,7 @@ async function HistoryTab({
   const what = (entity: string, entityId: string) =>
     entity === "units"
       ? t("on.units", { name: plates.get(entityId) ?? tFleet("noPlate") })
-      : entity === "product_year_bands"
-        ? t("on.product_year_bands")
-        : t("on.products");
+      : t("on.products");
 
   return (
     <Panel intro={t("intro")} className="max-w-3xl">

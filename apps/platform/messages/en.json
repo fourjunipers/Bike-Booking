@@ -276,13 +276,14 @@
     "unitInUse": "This vehicle is on bookings, so it can't be deleted: past orders need it. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept.",
     "model_has_active_units": "Retire or sell its vehicles first. A product can be retired once none of its vehicles is in the fleet.",
     "model_retired": "This product is retired. Restore it first.",
-    "specs_required": "Give the make, model, engine size and transmission first."
+    "specs_required": "Give the make, model, engine size, transmission and year first.",
+    "invalidHours": "Enter the hours as a number, like 2 or 0.5 (168 at most)."
   },
   "Fleet": {
     "title": "Fleet",
-    "intro": "{units, plural, =0 {No vehicles yet} one {# vehicle} other {# vehicles}} in {models, plural, one {# product} other {# products}}.",
+    "intro": "{units, plural, =0 {No vehicles yet} one {# vehicle} other {# vehicles}} in {products, plural, one {# product} other {# products}}.",
     "searchLabel": "Find a vehicle",
-    "searchPlaceholder": "Plate or frame number",
+    "searchPlaceholder": "Product name, plate or frame number",
     "noMatch": "No vehicle matches “{query}”.",
     "empty": "No vehicles yet. Add a product on the Products page, then add your vehicles to it, or import them all from a CSV file.",
     "addModel": "New product",
@@ -291,7 +292,7 @@
       "title": "Import vehicles from CSV",
       "intro": "One row per vehicle. The whole file is checked first: if any row has a problem, nothing is saved.",
       "columns": "Columns",
-      "columnsHelp": "“make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a product of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the product. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
+      "columnsHelp": "“product” is required: the product’s name, as it is on your Products page. A name you don’t have yet creates the product: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). There is no make, model, engine size or transmission column: put the make, model and years in the product’s name or description if you want them. “year” is the vehicle’s own year. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}.",
       "template": "Download a template",
       "file": "CSV file",
       "paste": "Or paste the rows here",
@@ -304,7 +305,6 @@
       "column": "Column",
       "problem": "Problem",
       "value": "Value",
-      "catalogCodes": "Makes and models in the list",
       "errors": {
         "tooLarge": "That file is too big (limit 1 MB).",
         "noFile": "Choose a file or paste the rows.",
@@ -324,18 +324,11 @@
         "locationUnknown": "No location has this name.",
         "saveFailed": "The file passed the checks but couldn't be saved. Nothing was imported.",
         "missingColumns": "The file needs this column.",
-        "modelNeedsYear": "This model has several generations. Give a model year that one of them covers.",
-        "modelNeedsName": "You have several models on this catalog entry. Say which in the “name” column.",
-        "nameOtherModel": "This name belongs to a different make or model.",
         "invalidYear": "Not a year, such as 2024.",
-        "ownNeedsSpecs": "This make and model isn't in the list, so it will be one of your own. A motorbike needs “cc” and “transmission”.",
         "invalidVehicleType": "Use motorbike, car, atv, boat or other.",
-        "invalidTransmission": "Use automatic, semi_auto or manual.",
         "invalidCategory": "This isn't one of the categories for that kind of vehicle.",
         "ownNeedsCategory": "A new motorbike or car needs a “category”."
       },
-      "showCodes": "{count, plural, one {Show # entry} other {Show # entries}}",
-      "years": "years",
       "categories": "Categories",
       "categoriesHelp": "What to write in the “category” column, for each kind of vehicle. For more than one, put a semicolon between them."
     },
@@ -362,23 +355,21 @@
       "classic": "Classic",
       "off_road": "Off-road"
     },
-    "catalogLine": "{make} {model} · {cc} cc · {transmission}",
     "model": {
       "newTitle": "New product",
       "editTitle": "Product",
       "name": "Product name",
-      "nameHelp": "What you call it. No two products can have the same name.",
+      "nameHelp": "What you call it. Put the make, model and years in the name if you want them. No two products can have the same name.",
       "description": "Description",
       "bookableOnline": "Can be booked online",
-      "bufferBefore": "Buffer before pickup (minutes)",
-      "bufferAfter": "Buffer after return (minutes)",
-      "bufferHelp": "Blank uses the shop default (set in Phase 2).",
+      "bufferBefore": "Buffer before pickup (hours)",
+      "bufferAfter": "Buffer after return (hours)",
+      "bufferHelp": "Decimals are fine: 0.5 is half an hour. Blank uses the shop default (set in Phase 2).",
       "deposit": "Deposit ({currency})",
       "depositHelp": "Blank uses the shop default (set in Phase 2).",
       "minAge": "Minimum age",
       "licenceClass": "Licence class",
-      "modes": "Booking modes",
-      "modesHelp": "How many of the active vehicles confirm instantly and how many need your OK. The rest are for walk-ins only.",
+      "modesHelp": "How many of the active vehicles confirm instantly, how many need your OK, and how many stand ready for walk-ins now. The rest are for walk-ins only.",
       "instantUnits": "Instant units",
       "requestUnits": "Request units",
       "readyNow": "Ready for walk-ins now",
@@ -386,7 +377,6 @@
       "delete": "Delete product",
       "deleteConfirm": "Delete this product? This can't be undone.",
       "photosLater": "Photos are added with the online booking page.",
-      "make": "Make",
       "newIntro": "Something you rent out, like a Honda Click 160. Add the vehicles themselves afterwards, on the product's Units tab.",
       "saveNew": "Save product",
       "saveThenInventory": "Save and add a vehicle",
@@ -397,7 +387,8 @@
       "restore": "Restore product",
       "deleteConfirmWaiting": "Delete this product? This can't be undone. Its Moto Mangos review request will be withdrawn.",
       "detailsTitle": "Product details",
-      "namePlaceholder": "e.g. Honda PCX 160"
+      "namePlaceholder": "e.g. Honda CB500X 2022-2024",
+      "removeTitle": "Take this product out of use"
     },
     "unit": {
       "newTitle": "Add vehicle",
@@ -418,9 +409,8 @@
       "delete": "Delete vehicle",
       "deleteConfirm": "Delete this vehicle for good? This is permanent and can't be undone. Its purchase and sale details, tax and insurance records, downtime and odometer history are erased with it.",
       "readOnly": "You can view this vehicle but not change it.",
-      "make": "Make",
-      "modelYear": "Model year",
-      "modelYearHelp": "Used to group the fleet list by year band.",
+      "modelYear": "Year",
+      "modelYearHelp": "The year of this vehicle.",
       "makeOrModelMissing": "Product not here? Add it first",
       "statusIntro": "One status per vehicle. Scheduled downtime is separate, below.",
       "odometerLowerConfirm": "Are you sure? This is lower than the current reading ({current} {unit}).",
@@ -491,33 +481,15 @@
       "sold": "Sold. Can't be rented. After saving, fill in the sale details at the bottom of this page."
     },
     "view": {
-      "groupBy": "Group by",
       "sortBy": "Sort by",
       "filters": "Filters ({count})",
       "any": "Any",
       "category": "Category",
-      "ccMin": "Engine size from (cc)",
-      "ccMax": "Engine size to (cc)",
       "apply": "Apply",
       "reset": "Reset view",
-      "showing": "Showing {shown} of {total} vehicles",
-      "expandAll": "Expand all",
-      "collapseAll": "Collapse all",
       "noneMatch": "No vehicles match these filters.",
-      "group": {
-        "model": "Product",
-        "make": "Make",
-        "location": "Location",
-        "status": "Status",
-        "none": "None"
-      },
       "sort": {
-        "makeModel": "Make and model",
-        "cc": "Engine size",
-        "count": "Vehicle count",
-        "plate": "Plate",
-        "odometer": "Odometer",
-        "purchaseDate": "Purchase date"
+        "plate": "Plate"
       },
       "show": "Show",
       "scope": {
@@ -527,18 +499,6 @@
       },
       "pastLink": "{count} sold or retired",
       "kind": "Kind of vehicle"
-    },
-    "bands": {
-      "title": "Model-year bands",
-      "intro": "How the Fleet list splits this product by model year. With none, it shows one group for all years.",
-      "none": "No bands yet: one group for all years.",
-      "range": "{from}–{to}",
-      "unknown": "Unknown year",
-      "other": "Other years",
-      "all": "All years",
-      "add": "Add band",
-      "from": "From year",
-      "to": "To year"
     },
     "renewals": {
       "title": "Tax and insurance",
@@ -574,16 +534,12 @@
       "title": "Moto Mangos",
       "intro": "An online marketplace where you can list your rental bikes to be seen by renters in your area.",
       "ready": "On the Moto Mangos list as {name}.",
-      "list": "List this model on Moto Mangos",
+      "list": "List this product on Moto Mangos",
       "later": "Listing takes effect when Moto Mangos starts reading from this system.",
       "waiting": "Sent to Moto Mangos. It is waiting for review and goes live once approved; you can keep using the model meanwhile.",
       "bikesOnly": "Moto Mangos lists motorbikes only, for now. This model is yours to use here.",
-      "didYouMean": "Did you mean:",
-      "use": "Use {name}",
       "submitTitle": "List it on Moto Mangos",
-      "submit": "Switch on and send for review",
-      "yearFrom": "First model year",
-      "yearTo": "Last model year",
+      "submit": "Send for review",
       "note": "Note for the reviewer",
       "rejectedLinked": "Moto Mangos didn't add this model, so it can't be listed. It is still tied to that request because you have another model of your own with the same make and model, and a shop can't have two.",
       "rejected": "Moto Mangos reviewed this model on {date} and didn't add it.",
@@ -591,16 +547,19 @@
       "rejectNoReason": "The reviewer left no note. You can change the details and send it again.",
       "approved": "Moto Mangos added this model to its list on {date}.",
       "categoryFirst": "Choose a category for this product on the Details tab, save, and then you can send it to Moto Mangos.",
-      "notOnList": "This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or select the model if already in the list below.",
       "submitAgain": "Send for review again",
       "nextTitle": "What to do next",
       "nextHelp": "Fix the details and send it for review again, or switch to a model that is already on the list.",
       "editAgain": "Edit and send again",
       "chooseInstead": "Choose a model from the list instead",
-      "chooseTitle": "Choose a model from the list",
-      "chooseHelp": "It takes the list’s make, model and specs, and needs no review.",
       "useChosen": "Use this model",
-      "submitHelp": "Give its make, model, engine size and transmission: all four are needed for a motorbike. We review it first because it is new to our list."
+      "submitHelp": "Give its make, model, engine size, transmission and year: all five are needed. We review it first because it is new to our list.",
+      "selectFromList": "Select your make and model from the list",
+      "notInList": "Don’t see your bike above? Send us the details and we’ll get it added",
+      "bikeYear": "Year of your bike",
+      "bikeYearHelp": "One year, like 2023.",
+      "listingTitle": "Listing",
+      "listingLocked": "You can switch this on once a model is selected from the list above, or your request is approved."
     },
     "editModel": "Open product",
     "addUnitRow": "Add vehicle",
@@ -650,9 +609,11 @@
       "categoryOptional": "Optional; you can choose several. Helps renters find it when they search and filter.",
       "tip": {
         "label": "Helpful tip",
-        "text": "To put this vehicle on the Moto Mangos marketplace, save it first. Then, on its product page, choose its model from the Moto Mangos list or send its details for review."
+        "text": "To put this vehicle on the Moto Mangos marketplace, save it first. Then, on its product page, select its make and model from the Moto Mangos list or send us its details."
       }
-    }
+    },
+    "list": "Vehicles by product",
+    "vehicleCounts": "{vehicles, plural, =0 {No vehicles} one {# vehicle} other {# vehicles}} · {available} available"
   },
   "Products": {
     "title": "Products",
@@ -660,7 +621,7 @@
     "new": "New product",
     "empty": "Nothing here yet. Start with “New product”, then add your vehicles to it, or import them all from a CSV file on the Fleet page.",
     "searchLabel": "Find a product",
-    "searchPlaceholder": "Name, make or model",
+    "searchPlaceholder": "Product name",
     "show": "Show",
     "scope": {
       "current": "In use",
@@ -697,8 +658,7 @@
       "formerMember": "Someone no longer in the team",
       "on": {
         "products": "this product",
-        "units": "vehicle {name}",
-        "product_year_bands": "a year band"
+        "units": "vehicle {name}"
       },
       "action": {
         "insert": "{who} added {what}",
@@ -714,10 +674,6 @@
       "field": {
         "name": "Name",
         "description": "Description",
-        "make": "Make",
-        "model": "Model",
-        "cc": "Engine size",
-        "transmission": "Transmission",
         "categories": "Categories",
         "deposit": "Deposit (minor units)",
         "bookable_online": "Can be booked online",
@@ -726,15 +682,15 @@
         "request_units": "Request units",
         "ready_now": "Ready for walk-ins",
         "retired_at": "Retired",
-        "catalog_id": "Known model",
         "plate": "Plate",
         "status": "Status",
         "current_odometer_km": "Odometer (km)",
         "colour": "Colour",
-        "model_year": "Model year",
+        "model_year": "Year",
         "notes": "Notes"
       }
-    }
+    },
+    "duplicate": "Duplicate"
   },
   "Locations": {
     "title": "Locations",
@@ -786,6 +742,10 @@
     "mergeInto": "It is the same bike as",
     "merge": "Merge",
     "keptLinked": "Rejected. {count, plural, one {One model stays} other {# models stay}} linked to the rejected entry, unlisted: while waiting, the shop added the same make and model again as its own, and it can't have two.",
-    "notesHelp": "If you reject, the shop sees this note on its model."
+    "notesHelp": "If you reject, the shop sees this note on its model.",
+    "years": "Model years this entry covers",
+    "yearFrom": "First model year",
+    "yearTo": "Last model year",
+    "yearsHelp": "The shop’s own bike is a {year}. Set the range of years before you approve."
   }
 }

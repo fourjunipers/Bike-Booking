@@ -72,12 +72,8 @@ export type ProductInput = {
   id: string;
   name: string;
   type: string;
-  make: string;
-  model: string;
   vehicle_type: string;
   categories: string[];
-  cc: number | null;
-  transmission: string | null;
   photos: string[];
   retired_at: string | null;
   marketplace_listed: boolean;
@@ -123,7 +119,8 @@ export function buildProductsView(
     if (view.kind && row.vehicle_type !== view.kind) return false;
     if (view.category && !row.categories.includes(view.category)) return false;
     if (view.listing && row.listing !== view.listing) return false;
-    const haystack = plain(`${row.name} ${row.make} ${row.model}`);
+    // By name: a product has no make or model on the platform.
+    const haystack = plain(row.name);
     return words.every((word) => haystack.includes(word));
   });
   shown.sort((a, b) => a.name.localeCompare(b.name));
