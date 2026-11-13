@@ -255,3 +255,70 @@ describe("every table the API roles can reach was granted on purpose", () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * Products, stage B (20261113000300): one new table and its functions. What
+ * each role may do is written here in full, so a later migration that widens
+ * it fails this test.
+ */
+describe("products stage B: the stock ledger and the stock functions", () => {
+  it("stock_movements: members read and add, nobody changes or removes, signed-out visitors get nothing", () => {
+    const rows = lines(`
+      select r || ' ' || coalesce(string_agg(p, ',' order by p)
+        filter (where has_table_privilege(r, 'platform.stock_movements', p)), 'none')
+      from unnest(array['anon', 'authenticated']) r,
+           unnest(array['select', 'insert', 'update', 'delete', 'truncate', 'references', 'trigger']) p
+      group by r order by r;
+    `);
+    expect(rows).toEqual(["anon none", "authenticated insert,select"]);
+    expect(
+      hasExplicitGrant(migrationsText(), "platform.stock_movements"),
+    ).toBe(true);
+  });
+
+  it("every stage B function is closed to signed-out visitors and to PUBLIC; members call the ones meant for them", () => {
+    const rows = lines(`
+      select n.nspname || '.' || p.proname || ' '
+        || has_function_privilege('anon', p.oid, 'execute') || ' '
+        || has_function_privilege('authenticated', p.oid, 'execute') || ' '
+        || coalesce((select bool_or(a.grantee = 0) from aclexplode(p.proacl) a), p.proacl is null)
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname in ('platform', 'platform_private')
+        and p.proname in (
+          'set_stock_quantity', 'mark_units_damaged', 'mark_units_repaired',
+          'mark_units_lost', 'resolve_lost_units', 'create_general_product',
+          'product_stock', 'move_product', 'reset_product_order',
+          'change_listing_entry', 'disconnect_listing',
+          'lock_product_stock', 'lock_units', 'stock_product', 'upcoming_bookings',
+          'units_gear_fields', 'units_label_guard', 'products_tracking_guard',
+          'products_sort_bottom', 'products_stock_guard', 'stock_movements_guard')
+      order by 1;
+    `);
+    expect(rows).toEqual([
+      // name, anon, authenticated, PUBLIC
+      "platform.change_listing_entry false true false",
+      "platform.create_general_product false true false",
+      "platform.disconnect_listing false true false",
+      "platform.mark_units_damaged false true false",
+      "platform.mark_units_lost false true false",
+      "platform.mark_units_repaired false true false",
+      "platform.move_product false true false",
+      "platform.product_stock false true false",
+      "platform.reset_product_order false true false",
+      "platform.resolve_lost_units false true false",
+      "platform.set_stock_quantity false true false",
+      // Helpers the functions above call as the member.
+      "platform_private.lock_product_stock false true false",
+      "platform_private.lock_units false true false",
+      // Trigger functions: nobody calls them.
+      "platform_private.products_sort_bottom false false false",
+      "platform_private.products_stock_guard false false false",
+      "platform_private.products_tracking_guard false false false",
+      "platform_private.stock_movements_guard false false false",
+      "platform_private.stock_product false true false",
+      "platform_private.units_gear_fields false false false",
+      "platform_private.units_label_guard false false false",
+      "platform_private.upcoming_bookings false true false",
+    ]);
+  });
+});
