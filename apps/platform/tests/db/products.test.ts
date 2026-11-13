@@ -762,6 +762,84 @@ describe("every re-created function runs", () => {
   });
 });
 
+describe("a product is deleted only when it has no vehicles (owner, 13 Nov 2026)", () => {
+  const remove = (db: typeof service, id: string) =>
+    db.from("products").delete().eq("id", id).select("id");
+
+  it("refused while any vehicle remains, whatever its status, for everyone", async () => {
+    const id = await addVehicle();
+    const unit = await addUnit(id);
+    const unitId = unit.data!.id;
+    for (const status of ["active", "maintenance", "retired", "sold"]) {
+      if (status !== "active") {
+        const changed = await shop.members.owner.db
+          .from("units")
+          .update({ status })
+          .eq("id", unitId);
+        expect(changed.error, status).toBeNull();
+      }
+      // The owner, and the service role too: it is a rule, not a permission.
+      for (const db of [shop.members.owner.db, service]) {
+        const { error } = await remove(db, id);
+        expect(error?.code, status).toBe("23503");
+        expect(error?.message, status).toContain(
+          "units_tenant_id_product_id_type_fkey",
+        );
+      }
+    }
+    // Still there, with its vehicle.
+    const { data } = await service
+      .from("products")
+      .select("id, units(id)")
+      .eq("id", id)
+      .single();
+    expect(data?.units).toHaveLength(1);
+  });
+
+  it("a retired product with a retired vehicle is no exception", async () => {
+    const id = await addVehicle();
+    const unit = await addUnit(id);
+    await shop.members.owner.db
+      .from("units")
+      .update({ status: "retired" })
+      .eq("id", unit.data!.id);
+    const retired = await shop.members.owner.db
+      .from("products")
+      .update({ retired_at: new Date().toISOString() })
+      .eq("id", id);
+    // The retired status is kept in the database, though no screen sets it.
+    expect(retired.error).toBeNull();
+    expect((await remove(shop.members.owner.db, id)).error?.code).toBe("23503");
+  });
+
+  it("deleted once its last vehicle is gone, by an owner or manager only", async () => {
+    const id = await addVehicle();
+    const unit = await addUnit(id);
+    await shop.members.owner.db.from("units").delete().eq("id", unit.data!.id);
+    for (const role of ["staff", "mechanic", "driver"] as const) {
+      const { data, error } = await remove(shop.members[role].db, id);
+      expect(error, role).toBeNull();
+      expect(data, role).toEqual([]);
+    }
+    const { data, error } = await remove(shop.members.manager.db, id);
+    expect(error).toBeNull();
+    expect(data).toEqual([{ id }]);
+  });
+
+  it("another shop can't delete it", async () => {
+    const id = await addVehicle();
+    const elsewhere = await createTenant("products-delete");
+    try {
+      const { data } = await remove(elsewhere.members.owner.db, id);
+      expect(data).toEqual([]);
+      const still = await service.from("products").select("id").eq("id", id);
+      expect(still.data).toHaveLength(1);
+    } finally {
+      await deleteTenant(elsewhere);
+    }
+  });
+});
+
 describe("history", () => {
   it("a change to a product is filed under products, with who made it", async () => {
     const id = await addVehicle();

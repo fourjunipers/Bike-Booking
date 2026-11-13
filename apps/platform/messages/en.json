@@ -277,7 +277,8 @@
     "model_has_active_units": "Retire or sell its vehicles first. A product can be retired once none of its vehicles is in the fleet.",
     "model_retired": "This product is retired. Restore it first.",
     "specs_required": "Give the make, model, engine size, transmission and year first.",
-    "invalidHours": "Enter the hours as a number, like 2 or 0.5 (168 at most)."
+    "invalidHours": "Enter the hours as a number, like 2 or 0.5 (168 at most).",
+    "productHasVehicles": "This product still has vehicles. Remove all its vehicles first."
   },
   "Fleet": {
     "title": "Fleet",
@@ -369,10 +370,9 @@
       "depositHelp": "Blank uses the shop default (set in Phase 2).",
       "minAge": "Minimum age",
       "licenceClass": "Licence class",
-      "modesHelp": "How many of the active vehicles confirm instantly, how many need your OK, and how many stand ready for walk-ins now. The rest are for walk-ins only.",
       "instantUnits": "Instant units",
       "requestUnits": "Request units",
-      "readyNow": "Ready for walk-ins now",
+      "readyNow": "Walk-ins",
       "units": "Vehicles of this product",
       "delete": "Delete product",
       "deleteConfirm": "Delete this product? This can't be undone.",
@@ -380,15 +380,14 @@
       "newIntro": "Something you rent out, like a Honda Click 160. Add the vehicles themselves afterwards, on the product's Units tab.",
       "saveNew": "Save product",
       "saveThenInventory": "Save and add a vehicle",
-      "retire": "Retire product",
-      "retireConfirm": "Retire this product? It leaves the Products and Fleet lists and the “Add vehicle” form, and comes off Moto Mangos. Its vehicles and their history are kept, and you can restore it later.",
       "retiredTitle": "Retired",
       "retiredOn": "Retired on {date}. It is hidden from the Products and Fleet lists and from “Add vehicle”, and is not listed on Moto Mangos. Find it under Show: Retired.",
       "restore": "Restore product",
       "deleteConfirmWaiting": "Delete this product? This can't be undone. Its Moto Mangos review request will be withdrawn.",
       "detailsTitle": "Product details",
       "namePlaceholder": "e.g. Honda CB500X 2022-2024",
-      "removeTitle": "Take this product out of use"
+      "removeTitle": "Delete this product",
+      "deleteBlocked": "This product still has vehicles. Remove all its vehicles first."
     },
     "unit": {
       "newTitle": "Add vehicle",
@@ -537,7 +536,6 @@
       "list": "List this product on Moto Mangos",
       "later": "Listing takes effect when Moto Mangos starts reading from this system.",
       "waiting": "Sent to Moto Mangos. It is waiting for review and goes live once approved; you can keep using the model meanwhile.",
-      "bikesOnly": "Moto Mangos lists motorbikes only, for now. This model is yours to use here.",
       "submitTitle": "List it on Moto Mangos",
       "submit": "Send for review",
       "note": "Note for the reviewer",
@@ -552,16 +550,20 @@
       "nextHelp": "Fix the details and send it for review again, or switch to a model that is already on the list.",
       "editAgain": "Edit and send again",
       "chooseInstead": "Choose a model from the list instead",
-      "useChosen": "Use this model",
+      "useChosen": "Select",
       "submitHelp": "Give its make, model, engine size, transmission and year: all five are needed. We review it first because it is new to our list.",
       "selectFromList": "Select your make and model from the list",
       "notInList": "Don’t see your bike above? Send us the details and we’ll get it added",
       "bikeYear": "Year of your bike",
       "bikeYearHelp": "One year, like 2023.",
       "listingTitle": "Listing",
-      "listingLocked": "You can switch this on once a model is selected from the list above, or your request is approved."
+      "listingLocked": "You can switch this on once a model is selected from the list above, or your request is approved.",
+      "quantitiesTitle": "Set bike quantities per booking type",
+      "instantHelp": "Future bookings that receive instant approval",
+      "requestHelp": "Future bookings that require your approval",
+      "walkinsHelp": "Bookings that are ready for immediate pickup today (overrides the booking buffer)"
     },
-    "editModel": "Open product",
+    "editModel": "Edit product",
     "addUnitRow": "Add vehicle",
     "listing": {
       "listed": "Listed on Moto Mangos",
@@ -640,7 +642,6 @@
     },
     "stock": "{count, plural, =0 {No vehicles in the fleet} one {# vehicle in the fleet} other {# vehicles in the fleet}}",
     "stockPast": "{count} sold or retired",
-    "open": "Open {name}",
     "tabs": {
       "label": "Sections of this product",
       "details": "Details",

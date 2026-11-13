@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ChevronDown, FileUp, Plus, Printer, Search } from "lucide-react";
 import { KindIcon } from "@/components/fleet/kind-icon";
+import { EditPencil, ProductTags } from "@/components/fleet/product-tags";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { Field, inputClass } from "@/components/form";
 import { PageHeader } from "@/components/page";
@@ -18,7 +19,12 @@ import {
 } from "@/lib/fleet-list";
 import { shopModelOptions } from "@/lib/model-options";
 import { canManageFleet } from "@/lib/roles";
-import { humanizeKey, kindTypes, vehicleKinds } from "@/lib/vehicle-kinds";
+import {
+  humanizeKey,
+  kindTypes,
+  listingStatus,
+  vehicleKinds,
+} from "@/lib/vehicle-kinds";
 import { cn } from "@/lib/utils";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -65,6 +71,10 @@ export default async function FleetPage({
     view,
   );
   const filters = fleetFilterCount(view);
+  const listings = new Map(
+    fleet.map((p) => [p.id, listingStatus(p, p.entry_status)]),
+  );
+  const categoriesOf = new Map(fleet.map((p) => [p.id, p.categories]));
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   // Open when someone is looking for a vehicle, or there is little to scroll.
   const openAll = view.q !== "" || filters > 0 || shown <= 12;
@@ -306,7 +316,14 @@ export default async function FleetPage({
                     <KindIcon kind={row.kind} className="size-5" />
                   </span>
                   <span className="min-w-0 flex-1 basis-40">
-                    <span className="block font-semibold">{row.name}</span>
+                    <span className="flex min-w-0 items-center gap-1">
+                      <span className="min-w-0 font-semibold">{row.name}</span>
+                      {/* The edit pencil, beside the title: opens the product. */}
+                      <EditPencil
+                        href={`/${slug}/products/${row.id}`}
+                        name={row.name}
+                      />
+                    </span>
                     <span className="block text-sm text-muted-foreground">
                       {t("vehicleCounts", {
                         vehicles: row.vehicles,
@@ -314,24 +331,13 @@ export default async function FleetPage({
                       })}
                     </span>
                   </span>
-                  {row.retired && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      {t("listing.retired")}
-                    </span>
-                  )}
-                  <Link
-                    href={`/${slug}/products/${row.id}`}
-                    className={cn(
-                      buttonVariants({ variant: "ghost" }),
-                      "-my-1 h-11 px-3",
-                    )}
-                  >
-                    {t("editModel")}
-                    <span className="sr-only">
-                      {": "}
-                      {row.name}
-                    </span>
-                  </Link>
+                  {/* The same tags as on the Products list. */}
+                  <ProductTags
+                    name={row.name}
+                    retired={row.retired}
+                    listing={manage ? (listings.get(row.id) ?? null) : null}
+                    categories={categoriesOf.get(row.id) ?? []}
+                  />
                   {manage && !row.retired && (
                     <Link
                       href={`${base}/units/new?product=${row.id}`}

@@ -210,6 +210,10 @@ export async function deleteModel(
     .eq("tenant_id", tenant.id)
     .eq("id", field(formData, "id"))
     .select("id");
+  // A vehicle points at its product, so the database refuses while any
+  // remain, retired and sold ones included.
+  if (error?.code === "23503")
+    return { errors: { form: "productHasVehicles" } };
   if (error || data.length !== 1)
     return { errors: { form: dbErrorKey(error) } };
   refresh(slug);

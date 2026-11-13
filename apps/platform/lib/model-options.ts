@@ -29,14 +29,32 @@ export function entryLabel(entry: Entry): string {
   return `${entry.make} ${entry.model}${years}`;
 }
 
+export type ListChoice = {
+  /** The list entry's id. */
+  value: string;
+  make: string;
+  /** The model with the years the entry covers: "PCX 160 (2021–2024)". */
+  label: string;
+};
+
 /**
  * The Moto Mangos list, for "Select your make and model from the list" on a
- * product's Moto Mangos panel. Values are list entry ids.
+ * product's Moto Mangos panel: a Make dropdown, then the models of that make
+ * with their year range. This is the one picker on the platform that speaks
+ * of makes and models; it is Moto Mangos' list, not the shop's products.
  */
-export function catalogOptions(catalog: Entry[]): Option[] {
+export function catalogChoices(catalog: Entry[]): ListChoice[] {
   return catalog
-    .map((entry) => ({ value: entry.id, label: entryLabel(entry) }))
-    .sort(byLabel);
+    .map((entry) => ({
+      value: entry.id,
+      make: entry.make,
+      label: entryLabel(entry).slice(entry.make.length + 1),
+    }))
+    .sort(
+      (a, b) =>
+        a.make.localeCompare(b.make) ||
+        a.label.localeCompare(b.label, undefined, { numeric: true }),
+    );
 }
 
 type ShopProduct = { id: string; name: string; retired_at?: string | null };

@@ -22,14 +22,15 @@ import {
 } from "@/lib/fleet-data";
 import { buildHistory, historyValue } from "@/lib/history";
 import { splitMakeModel } from "@/lib/known-models";
-import { catalogOptions } from "@/lib/model-options";
+import { catalogChoices } from "@/lib/model-options";
 import { minutesToHours } from "@/lib/fleet";
 import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
 import { humanizeKey, reviewNews } from "@/lib/vehicle-kinds";
 import { formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
-import { deleteModel, setModelRetired } from "../../fleet/actions";
+import { setModelRetired } from "../../fleet/actions";
+import { DeleteProductButton } from "../delete-product";
 import {
   ChooseFromListForm,
   ListingForm,
@@ -249,8 +250,8 @@ type Product = NonNullable<Awaited<ReturnType<typeof getModel>>>;
 type Catalog = Awaited<ReturnType<typeof getCatalog>>;
 
 /**
- * What the product is, its Moto Mangos panel, and, at the very bottom of the
- * page, taking it out of use.
+ * What the product is, its Moto Mangos panel (motorcycles only), and, at the
+ * very bottom of the page, deleting it.
  *
  * The Moto Mangos panel, top to bottom (owner, 13 Nov 2026): the logo; "List
  * it on Moto Mangos"; a picker of the list; "Don't see your bike above?",
@@ -292,10 +293,6 @@ async function DetailsTab({
   const guess = splitMakeModel(model.name, [
     ...new Set(catalog.map((c) => c.make)),
   ]);
-  // Once none of its vehicles is in the fleet (or it has none).
-  const canRetire = units.every(
-    (unit) => unit.status === "sold" || unit.status === "retired",
-  );
   const outline = cn(
     buttonVariants({ variant: "outline" }),
     "h-11 bg-card px-4 text-foreground",
@@ -303,8 +300,16 @@ async function DetailsTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Panel id="model-details">
+      <div
+        className={cn(
+          "grid gap-6",
+          motorbike && "lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]",
+        )}
+      >
+        <Panel
+          id="model-details"
+          className={motorbike ? undefined : "max-w-3xl"}
+        >
           <ProductForm
             what={{
               vehicle_type: model.vehicle_type,
@@ -330,149 +335,151 @@ async function DetailsTab({
             }}
           />
         </Panel>
-        <Panel
-          id="moto-mangos"
-          // The logo first (its alt text is the panel's name). On a white
-          // plate, so it reads on the dark theme too.
-          title={
-            <span className="inline-flex rounded-md bg-white px-2 py-1">
-              <Image
-                src="/moto-mangos-logo.png"
-                alt={tFleet("motoMangos.title")}
-                width={710}
-                height={290}
-                className="h-12 w-auto"
-              />
-            </span>
-          }
-        >
-          <h3 className="text-lg font-semibold">
-            {tFleet("motoMangos.submitTitle")}
-          </h3>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            {tFleet("motoMangos.intro")}
-          </p>
+        {motorbike && (
+          <Panel
+            id="moto-mangos"
+            // The logo first (its alt text is the panel's name). On a white
+            // plate, so it reads on the dark theme too.
+            title={
+              <span className="inline-flex rounded-md bg-white px-2 py-1">
+                <Image
+                  src="/moto-mangos-logo.png"
+                  alt={tFleet("motoMangos.title")}
+                  width={710}
+                  height={290}
+                  className="h-12 w-auto"
+                />
+              </span>
+            }
+          >
+            <h3 className="text-lg font-semibold">
+              {tFleet("motoMangos.submitTitle")}
+            </h3>
+            <p className="mt-1 mb-4 text-sm text-muted-foreground">
+              {tFleet("motoMangos.intro")}
+            </p>
 
-          {/* What Moto Mangos decided about its last request, until it is
+            {/* What Moto Mangos decided about its last request, until it is
               sent again or put on a list entry. */}
-          {model.catalog_rejected_at && !waiting && (
-            <div
-              role="status"
-              className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
-            >
-              <p className="font-medium">
-                {tFleet("motoMangos.rejected", {
+            {model.catalog_rejected_at && !waiting && (
+              <div
+                role="status"
+                className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+              >
+                <p className="font-medium">
+                  {tFleet("motoMangos.rejected", {
+                    date: formatInstant(
+                      new Date(model.catalog_rejected_at),
+                      timezone,
+                      locale,
+                    ),
+                  })}
+                </p>
+                {model.catalog_reject_reason ? (
+                  <p className="mt-2">
+                    {tFleet("motoMangos.rejectReason")}{" "}
+                    <q>{model.catalog_reject_reason}</q>
+                  </p>
+                ) : (
+                  <p className="mt-2">{tFleet("motoMangos.rejectNoReason")}</p>
+                )}
+                {/* What to do next: only a product that came back to the shop
+                  can be changed and sent again. */}
+                {own && (
+                  <div className="mt-3 border-t border-amber-300 pt-3">
+                    <p className="font-medium">
+                      {tFleet("motoMangos.nextTitle")}
+                    </p>
+                    <p className="mt-1">{tFleet("motoMangos.nextHelp")}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <a href="#send-for-review" className={outline}>
+                        {tFleet("motoMangos.editAgain")}
+                      </a>
+                      <a href="#choose-from-list" className={outline}>
+                        {tFleet("motoMangos.chooseInstead")}
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {news === "added" && model.catalog_approved_at && (
+              <p
+                role="status"
+                className="mb-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm font-medium text-emerald-950"
+              >
+                {tFleet("motoMangos.approved", {
                   date: formatInstant(
-                    new Date(model.catalog_rejected_at),
+                    new Date(model.catalog_approved_at),
                     timezone,
                     locale,
                   ),
                 })}
               </p>
-              {model.catalog_reject_reason ? (
-                <p className="mt-2">
-                  {tFleet("motoMangos.rejectReason")}{" "}
-                  <q>{model.catalog_reject_reason}</q>
-                </p>
-              ) : (
-                <p className="mt-2">{tFleet("motoMangos.rejectNoReason")}</p>
-              )}
-              {/* What to do next: only a product that came back to the shop
-                  can be changed and sent again. */}
-              {own && (
-                <div className="mt-3 border-t border-amber-300 pt-3">
-                  <p className="font-medium">
-                    {tFleet("motoMangos.nextTitle")}
-                  </p>
-                  <p className="mt-1">{tFleet("motoMangos.nextHelp")}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <a href="#send-for-review" className={outline}>
-                      {tFleet("motoMangos.editAgain")}
-                    </a>
-                    <a href="#choose-from-list" className={outline}>
-                      {tFleet("motoMangos.chooseInstead")}
-                    </a>
-                  </div>
+            )}
+
+            {waiting ? (
+              <p className="text-sm">{tFleet("motoMangos.waiting")}</p>
+            ) : entry?.status === "rejected" ? (
+              <p className="text-sm">{tFleet("motoMangos.rejectedLinked")}</p>
+            ) : approved && entry ? (
+              <p className="text-sm">
+                {tFleet("motoMangos.ready", { name: catalogName(entry) })}
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div id="choose-from-list" className="scroll-mt-20">
+                  <ChooseFromListForm
+                    slug={slug}
+                    id={model.id}
+                    choices={catalogChoices(catalog)}
+                  />
                 </div>
-              )}
-            </div>
-          )}
-          {news === "added" && model.catalog_approved_at && (
-            <p
-              role="status"
-              className="mb-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm font-medium text-emerald-950"
-            >
-              {tFleet("motoMangos.approved", {
-                date: formatInstant(
-                  new Date(model.catalog_approved_at),
-                  timezone,
-                  locale,
-                ),
-              })}
-            </p>
-          )}
-
-          {!motorbike ? (
-            <p className="text-sm">{tFleet("motoMangos.bikesOnly")}</p>
-          ) : waiting ? (
-            <p className="text-sm">{tFleet("motoMangos.waiting")}</p>
-          ) : entry?.status === "rejected" ? (
-            <p className="text-sm">{tFleet("motoMangos.rejectedLinked")}</p>
-          ) : approved && entry ? (
-            <p className="text-sm">
-              {tFleet("motoMangos.ready", { name: catalogName(entry) })}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              <div id="choose-from-list" className="scroll-mt-20">
-                <ChooseFromListForm
-                  slug={slug}
-                  id={model.id}
-                  options={catalogOptions(catalog)}
-                />
+                {model.categories.length === 0 ? (
+                  <p className="text-sm">
+                    {tFleet("motoMangos.categoryFirst")}
+                  </p>
+                ) : (
+                  <ReviewRequest
+                    slug={slug}
+                    id={model.id}
+                    again={Boolean(model.catalog_rejected_at)}
+                    // A request being corrected starts open, with what was sent.
+                    open={Boolean(model.catalog_rejected_at)}
+                    values={{
+                      make: model.make || guess.make,
+                      model: model.make ? model.model : guess.model,
+                      cc: model.cc === null ? "" : String(model.cc),
+                      transmission: model.transmission ?? "",
+                    }}
+                  />
+                )}
               </div>
-              {model.categories.length === 0 ? (
-                <p className="text-sm">{tFleet("motoMangos.categoryFirst")}</p>
-              ) : (
-                <ReviewRequest
-                  slug={slug}
-                  id={model.id}
-                  again={Boolean(model.catalog_rejected_at)}
-                  // A request being corrected starts open, with what was sent.
-                  open={Boolean(model.catalog_rejected_at)}
-                  values={{
-                    make: model.make || guess.make,
-                    model: model.make ? model.model : guess.model,
-                    cc: model.cc === null ? "" : String(model.cc),
-                    transmission: model.transmission ?? "",
-                  }}
-                />
-              )}
-            </div>
-          )}
+            )}
 
-          {/* The listing switch and settings: below, and only usable once a
+            {/* The listing switch and settings: below, and only usable once a
               model is selected or approved. */}
-          <div className="mt-5 border-t pt-5">
-            <h3 className="mb-3 font-medium">
-              {tFleet("motoMangos.listingTitle")}
-            </h3>
-            <ListingForm
-              slug={slug}
-              id={model.id}
-              enabled={Boolean(approved) && !model.retired_at}
-              values={{
-                listed: model.marketplace_listed,
-                instant_units: String(model.instant_units),
-                request_units: String(model.request_units),
-                ready_now: String(model.ready_now),
-              }}
-            />
-            <p className="mt-3 text-xs text-muted-foreground">
-              {tFleet("motoMangos.later")}
-            </p>
-          </div>
-        </Panel>
+            <div className="mt-5 border-t pt-5">
+              <h3 className="mb-3 font-medium">
+                {tFleet("motoMangos.listingTitle")}
+              </h3>
+              <ListingForm
+                slug={slug}
+                id={model.id}
+                enabled={Boolean(approved) && !model.retired_at}
+                values={{
+                  listed: model.marketplace_listed,
+                  instant_units: String(model.instant_units),
+                  request_units: String(model.request_units),
+                  ready_now: String(model.ready_now),
+                }}
+              />
+              <p className="mt-3 text-xs text-muted-foreground">
+                {tFleet("motoMangos.later")}
+              </p>
+            </div>
+          </Panel>
+        )}
       </div>
 
       {/* The very bottom of the page. Out of use: retire it (kept, hidden)
@@ -493,31 +500,19 @@ async function DetailsTab({
           />
         </Panel>
       )}
-      {((!model.retired_at && canRetire) || units.length === 0) && (
-        <section
-          aria-label={t("removeTitle")}
-          className="flex flex-wrap gap-3 border-t pt-6"
-        >
-          {!model.retired_at && canRetire && (
-            <ActionForm
-              action={setModelRetired}
-              hidden={{ slug, id: model.id, retired: "1" }}
-              submitLabel={t("retire")}
-              confirm={t("retireConfirm")}
-              destructive
-            />
-          )}
-          {units.length === 0 && (
-            <ActionForm
-              action={deleteModel}
-              hidden={{ slug, id: model.id }}
-              submitLabel={t("delete")}
-              confirm={t(waiting ? "deleteConfirmWaiting" : "deleteConfirm")}
-              destructive
-            />
-          )}
-        </section>
-      )}
+      <section
+        aria-label={t("removeTitle")}
+        className="flex flex-wrap gap-3 border-t pt-6"
+      >
+        <DeleteProductButton
+          slug={slug}
+          id={model.id}
+          hasVehicles={units.length > 0}
+          label={t("delete")}
+          confirm={t(waiting ? "deleteConfirmWaiting" : "deleteConfirm")}
+          blocked={t("deleteBlocked")}
+        />
+      </section>
     </div>
   );
 }

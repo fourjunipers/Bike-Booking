@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { ChevronDown, ChevronRight, Plus, Search } from "lucide-react";
+import { ChevronDown, Plus, Search } from "lucide-react";
 import { KindIcon } from "@/components/fleet/kind-icon";
+import { EditPencil, ProductTags } from "@/components/fleet/product-tags";
 import { Field, inputClass } from "@/components/form";
 import { PageHeader } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,22 +17,8 @@ import {
   productsFilterCount,
 } from "@/lib/products-view";
 import { canManageFleet } from "@/lib/roles";
-import {
-  humanizeKey,
-  kindTypes,
-  vehicleKinds,
-  type ListingStatus,
-} from "@/lib/vehicle-kinds";
+import { humanizeKey, kindTypes, vehicleKinds } from "@/lib/vehicle-kinds";
 import { cn } from "@/lib/utils";
-
-/** The Moto Mangos chip: the word says it, the colour helps. */
-const listingClass: Record<ListingStatus, string> = {
-  listed:
-    "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  inReview: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  needsChanges: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  notListed: "border bg-card text-muted-foreground",
-};
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Nav");
@@ -237,75 +224,58 @@ export default async function ProductsPage({
               // with the online booking page (Phase 3).
               const photo = row.photos.find((url) => /^https?:\/\//.test(url));
               return (
-                <li key={row.id} className="even:bg-accent/40">
-                  <Link
-                    href={`${base}/${row.id}`}
-                    aria-label={t("open", { name: row.name })}
-                    className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 outline-none hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-4"
-                  >
-                    {/* A fixed box, so the row doesn't move when a photo loads. */}
-                    <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-card text-muted-foreground">
-                      {photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- a shop's own photo address, not ours to optimise
-                        <img
-                          src={photo}
-                          alt=""
-                          width={44}
-                          height={44}
-                          loading="lazy"
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <KindIcon kind={row.vehicle_type} className="size-5" />
-                      )}
+                <li
+                  key={row.id}
+                  className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 even:bg-accent/40 sm:px-4"
+                >
+                  {/* A fixed box, so the row doesn't move when a photo loads. */}
+                  <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-card text-muted-foreground">
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- a shop's own photo address, not ours to optimise
+                      <img
+                        src={photo}
+                        alt=""
+                        width={44}
+                        height={44}
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <KindIcon kind={row.vehicle_type} className="size-5" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1 basis-40">
+                    <div className="flex min-w-0 items-center gap-1">
+                      <Link
+                        href={`${base}/${row.id}`}
+                        className="min-w-0 rounded-sm font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        {row.name}
+                      </Link>
+                      {/* The edit pencil, beside the title. */}
+                      <EditPencil href={`${base}/${row.id}`} name={row.name} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {[
+                        t(`type.${row.type}` as "type.vehicle"),
+                        tFleet(`kind.${row.vehicle_type}` as "kind.car"),
+                      ].join(" · ")}
+                    </p>
+                  </div>
+                  <ProductTags
+                    name={row.name}
+                    retired={row.retired_at !== null}
+                    listing={manage ? row.listing : null}
+                    categories={row.categories}
+                  />
+                  <span className="rounded-full bg-foreground px-2 py-0.5 text-xs font-semibold text-background tabular-nums">
+                    {t("stock", { count: row.inFleet })}
+                  </span>
+                  {row.past > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("stockPast", { count: row.past })}
                     </span>
-                    <span className="min-w-0 flex-1 basis-40">
-                      <span className="block font-semibold">{row.name}</span>
-                      <span className="block text-sm text-muted-foreground">
-                        {[
-                          t(`type.${row.type}` as "type.vehicle"),
-                          tFleet(`kind.${row.vehicle_type}` as "kind.car"),
-                        ].join(" · ")}
-                      </span>
-                    </span>
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      {row.retired_at !== null && (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                          {tFleet("listing.retired")}
-                        </span>
-                      )}
-                      {manage && row.listing && row.retired_at === null && (
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-xs font-medium",
-                            listingClass[row.listing],
-                          )}
-                        >
-                          {tFleet(`listing.${row.listing}`)}
-                        </span>
-                      )}
-                      {row.categories.map((key) => (
-                        <span
-                          key={key}
-                          className="rounded-full border bg-card px-2 py-0.5 text-xs font-medium"
-                        >
-                          {categoryLabel(key)}
-                        </span>
-                      ))}
-                      <span className="rounded-full bg-foreground px-2 py-0.5 text-xs font-semibold text-background tabular-nums">
-                        {t("stock", { count: row.inFleet })}
-                      </span>
-                      {row.past > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {t("stockPast", { count: row.past })}
-                        </span>
-                      )}
-                    </span>
-                    <ChevronRight
-                      aria-hidden
-                      className="size-5 shrink-0 text-muted-foreground"
-                    />
-                  </Link>
+                  )}
                 </li>
               );
             })}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import {
@@ -10,7 +11,8 @@ import {
   TextInput,
 } from "@/components/action-form";
 import { transmissions } from "@/lib/fleet";
-import type { Option } from "@/lib/model-options";
+import { Field, inputClass } from "@/components/form";
+import type { ListChoice } from "@/lib/model-options";
 import {
   linkModelToPreset,
   saveListing,
@@ -24,31 +26,79 @@ import {
  * approved, the listing switch and settings.
  */
 
-/** "Select your make and model from the list": takes the list's details, no review. */
+/**
+ * "Select your make and model from the list": Make, then Model (with the
+ * years it covers), the second filtered by the first. Selecting one takes the
+ * list's details and needs no review. Native selects, so they work with a
+ * finger, a mouse or a keyboard; without JavaScript the second lists every
+ * model.
+ */
 export function ChooseFromListForm({
   slug,
   id,
-  options,
+  choices,
 }: {
   slug: string;
   id: string;
-  /** The Moto Mangos list, A to Z. */
-  options: Option[];
+  /** The Moto Mangos list, by make then model. */
+  choices: ListChoice[];
 }) {
   const t = useTranslations("Fleet.motoMangos");
+  const tFleet = useTranslations("Fleet");
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const makes = [...new Set(choices.map((choice) => choice.make))];
+  const models = make ? choices.filter((choice) => choice.make === make) : [];
   return (
     <ActionForm
       action={linkModelToPreset}
       hidden={{ slug, id }}
       submitLabel={t("useChosen")}
     >
-      <SelectInput
-        name="catalog_id"
-        label={t("selectFromList")}
-        required
-        defaultValue=""
-        options={[{ value: "", label: "—" }, ...options]}
-      />
+      <fieldset>
+        <legend className="mb-2 block text-sm font-medium">
+          {t("selectFromList")}
+        </legend>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field id="list-make" label={tFleet("what.make")}>
+            <select
+              id="list-make"
+              value={make}
+              required
+              onChange={(event) => {
+                setMake(event.target.value);
+                setModel("");
+              }}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {makes.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field id="catalog_id" label={tFleet("what.model")}>
+            <select
+              id="catalog_id"
+              name="catalog_id"
+              value={model}
+              required
+              disabled={!make}
+              onChange={(event) => setModel(event.target.value)}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {models.map((choice) => (
+                <option key={choice.value} value={choice.value}>
+                  {choice.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </fieldset>
     </ActionForm>
   );
 }
@@ -181,27 +231,32 @@ export function ListingForm({
         label={t("list")}
         defaultChecked={values.listed}
       />
-      <p className="text-sm text-muted-foreground">{tModel("modesHelp")}</p>
-      <div className="grid gap-5 sm:grid-cols-3">
-        <TextInput
-          name="instant_units"
-          label={tModel("instantUnits")}
-          inputMode="numeric"
-          defaultValue={values.instant_units}
-        />
-        <TextInput
-          name="request_units"
-          label={tModel("requestUnits")}
-          inputMode="numeric"
-          defaultValue={values.request_units}
-        />
-        <TextInput
-          name="ready_now"
-          label={tModel("readyNow")}
-          inputMode="numeric"
-          defaultValue={values.ready_now}
-        />
-      </div>
+      {/* "Set bike quantities per booking type", then one line each. */}
+      <p className="text-sm font-medium">{t("quantitiesTitle")}</p>
+      <TextInput
+        name="instant_units"
+        label={tModel("instantUnits")}
+        help={t("instantHelp")}
+        inputMode="numeric"
+        defaultValue={values.instant_units}
+        className="max-w-28"
+      />
+      <TextInput
+        name="request_units"
+        label={tModel("requestUnits")}
+        help={t("requestHelp")}
+        inputMode="numeric"
+        defaultValue={values.request_units}
+        className="max-w-28"
+      />
+      <TextInput
+        name="ready_now"
+        label={tModel("readyNow")}
+        help={t("walkinsHelp")}
+        inputMode="numeric"
+        defaultValue={values.ready_now}
+        className="max-w-28"
+      />
     </fieldset>
   );
   if (!enabled)

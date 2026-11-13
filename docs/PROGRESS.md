@@ -81,6 +81,27 @@ Still depending on make and model, and left alone (nothing a shop sees):
 - `lib/catalog-match.ts` (used by the Moto Mangos admin page to offer merge targets), and `ownModelSchema` and `exactPresets` with their unit tests, are no longer used by any shop screen. Kept; removable in a tidy-up.
 - The marketplace adapter switch (3M) will read a listed product's make, model and specs through its list entry, as planned.
 
+**Fourth round, after the owner's third click-through (13 Nov 2026)**
+
+Items 3 to 7 of the third round passed. Changed now (no migration and nothing on staging needed changing this round):
+
+- **The Moto Mangos panel shows for motorcycles only**: the kind Motorbike, with any of its categories (Scooter, Touring, Adventure, Sport, Classic, Off-road). It is hidden, not greyed, for the Off-road kind (ATV, UTV, Dirt bike), Car, Boat or jet ski and Other; the product form then takes the page's width. The tip on the create form and the Moto Mangos chip follow the same rule, as before. **No listed product can lose its panel:** a product is listed only on an approved list entry, an entry is always a motorbike, and the database keeps a product's kind equal to its entry's, so a product on the list is always a Motorbike. Checked on staging: 0 products that are not motorbikes are listed or on a list entry, and 0 list entries are not motorbikes. Nothing had to be changed.
+- **Listing texts.** "Set bike quantities per booking type", then three lines, each with its field: Instant units ("Future bookings that receive instant approval"), Request units ("Future bookings that require your approval"), Walk-ins ("Bookings that are ready for immediate pickup today (overrides the booking buffer)"). The old sentence is gone. The field was labelled "Ready for walk-ins now".
+- **The list picker is two dropdowns**: Make, then Model with the years it covers, the second filtered by the first and disabled until a make is chosen. Its legend is still "Select your make and model from the list"; the button reads "Select". This is the Moto Mangos list only; the rest of the platform still has no make or model.
+- **Delete only, and only when empty.** "Retire product" is gone from the product page. "Delete product" is always there, last on the page. With any vehicle left, whatever its status, it shows a pop-up, "This product still has vehicles. Remove all its vehicles first.", and does nothing. **The database already refused this** and still does: a vehicle points at its product (`units_tenant_id_product_id_type_fkey`), so a delete with any vehicle left fails for everyone, the service role included; the server turns that refusal into the same sentence. No new rule was needed, so no migration change. The retired status stays in the database (`products.retired_at` and its rules), and a product that is already retired still shows its "Retired" note with "Restore product", so it is not stuck.
+- **Fleet lines carry the same tags as the Products list**: Retired, the Moto Mangos chip (owners and managers; motorcycles), and the categories. One shared component draws both.
+- **The edit pencil** replaces "Open product" on Fleet and is added beside the title on the Products list. It is a link named "Edit product: <name>", 44 px square, with a focus ring. On the Products list the title is also a link to the product; the whole row is no longer one link.
+
+Can a product be undeletable? Today, no: no vehicle has bookings yet, so every vehicle can be deleted and then its product. From Phase 3, a vehicle with bookings can't be deleted (past orders need it), so its product can't be either until the planned "Remove for good" step exists. The pop-up says the same sentence in that case; it does not yet say that a vehicle with bookings can only be retired. That wording belongs with Phase 3.
+
+Decided here without being asked:
+
+- A product that is already retired keeps "Restore product" (there is no other way back from that state on screen).
+- The pop-up is the browser's own message box, like the confirmations already used on these pages.
+- The retired-product browser steps (retire, see it under "Retired", restore) are gone with the button. The rules are still tested in the database and unit tests.
+
+**Not built: manual order (drag to reorder, item 7).** The owner asked to be told before building if it looked risky or too big for this PR. It is both, for one part: long-press and hold-and-drag on lines that are also buttons (a Fleet line opens on a tap and holds links), working alike on phone and desktop, with a browser test for touch dragging that doesn't flake. The repo has no drag library, and adding one needs the owner's say (root CLAUDE.md). Proposed split: first the dependable part (a `sort_position` on the product, one function to move a product or reset to A–Z, owner and manager only, both lists reading the one order, "Move up" and "Move down" on each line, "Reset to A–Z", new products at the bottom, off while a search or filter is on), with its database and browser tests; then dragging on top of that, either hand-written or with a small library the owner approves. Waiting on the owner's choice.
+
 **Demo data carried across.** A database built at `main` (54 migrations) was seeded with the three demo shops, given two listed products and three downtime blocks, and migrated. Per shop, before and after: products 5 / 11 / 0, vehicles 150 / 20 / 0, year bands 15, listed 2, blocks 3, renewals 8, purchase records 20, audit rows 174 / 89 / 5, and checksums over every product's id, name, make, model, list entry, categories and listing, and every vehicle's id, product, plate and status: identical. All 16 products came out as vehicle / unit and all 170 units as vehicle units.
 
 **Decisions and notes**
@@ -93,9 +114,9 @@ Still depending on make and model, and left alone (nothing a shop sees):
 
 **Tests (all passing locally, 13 Nov 2026)**
 
-- Database: 181 (153 existing, 28 in `tests/db/products.test.ts`; third round: the year is required with a request, the reviewer sets the range at approval, a backwards range is refused, a shop can't approve its own). Run on a database rebuilt from scratch with all 55 migrations.
-- Unit: platform 145 (third round: new `lib/fleet-list.test.ts`, 28 tests: the one-line-per-product list, product dropdowns A to Z, the import by name, buffers in hours, and a check that no Fleet or Products text mentions a make, model, engine size or transmission outside the Moto Mangos panel; the tests of the removed grouped view, the old import and the type-ahead matching are gone with that code), marketplace 202, core 86.
-- Playwright: 72 passed at 375 px and 1280 px, 2 skipped (the timing measurement). Third round: the Fleet list, the panel's order measured on the page, the review form closed until opened, the bike year, buffers in hours, Duplicate, the import by name, one Product dropdown.
+- Database: 185 (fourth round: a product with any vehicle left, whatever its status, can't be deleted by anyone, the service role included; a retired product with a retired vehicle is no exception; it goes once its last vehicle is gone, for owners and managers only; another shop can't delete it). Run on a database rebuilt from scratch with all 55 migrations.
+- Unit: platform 145, marketplace 202, core 86.
+- Playwright: 72 passed at 375 px and 1280 px, 2 skipped (the timing measurement). Fourth round: no panel for a car, a boat or a dirt bike; the two-dropdown picker; the new listing texts; the delete pop-up with a retired vehicle left; the pencil's name, size and focus; the tags on a Fleet line.
 - `npm run typecheck && npm run lint && npm test` from the root: clean.
 
 **On staging, not on live (13 Nov 2026).** PR 13's migration (`20261113000100_platform_fleet_rework`) and PR 16's (`20261113000200_platform_products`) are both on staging: staging records 55 of 55. **Neither is on live**, which stays at 53 of 53; live gets them only from `main`, by the runbook, after stage C.

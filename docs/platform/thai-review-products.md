@@ -11,6 +11,8 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 
 **Third round (13 Nov 2026).** Make and model are gone from the platform's screens; the Moto Mangos panel has a new order and new texts; buffers are in hours; Fleet is one line per product. New or changed in this round: `Fleet.list`, `vehicleCounts`, `searchPlaceholder`, `Fleet.unit.modelYear` (now "Year", ปี), `modelYearHelp`, `Fleet.model.removeTitle`, `namePlaceholder`, `nameHelp`, `bufferBefore`, `bufferAfter`, `bufferHelp`, `modesHelp`, `Products.duplicate`, `Products.searchPlaceholder`, `FormErrors.invalidHours`, `specs_required`, `Fleet.motoMangos.selectFromList`, `notInList`, `submitHelp`, `submit`, `bikeYear`, `bikeYearHelp`, `listingTitle`, `listingLocked`, `list`, `Fleet.what.tip.text`, `Fleet.import.columnsHelp`, and `Admin.years`, `yearFrom`, `yearTo`, `yearsHelp` (the Moto Mangos admin page). Gone: the make, model, engine-size and transmission labels and filters, the group-by and sort texts, "Did you mean", the year range on the shop's review form.
 
+**Fourth round (13 Nov 2026).** New or changed: `Fleet.editModel` (the pencil: "Edit product"), `Fleet.motoMangos.useChosen` ("Select"), `quantitiesTitle`, `instantHelp`, `requestHelp`, `walkinsHelp`, `Fleet.model.readyNow` (now "Walk-ins"), `Fleet.model.deleteBlocked` and `FormErrors.productHasVehicles` (the same sentence), `Fleet.model.removeTitle`. Gone: `Fleet.model.modesHelp`, `retire`, `retireConfirm`, `Fleet.motoMangos.bikesOnly`, `Products.open`.
+
 | Key | English | Thai |
 | --- | --- | --- |
 | `Nav.products` | Products | สินค้า |
@@ -33,7 +35,6 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Products.type.service` | Service | บริการ |
 | `Products.stock` | {count, plural, =0 {No vehicles in the fleet} one {# vehicle in the fleet} other {# vehicles in the fleet}} | {count, plural, =0 {ไม่มีรถในฟลีต} other {รถในฟลีต # คัน}} |
 | `Products.stockPast` | {count} sold or retired | ขายแล้วหรือปลดระวาง {count} คัน |
-| `Products.open` | Open {name} | เปิด {name} |
 | `Products.tabs.label` | Sections of this product | ส่วนต่าง ๆ ของสินค้านี้ |
 | `Products.tabs.details` | Details | รายละเอียด |
 | `Products.tabs.units` | Units | รถของสินค้านี้ |
@@ -79,7 +80,6 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Fleet.addUnit` | Add vehicle | เพิ่มรถ |
 | `Fleet.addUnitRow` | Add vehicle | เพิ่มรถ |
 | `Fleet.noUnits` | No vehicles of this product yet. | ยังไม่มีรถของสินค้านี้ |
-| `Fleet.editModel` | Open product | เปิดสินค้า |
 | `Fleet.model.newTitle` | New product | สินค้าใหม่ |
 | `Fleet.model.editTitle` | Product | สินค้า |
 | `Fleet.model.units` | Vehicles of this product | รถของสินค้านี้ |
@@ -87,8 +87,6 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Fleet.model.deleteConfirm` | Delete this product? This can't be undone. | ลบสินค้านี้หรือไม่? ไม่สามารถย้อนกลับได้ |
 | `Fleet.model.newIntro` | Something you rent out, like a Honda Click 160. Add the vehicles themselves afterwards, on the product's Units tab. | สิ่งที่ร้านให้เช่า เช่น Honda Click 160 จากนั้นเพิ่มรถแต่ละคันที่แท็บรถของสินค้านี้ |
 | `Fleet.model.saveNew` | Save product | บันทึกสินค้า |
-| `Fleet.model.retire` | Retire product | ปลดระวางสินค้า |
-| `Fleet.model.retireConfirm` | Retire this product? It leaves the Products and Fleet lists and the “Add vehicle” form, and comes off Moto Mangos. Its vehicles and their history are kept, and you can restore it later. | ปลดระวางสินค้านี้หรือไม่ จะออกจากรายการสินค้า รายการรถ และฟอร์ม “เพิ่มรถ” และออกจาก Moto Mangos รถและประวัติยังอยู่ และนำกลับมาใช้ภายหลังได้ |
 | `Fleet.model.retiredOn` | Retired on {date}. It is hidden from the Products and Fleet lists and from “Add vehicle”, and is not listed on Moto Mangos. Find it under Show: Retired. | ปลดระวางเมื่อ {date} ถูกซ่อนจากรายการสินค้า รายการรถ และจาก “เพิ่มรถ” และไม่ได้ลงประกาศบน Moto Mangos ดูได้ที่ แสดง: ปลดระวาง |
 | `Fleet.model.restore` | Restore product | นำสินค้ากลับมาใช้ |
 | `Fleet.model.deleteConfirmWaiting` | Delete this product? This can't be undone. Its Moto Mangos review request will be withdrawn. | ลบสินค้านี้หรือไม่ การลบไม่สามารถย้อนกลับได้ คำขอตรวจกับ Moto Mangos จะถูกถอน |
@@ -114,13 +112,11 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Fleet.searchPlaceholder` | Product name, plate or frame number | ชื่อสินค้า ทะเบียน หรือเลขตัวถัง |
 | `Fleet.unit.modelYear` | Year | ปี |
 | `Fleet.unit.modelYearHelp` | The year of this vehicle. | ปีของรถคันนี้ |
-| `Fleet.model.removeTitle` | Take this product out of use | เลิกใช้สินค้านี้ |
 | `Fleet.model.namePlaceholder` | e.g. Honda CB500X 2022-2024 | เช่น Honda CB500X 2022-2024 |
 | `Fleet.model.nameHelp` | What you call it. Put the make, model and years in the name if you want them. No two products can have the same name. | ชื่อที่ร้านใช้เรียก ใส่ยี่ห้อ รุ่น และปีไว้ในชื่อได้หากต้องการ สินค้าสองรายการใช้ชื่อเดียวกันไม่ได้ |
 | `Fleet.model.bufferBefore` | Buffer before pickup (hours) | เวลาเผื่อก่อนรับรถ (ชั่วโมง) |
 | `Fleet.model.bufferAfter` | Buffer after return (hours) | เวลาเผื่อหลังคืนรถ (ชั่วโมง) |
 | `Fleet.model.bufferHelp` | Decimals are fine: 0.5 is half an hour. Blank uses the shop default (set in Phase 2). | ใส่ทศนิยมได้ เช่น 0.5 คือครึ่งชั่วโมง เว้นว่างเพื่อใช้ค่าเริ่มต้นของร้าน (ตั้งค่าในเฟส 2) |
-| `Fleet.model.modesHelp` | How many of the active vehicles confirm instantly, how many need your OK, and how many stand ready for walk-ins now. The rest are for walk-ins only. | จำนวนรถที่ใช้งานอยู่ซึ่งยืนยันทันที จำนวนที่ต้องรอร้านอนุมัติ และจำนวนที่พร้อมสำหรับลูกค้าหน้าร้านตอนนี้ ที่เหลือสำหรับลูกค้าหน้าร้านเท่านั้น |
 | `Products.duplicate` | Duplicate | ทำสำเนา |
 | `Products.searchPlaceholder` | Product name | ชื่อสินค้า |
 | `FormErrors.invalidHours` | Enter the hours as a number, like 2 or 0.5 (168 at most). | กรอกจำนวนชั่วโมงเป็นตัวเลข เช่น 2 หรือ 0.5 (ไม่เกิน 168) |
@@ -140,3 +136,13 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 | `Admin.yearFrom` | First model year | ปีรุ่นแรก |
 | `Admin.yearTo` | Last model year | ปีรุ่นสุดท้าย |
 | `Admin.yearsHelp` | The shop’s own bike is a {year}. Set the range of years before you approve. | รถของร้านเป็นปี {year} กำหนดช่วงปีก่อนอนุมัติ |
+| `Fleet.editModel` | Edit product | แก้ไขสินค้า |
+| `Fleet.motoMangos.useChosen` | Select | เลือก |
+| `Fleet.motoMangos.quantitiesTitle` | Set bike quantities per booking type | กำหนดจำนวนรถตามประเภทการจอง |
+| `Fleet.motoMangos.instantHelp` | Future bookings that receive instant approval | การจองล่วงหน้าที่ได้รับการอนุมัติทันที |
+| `Fleet.motoMangos.requestHelp` | Future bookings that require your approval | การจองล่วงหน้าที่ต้องรอร้านอนุมัติ |
+| `Fleet.motoMangos.walkinsHelp` | Bookings that are ready for immediate pickup today (overrides the booking buffer) | การจองที่พร้อมรับรถได้ทันทีในวันนี้ (ไม่ใช้เวลาเผื่อของการจอง) |
+| `Fleet.model.readyNow` | Walk-ins | ลูกค้าหน้าร้าน |
+| `Fleet.model.deleteBlocked` | This product still has vehicles. Remove all its vehicles first. | สินค้านี้ยังมีรถอยู่ กรุณานำรถทั้งหมดออกก่อน |
+| `FormErrors.productHasVehicles` | This product still has vehicles. Remove all its vehicles first. | สินค้านี้ยังมีรถอยู่ กรุณานำรถทั้งหมดออกก่อน |
+| `Fleet.model.removeTitle` | Delete this product | ลบสินค้านี้ |

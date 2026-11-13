@@ -25,7 +25,7 @@ import {
 } from "./fleet-list";
 import { splitMakeModel } from "./known-models";
 import {
-  catalogOptions,
+  catalogChoices,
   inventoryModelOptions,
   shopModelOptions,
 } from "./model-options";
@@ -222,27 +222,43 @@ describe("product dropdowns: one list, A to Z by name", () => {
     ]);
   });
 
-  it("the Moto Mangos list is one dropdown of make, model and years", () => {
+  it("the Moto Mangos list is a make, then its models with their years", () => {
     expect(
-      catalogOptions([
+      catalogChoices([
         {
-          id: "2",
+          id: "3",
           make: "Yamaha",
           model: "NMAX",
           year_from: 2020,
           year_to: 2024,
         },
         {
+          id: "2",
+          make: "Honda",
+          model: "PCX 160",
+          year_from: 2025,
+          year_to: 2025,
+        },
+        {
           id: "1",
           make: "Honda",
           model: "PCX 160",
           year_from: 2021,
-          year_to: 2021,
+          year_to: 2024,
+        },
+        {
+          id: "4",
+          make: "Royal Enfield",
+          model: "Classic 350",
+          year_from: null,
+          year_to: null,
         },
       ]),
     ).toEqual([
-      { value: "1", label: "Honda PCX 160 (2021)" },
-      { value: "2", label: "Yamaha NMAX (2020–2024)" },
+      { value: "1", make: "Honda", label: "PCX 160 (2021–2024)" },
+      { value: "2", make: "Honda", label: "PCX 160 (2025)" },
+      { value: "4", make: "Royal Enfield", label: "Classic 350" },
+      { value: "3", make: "Yamaha", label: "NMAX (2020–2024)" },
     ]);
   });
 });
@@ -468,6 +484,21 @@ describe("no make or model on the platform's screens", () => {
       "Don’t see your bike above? Send us the details and we’ll get it added",
     );
     expect(mm.bikeYear).toBe("Year of your bike");
+    expect(mm.useChosen).toBe("Select");
+    expect(mm.quantitiesTitle).toBe("Set bike quantities per booking type");
+    expect(mm.instantHelp).toBe(
+      "Future bookings that receive instant approval",
+    );
+    expect(mm.requestHelp).toBe("Future bookings that require your approval");
+    expect(mm.walkinsHelp).toBe(
+      "Bookings that are ready for immediate pickup today (overrides the booking buffer)",
+    );
+    expect(en.Fleet.model.readyNow).toBe("Walk-ins");
+    expect(en.Fleet.model.deleteBlocked).toBe(
+      "This product still has vehicles. Remove all its vehicles first.",
+    );
+    expect(en.FormErrors.productHasVehicles).toBe(en.Fleet.model.deleteBlocked);
+    expect(Object.keys(en.Fleet.model)).not.toContain("retire");
     for (const key of Object.keys(mm))
       expect(Object.keys(th.Fleet.motoMangos), key).toContain(key);
   });
