@@ -1231,3 +1231,184 @@ describe("another shop", () => {
     });
   });
 });
+
+/**
+ * The stock ledger and the stock counts, shop against shop, one role at a
+ * time. (tenant-isolation.test.ts tries every table the same way; these say
+ * it for stock in so many words, and add the counts, which come from a
+ * function and not from a table.)
+ */
+describe("stock, shop against shop, for every role", () => {
+  const everyRole: Role[] = ["owner", "manager", "staff", "mechanic", "driver"];
+  let mine: { sticker: string; helmet: string };
+  let theirs: { sticker: string; helmet: string };
+
+  beforeAll(async () => {
+    mine = {
+      sticker: await general("sale_item", 30),
+      helmet: await general("gear", 6),
+    };
+    theirs = {
+      sticker: await general("sale_item", 40, { tenant: other }),
+      helmet: await general("gear", 7, { tenant: other }),
+    };
+  }, 60_000);
+
+  const ledger = async (tenant: TestTenant) =>
+    (
+      await service
+        .from("stock_movements")
+        .select("*")
+        .eq("tenant_id", tenant.id)
+        .order("id")
+    ).data;
+
+  it("reading: every role sees its own shop's ledger rows and counts, and none of the other shop's", async () => {
+    for (const [viewer, own, foreign, ownIds, foreignIds] of [
+      [shop, shop.id, other.id, mine, theirs],
+      [other, other.id, shop.id, theirs, mine],
+    ] as const) {
+      for (const role of everyRole) {
+        const who = `${role} of ${viewer.slug}`;
+        const client = db(role, viewer);
+        // The ledger: no filter at all, then asked for outright.
+        const all = await client
+          .from("stock_movements")
+          .select("tenant_id, product_id");
+        expect(all.error, who).toBeNull();
+        expect(all.data!.length, who).toBeGreaterThan(0);
+        expect([...new Set(all.data!.map((r) => r.tenant_id))], who).toEqual([
+          own,
+        ]);
+        const asked = await client
+          .from("stock_movements")
+          .select("id")
+          .eq("tenant_id", foreign);
+        expect(asked.data, who).toEqual([]);
+        const byProduct = await client
+          .from("stock_movements")
+          .select("id")
+          .eq("product_id", foreignIds.sticker);
+        expect(byProduct.data, who).toEqual([]);
+
+        // The counts: its own shop's, and nothing when it asks for the other's.
+        const counts = await client.rpc("product_stock", { p_tenant_id: own });
+        expect(counts.error, who).toBeNull();
+        const seen = counts.data!.map((r) => r.product_id);
+        expect(seen, who).toContain(ownIds.sticker);
+        expect(seen, who).toContain(ownIds.helmet);
+        expect(seen, who).not.toContain(foreignIds.sticker);
+        expect(seen, who).not.toContain(foreignIds.helmet);
+        const others = await client.rpc("product_stock", {
+          p_tenant_id: foreign,
+        });
+        expect(others.data ?? [], who).toEqual([]);
+
+        // The products and gear units behind the counts.
+        const products = await client
+          .from("products")
+          .select("id")
+          .in("id", [foreignIds.sticker, foreignIds.helmet]);
+        expect(products.data, who).toEqual([]);
+        const units = await client
+          .from("units")
+          .select("id")
+          .eq("product_id", foreignIds.helmet);
+        expect(units.data, who).toEqual([]);
+      }
+    }
+  });
+
+  it("writing: no role adds to, changes or removes the other shop's ledger, or changes its quantities", async () => {
+    const before = await ledger(other);
+    const row = {
+      tenant_id: other.id,
+      product_id: theirs.sticker,
+      location_id: other.locationId,
+      kind: "received",
+      quantity: 5,
+    };
+    for (const role of everyRole) {
+      const client = db(role);
+      const added = await client
+        .from("stock_movements")
+        .insert(row)
+        .select("id");
+      expect(added.error, `${role} adding`).not.toBeNull();
+      expect(added.data ?? [], `${role} adding`).toEqual([]);
+      // Its own shop's id on the other shop's product is refused by the keys.
+      const crossed = await client
+        .from("stock_movements")
+        .insert({ ...row, tenant_id: shop.id })
+        .select("id");
+      expect(crossed.error, `${role} crossing`).not.toBeNull();
+      const changed = await client
+        .from("stock_movements")
+        .update({ quantity: 999 } as never)
+        .eq("tenant_id", other.id)
+        .select("id");
+      expect(changed.data ?? [], `${role} changing`).toEqual([]);
+      const removed = await client
+        .from("stock_movements")
+        .delete()
+        .eq("tenant_id", other.id)
+        .select("id");
+      expect(removed.data ?? [], `${role} removing`).toEqual([]);
+      for (const product of [theirs.sticker, theirs.helmet]) {
+        const set = await client.rpc("set_stock_quantity", {
+          p_product_id: product,
+          p_location_id: other.locationId,
+          p_quantity: 1,
+        });
+        expect(set.error?.code, `${role} setting a quantity`).toBe("42501");
+      }
+    }
+    expect(await ledger(other)).toEqual(before);
+    expect(await stock(theirs.sticker, other)).toMatchObject({ in_stock: 40 });
+    expect(await stock(theirs.helmet, other)).toMatchObject({ in_stock: 7 });
+  });
+
+  it("writing in its own shop: owners and managers add to the ledger; staff, mechanics and drivers don't; nobody changes or removes a row", async () => {
+    const row = {
+      tenant_id: shop.id,
+      product_id: mine.sticker,
+      location_id: shop.locationId,
+      kind: "received",
+      quantity: 1,
+    };
+    for (const role of everyRole) {
+      const client = db(role);
+      const added = await client
+        .from("stock_movements")
+        .insert(row)
+        .select("id");
+      if (role === "owner" || role === "manager")
+        expect(added.data, role).toHaveLength(1);
+      else expect(added.error, role).not.toBeNull();
+      const changed = await client
+        .from("stock_movements")
+        .update({ quantity: 999 } as never)
+        .eq("product_id", mine.sticker)
+        .select("id");
+      expect(changed.error, `${role} changing`).not.toBeNull();
+      const removed = await client
+        .from("stock_movements")
+        .delete()
+        .eq("product_id", mine.sticker)
+        .select("id");
+      expect(removed.error, `${role} removing`).not.toBeNull();
+    }
+    // 30 to start with, plus one each from the owner and the manager.
+    expect((await stock(mine.sticker)).in_stock).toBe(32);
+  });
+
+  it("a signed-out visitor reads and writes nothing", async () => {
+    const anon = anonClient();
+    const read = await anon.from("stock_movements").select("id").limit(1);
+    expect(read.data ?? []).toEqual([]);
+    expect(read.error).not.toBeNull();
+    const counts = await anon.rpc("product_stock", { p_tenant_id: shop.id });
+    expect(counts.data ?? []).toEqual([]);
+    expect(counts.error).not.toBeNull();
+  });
+});
