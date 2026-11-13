@@ -35,7 +35,11 @@ export const vehicleKinds = [
     categoryRequired: true,
     categories: ["sedan", "suv", "pickup", "van", "hatchback", "convertible"],
   },
-  { type: "atv", categoryRequired: false, categories: ["atv", "utv"] },
+  {
+    type: "atv",
+    categoryRequired: false,
+    categories: ["atv", "utv", "dirt_bike"],
+  },
   {
     type: "boat",
     categoryRequired: false,

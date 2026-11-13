@@ -199,12 +199,15 @@ describe("type and tracking", () => {
     );
   });
 
-  it("a vehicle needs its make, model and kind; anything else must leave the vehicle fields empty", async () => {
-    for (const missing of ["make", "model", "vehicle_type"])
+  it("a vehicle needs its kind, and a make with its model; anything else must leave the vehicle fields empty", async () => {
+    for (const broken of [
+      { vehicle_type: null },
+      { make: null },
+      { model: null },
+    ])
       expect(
-        (await service.from("products").insert(vehicle({ [missing]: null })))
-          .error?.message,
-        missing,
+        (await service.from("products").insert(vehicle(broken))).error?.message,
+        JSON.stringify(broken),
       ).toContain("products_vehicle_fields_check");
     for (const extra of [
       { make: "Shoei" },
@@ -256,6 +259,220 @@ describe("type and tracking", () => {
       .insert(other("service", "none"));
     expect(first.error).toBeNull();
     expect(second.error).toBeNull();
+  });
+});
+
+describe("a product is a kind and a name (owner, 13 Nov 2026)", () => {
+  /** What the create form saves: no make, model, engine size or transmission. */
+  const named = (name: string, extra: object = {}) => ({
+    tenant_id: shop.id,
+    name,
+    vehicle_type: "motorbike",
+    ...extra,
+  });
+  const add = (name: string, extra: object = {}) =>
+    shop.members.owner.db
+      .from("products")
+      .insert(named(name, extra))
+      .select("id, make, model, cc, transmission")
+      .single();
+
+  it("a motorbike is saved with a name alone; its details stay empty", async () => {
+    const { data, error } = await add(`Name only ${tag}`);
+    expect(error).toBeNull();
+    expect(data).toMatchObject({
+      make: null,
+      model: null,
+      cc: null,
+      transmission: null,
+    });
+    // It takes vehicles like any other product.
+    expect((await addUnit(data!.id)).error).toBeNull();
+  });
+
+  it("several products with a name alone don't collide on make and model", async () => {
+    for (const n of [1, 2, 3])
+      expect((await add(`No details ${tag} ${n}`)).error, String(n)).toBeNull();
+  });
+
+  it("no two products with the same name, ignoring case and all spacing", async () => {
+    expect((await add(`Honda Dup ${tag} 160`)).error).toBeNull();
+    for (const same of [
+      `honda dup ${tag} 160`,
+      `  HONDA  DUP ${tag}160 `,
+      `HondaDup${tag}160`,
+    ]) {
+      const { error } = await add(same);
+      expect(error?.code, same).toBe("23505");
+      expect(error?.message, same).toContain("products_name_idx");
+    }
+    // The service role is held to it too: it's a rule, not a permission.
+    const asService = await service
+      .from("products")
+      .insert(named(`hondadup${tag}160`));
+    expect(asService.error?.message).toContain("products_name_idx");
+    // Another shop may use the same name.
+    const elsewhere = await createTenant("products-other");
+    try {
+      const theirs = await elsewhere.members.owner.db
+        .from("products")
+        .insert({ ...named(`Honda Dup ${tag} 160`), tenant_id: elsewhere.id });
+      expect(theirs.error).toBeNull();
+    } finally {
+      await deleteTenant(elsewhere);
+    }
+  });
+
+  it("renaming onto another product's name is refused the same way", async () => {
+    await add(`Rename A ${tag}`);
+    const { data: b } = await add(`Rename B ${tag}`);
+    const { error } = await shop.members.owner.db
+      .from("products")
+      .update({ name: `rename a${tag}` })
+      .eq("id", b!.id);
+    expect(error?.message).toContain("products_name_idx");
+  });
+
+  it("sent for review with no details: refused, and nothing is saved", async () => {
+    const { data } = await add(`Send bare ${tag}`, { categories: ["sport"] });
+    const sent = await shop.members.owner.db.rpc("submit_product_to_catalog", {
+      p_product_id: data!.id,
+      p_type: "sport",
+    });
+    expect(sent.error?.message).toContain("specs_required");
+    // Three of the four is not enough either.
+    const partly = await shop.members.owner.db.rpc(
+      "submit_product_to_catalog",
+      {
+        p_product_id: data!.id,
+        p_type: "sport",
+        p_make: "Prodmake",
+        p_model: `Bare ${tag}`,
+        p_cc: 125,
+      },
+    );
+    expect(partly.error?.message).toContain("specs_required");
+    const { data: after } = await service
+      .from("products")
+      .select("make, model, cc, transmission, catalog_id")
+      .eq("id", data!.id)
+      .single();
+    expect(after).toEqual({
+      make: null,
+      model: null,
+      cc: null,
+      transmission: null,
+      catalog_id: null,
+    });
+  });
+
+  it("sent for review with its make, model, engine size and transmission: saved on the product and on the request together", async () => {
+    const { data } = await add(`Send full ${tag}`, { categories: ["sport"] });
+    const sent = await shop.members.owner.db.rpc("submit_product_to_catalog", {
+      p_product_id: data!.id,
+      p_type: "sport",
+      p_make: "  Prodmake ",
+      p_model: `Full ${tag}`,
+      p_cc: 321,
+      p_transmission: "manual",
+      p_note: "from the test",
+    });
+    expect(sent.error).toBeNull();
+    catalogIds.push(sent.data!);
+    const { data: product } = await service
+      .from("products")
+      .select("make, model, cc, transmission, catalog_id")
+      .eq("id", data!.id)
+      .single();
+    expect(product).toEqual({
+      make: "Prodmake",
+      model: `Full ${tag}`,
+      cc: 321,
+      transmission: "manual",
+      catalog_id: sent.data,
+    });
+    const { data: entry } = await service
+      .schema("public")
+      .from("bike_catalog")
+      .select("make, model, cc, transmission, status, type")
+      .eq("id", sent.data!)
+      .single();
+    expect(entry).toEqual({
+      make: "Prodmake",
+      model: `Full ${tag}`,
+      cc: 321,
+      transmission: "manual",
+      status: "requested",
+      type: "sport",
+    });
+    // Rejected: it comes back to the shop with its details kept, ready to
+    // be corrected and sent again with what it already has.
+    const rejected = await admin.db.rpc("review_catalog_request", {
+      p_catalog_id: sent.data!,
+      p_approve: false,
+      p_notes: "wrong engine size",
+    });
+    expect(rejected.error).toBeNull();
+    const again = await shop.members.owner.db.rpc("submit_product_to_catalog", {
+      p_product_id: data!.id,
+      p_type: "sport",
+      p_cc: 320,
+    });
+    expect(again.error).toBeNull();
+    catalogIds.push(again.data!);
+    const { data: second } = await service
+      .schema("public")
+      .from("bike_catalog")
+      .select("make, cc, transmission")
+      .eq("id", again.data!)
+      .single();
+    expect(second).toEqual({
+      make: "Prodmake",
+      cc: 320,
+      transmission: "manual",
+    });
+  });
+
+  it("a product with a name alone takes its details from the list entry it is put on, and can then be listed", async () => {
+    const { data } = await add(`From list ${tag}`, { categories: ["sport"] });
+    const linked = await shop.members.owner.db
+      .from("products")
+      .update({ catalog_id: presetId })
+      .eq("id", data!.id)
+      .select("make, model, cc, transmission")
+      .single();
+    expect(linked.error).toBeNull();
+    for (const value of Object.values(linked.data!))
+      expect(value).not.toBeNull();
+    const listed = await shop.members.owner.db
+      .from("products")
+      .update({ marketplace_listed: true })
+      .eq("id", data!.id);
+    expect(listed.error).toBeNull();
+  });
+
+  it("only owners and managers send for review; a car is not sent", async () => {
+    const { data } = await add(`Staff send ${tag}`, { categories: ["sport"] });
+    const details = {
+      p_product_id: data!.id,
+      p_type: "sport" as const,
+      p_make: "Prodmake",
+      p_model: `Staff ${tag}`,
+      p_cc: 125,
+      p_transmission: "automatic" as const,
+    };
+    for (const role of ["staff", "mechanic", "driver"] as const)
+      expect(
+        (await shop.members[role].db.rpc("submit_product_to_catalog", details))
+          .error?.code,
+        role,
+      ).toBe("42501");
+    const { data: car } = await add(`Car send ${tag}`, { vehicle_type: "car" });
+    const sent = await shop.members.owner.db.rpc("submit_product_to_catalog", {
+      ...details,
+      p_product_id: car!.id,
+    });
+    expect(sent.error?.message).toContain("only_motorbikes");
   });
 });
 

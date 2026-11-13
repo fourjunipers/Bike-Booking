@@ -237,7 +237,7 @@ export default async function ProductsPage({
               // with the online booking page (Phase 3).
               const photo = row.photos.find((url) => /^https?:\/\//.test(url));
               const facts = [
-                row.name === `${row.make} ${row.model}`
+                !row.make || row.name === `${row.make} ${row.model}`
                   ? null
                   : `${row.make} ${row.model}`,
                 row.cc ? `${row.cc} cc` : null,

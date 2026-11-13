@@ -158,12 +158,9 @@ describe("times typed in a location's time zone", () => {
 });
 
 describe("form rules", () => {
-  const catalogId = "0b0e3b52-6f0e-4f3a-9a52-2a1c4f3f9d11";
-
-  it("a model needs a name and a catalog entry", () => {
+  it("a product needs a name", () => {
     const ok = modelSchema.safeParse({
       name: " PCX 160 white ",
-      catalog_id: catalogId,
       description: "",
       bookable_online: "on",
       buffer_before_minutes: "",
@@ -184,7 +181,7 @@ describe("form rules", () => {
       instant_units: 0,
       request_units: 2,
     });
-    const bad = modelSchema.safeParse({ name: " ", catalog_id: "" });
+    const bad = modelSchema.safeParse({ name: " " });
     expect(bad.error?.issues.map((i) => i.message)).toEqual(
       expect.arrayContaining(["required"]),
     );

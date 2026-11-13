@@ -15,7 +15,9 @@ import {
   productsFilterCount,
   type ProductInput,
 } from "./products-view";
+import { catalogSubmitSchema, modelSchema } from "./fleet";
 import { adminAreas, canSeeArea, roles } from "./roles";
+import { categoriesFor } from "./vehicle-kinds";
 
 const catalog = [
   {
@@ -62,7 +64,66 @@ const catalog = [
 const known: KnownModel[] = knownModels(catalog);
 const ids = (models: KnownModel[]) => models.map((m) => m.id);
 
-describe("the make-and-model type-ahead", () => {
+describe("a product is a kind and a name; details come with the Moto Mangos request", () => {
+  const base = {
+    name: " Honda PCX 160 ",
+    description: "",
+    bookable_online: undefined,
+    buffer_before_minutes: "",
+    buffer_after_minutes: "",
+    min_age: "",
+    licence_class: "",
+    instant_units: "0",
+    request_units: "0",
+    ready_now: "0",
+  };
+
+  it("the product form needs a name and takes no make, model or list entry", () => {
+    expect(modelSchema.safeParse(base).data?.name).toBe("Honda PCX 160");
+    expect(modelSchema.safeParse({ ...base, name: "  " }).success).toBe(false);
+    for (const extra of [{ make: "Honda" }, { catalog_id: "x" }, { cc: "160" }])
+      expect(modelSchema.safeParse({ ...base, ...extra }).success).toBe(false);
+  });
+
+  it("sending for review needs make, model, engine size and transmission", () => {
+    const full = {
+      make: " Honda ",
+      model: "PCX 160",
+      cc: "157",
+      transmission: "automatic",
+      year_from: "",
+      year_to: "",
+      note: "",
+    };
+    expect(catalogSubmitSchema.safeParse(full).data).toMatchObject({
+      make: "Honda",
+      model: "PCX 160",
+      cc: 157,
+      transmission: "automatic",
+    });
+    for (const [field, value] of [
+      ["make", ""],
+      ["model", " "],
+      ["cc", ""],
+      ["cc", "0"],
+      ["cc", "abc"],
+      ["transmission", ""],
+      ["transmission", "cvt"],
+    ] as const) {
+      const result = catalogSubmitSchema.safeParse({ ...full, [field]: value });
+      expect(result.success, `${field}=${value}`).toBe(false);
+    }
+    expect(
+      catalogSubmitSchema.safeParse({
+        ...full,
+        year_from: "2024",
+        year_to: "2020",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("matching a product's name against known models (the Moto Mangos panel)", () => {
   it("labels a known model with its make, model and years", () => {
     expect(known.map((m) => m.label)).toEqual([
       "Honda PCX 160 (2021–2024)",
@@ -347,9 +408,29 @@ describe("menu and wording", () => {
     expect(texts).not.toMatch(/manually enter/i);
   });
 
-  it("the one type-ahead has its texts, and the old two-path texts are gone", () => {
-    expect(en.Fleet.what.makeModel).toBe("Make and model");
-    for (const gone of ["typeIt", "useList", "notInList"])
+  it("the create form asks for a kind and a name: the type-ahead texts are gone", () => {
+    expect(en.Fleet.what.kindLegend).toBe("What kind of product is it?");
+    expect(en.Fleet.model.detailsTitle).toBe("Product details");
+    expect(en.Fleet.model.namePlaceholder).toBe("e.g. Honda PCX 160");
+    for (const gone of [
+      "typeIt",
+      "useList",
+      "notInList",
+      "makeModel",
+      "suggestions",
+      "notKnown",
+    ])
       expect(Object.keys(en.Fleet.what)).not.toContain(gone);
+    // The tip no longer speaks of picking from a list on this form.
+    expect(Object.keys(en.Fleet.what.tip)).toEqual(["label", "text"]);
+    expect(en.Fleet.what.tip.text).not.toMatch(
+      /this list|from the list above/i,
+    );
+  });
+
+  it("Off-road offers ATV, UTV and Dirt bike, labelled in both languages", () => {
+    expect(categoriesFor("atv")).toEqual(["atv", "utv", "dirt_bike"]);
+    expect(en.Fleet.category.dirt_bike).toBe("Dirt bike");
+    expect(th.Fleet.category.dirt_bike).toBeTruthy();
   });
 });

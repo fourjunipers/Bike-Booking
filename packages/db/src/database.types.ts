@@ -424,7 +424,7 @@ isOneToOne: false
 { Args: { "p_membership_id": string,"p_role": Database["platform"]['Enums']["platform_role"] }; Returns: undefined
                            },
 "submit_product_to_catalog":
-{ Args: { "p_note"?: string,"p_product_id": string,"p_type": Database["public"]['Enums']["bike_type"],"p_year_from"?: number,"p_year_to"?: number }; Returns: string
+{ Args: { "p_cc"?: number,"p_make"?: string,"p_model"?: string,"p_note"?: string,"p_product_id": string,"p_transmission"?: Database["public"]['Enums']["transmission"],"p_type": Database["public"]['Enums']["bike_type"],"p_year_from"?: number,"p_year_to"?: number }; Returns: string
                            },
 "tenant_members":
 { Args: { "p_tenant_id": string }; Returns: {

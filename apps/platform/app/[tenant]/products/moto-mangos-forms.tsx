@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import {
   ActionForm,
   CheckboxInput,
+  SelectInput,
   TextArea,
   TextInput,
 } from "@/components/action-form";
@@ -11,6 +12,7 @@ import {
   MakeModelPicker,
   type ModelOption,
 } from "@/components/fleet/make-model-picker";
+import { transmissions } from "@/lib/fleet";
 import {
   linkModelToPreset,
   setMarketplaceListed,
@@ -39,18 +41,27 @@ export function UsePresetButton({
   );
 }
 
-/** No preset matches: send the model to the platform admin to add or merge. */
+/**
+ * Not on the list: send it to the platform admin to add or merge. Its make,
+ * model, engine size and transmission are asked for here, at this moment
+ * (owner, 13 Nov 2026): a product is created with a name only, and Moto
+ * Mangos search needs all four for a motorbike.
+ */
 export function SubmitToCatalogForm({
   slug,
   id,
   again,
+  values,
 }: {
   slug: string;
   id: string;
   /** Its last request was turned down: this sends it for review again. */
   again?: boolean;
+  /** What the product already has, or a first guess from its name. */
+  values: { make: string; model: string; cc: string; transmission: string };
 }) {
   const t = useTranslations("Fleet.motoMangos");
+  const tFleet = useTranslations("Fleet");
   return (
     <ActionForm
       action={submitModelToCatalog}
@@ -58,6 +69,41 @@ export function SubmitToCatalogForm({
       submitLabel={t(again ? "submitAgain" : "submit")}
     >
       <div className="grid gap-5 sm:grid-cols-2">
+        <TextInput
+          name="make"
+          label={tFleet("what.make")}
+          required
+          maxLength={40}
+          defaultValue={values.make}
+        />
+        <TextInput
+          name="model"
+          label={tFleet("what.model")}
+          required
+          maxLength={60}
+          defaultValue={values.model}
+        />
+        <TextInput
+          name="cc"
+          label={tFleet("what.cc")}
+          required
+          inputMode="numeric"
+          maxLength={5}
+          defaultValue={values.cc}
+        />
+        <SelectInput
+          name="transmission"
+          label={tFleet("what.transmission")}
+          required
+          defaultValue={values.transmission}
+          options={[
+            { value: "", label: "—" },
+            ...transmissions.map((value) => ({
+              value,
+              label: tFleet(`transmission.${value}`),
+            })),
+          ]}
+        />
         <TextInput
           name="year_from"
           label={t("yearFrom")}

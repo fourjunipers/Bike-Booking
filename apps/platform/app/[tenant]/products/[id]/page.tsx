@@ -23,7 +23,7 @@ import {
   getYearBands,
 } from "@/lib/fleet-data";
 import { buildHistory, historyValue } from "@/lib/history";
-import { knownModels } from "@/lib/known-models";
+import { splitMakeModel } from "@/lib/known-models";
 import { catalogOptions } from "@/lib/model-options";
 import { moneyInputValue } from "@/lib/money";
 import { canManageFleet } from "@/lib/roles";
@@ -110,6 +110,7 @@ export default async function ProductPage({
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   const units = fleet.find((m) => m.id === id)?.units ?? [];
   const here = `/${slug}/products/${model.id}`;
+  const makeModel = [model.make, model.model].filter(Boolean).join(" ");
 
   return (
     <>
@@ -118,7 +119,8 @@ export default async function ProductPage({
         title={model.name}
         intro={[
           tProducts(`type.${model.type}` as "type.vehicle"),
-          `${model.make} ${model.model}`,
+          // Its make and model, once it has them and they aren't its name.
+          makeModel && makeModel !== model.name ? makeModel : null,
           model.cc ? `${model.cc} cc` : null,
           model.transmission
             ? tFleet(`transmission.${model.transmission}`)
@@ -323,7 +325,19 @@ async function DetailsTab({
   const waiting = entry?.status === "requested";
   const news = reviewNews(model, new Date());
   const own = !model.catalog_id;
-  const matches = own ? suggestCatalog(model.make, model.model, catalog) : [];
+  // A first guess at the make and model from the name, for the review form.
+  const guess = splitMakeModel(model.name, [
+    ...new Set(catalog.map((entry) => entry.make)),
+  ]);
+  // Close matches on the list: by its make and model once it has them, by
+  // its name until then.
+  const matches = own
+    ? suggestCatalog(
+        model.make || guess.make,
+        model.make ? model.model : guess.model,
+        catalog,
+      )
+    : [];
   // Once none of its vehicles is in the fleet (or it has none).
   const canRetire = units.every(
     (unit) => unit.status === "sold" || unit.status === "retired",
@@ -339,17 +353,12 @@ async function DetailsTab({
         <ProductForm
           what={{
             vehicle_type: model.vehicle_type,
-            catalog_id: own || waiting ? "" : (model.catalog_id ?? ""),
-            make: own ? model.make : "",
-            model: own ? model.model : "",
-            cc: own && model.cc !== null ? String(model.cc) : "",
-            transmission: own ? (model.transmission ?? "") : "",
             categories: model.categories,
           }}
-          waiting={waiting}
+          // On a list entry, or waiting on one: its kind is the entry's.
+          locked={!own}
           slug={slug}
           currency={currency}
-          known={knownModels(catalog)}
           values={{
             id: model.id,
             name: model.name,
@@ -420,7 +429,7 @@ async function DetailsTab({
                   </p>
                   <p className="mt-1">{tFleet("motoMangos.nextHelp")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <a href="#model-details" className={outline}>
+                    <a href="#send-for-review" className={outline}>
                       {tFleet("motoMangos.editAgain")}
                     </a>
                     <a href="#choose-from-list" className={outline}>
@@ -491,14 +500,26 @@ async function DetailsTab({
                   </ul>
                 </div>
               )}
-              <div className="mt-5 border-t pt-5">
-                <h3 className="mb-3 font-medium">
+              <div
+                id="send-for-review"
+                className="mt-5 scroll-mt-20 border-t pt-5"
+              >
+                <h3 className="mb-1 font-medium">
                   {tFleet("motoMangos.submitTitle")}
                 </h3>
+                <p className="mb-3 text-sm text-muted-foreground">
+                  {tFleet("motoMangos.submitHelp")}
+                </p>
                 <SubmitToCatalogForm
                   slug={slug}
                   id={model.id}
                   again={Boolean(model.catalog_rejected_at)}
+                  values={{
+                    make: model.make || guess.make,
+                    model: model.make ? model.model : guess.model,
+                    cc: model.cc === null ? "" : String(model.cc),
+                    transmission: model.transmission ?? "",
+                  }}
                 />
               </div>
               <div

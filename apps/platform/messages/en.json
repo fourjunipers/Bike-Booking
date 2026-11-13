@@ -264,20 +264,19 @@
     "bandOverlap": "These years overlap another band of this model.",
     "invalidReminderDays": "Enter up to 10 whole numbers from 1 to 365, separated by commas.",
     "invalidDigestDay": "Choose a day from 1 to 28.",
-    "inPresets": "This make and model is a known model. Pick it from the suggestions instead.",
     "ownModelExists": "You already have a product with this make and model.",
     "not_listable": "Only a model on the Moto Mangos list can be listed there.",
     "already_linked": "This model is already on the Moto Mangos list, or waiting for review.",
     "only_motorbikes": "Moto Mangos lists motorbikes only, for now.",
     "merge_target_not_approved": "Choose an approved entry to merge into.",
-    "requiredSpecs": "A motorbike needs an engine size and a transmission.",
     "ccRange": "Enter an engine size from 1 to 20000 cc.",
     "staleUnit": "This vehicle was changed by someone else while this form was open. Reload the page to see the latest, then make your change again.",
     "invalidCategory": "Choose one of the categories in the list.",
     "categoryFirst": "Choose a category for this model and save it first, then send it.",
     "unitInUse": "This vehicle is on bookings, so it can't be deleted: past orders need it. You can retire it instead: it leaves the fleet list and can't be rented, and its history is kept.",
     "model_has_active_units": "Retire or sell its vehicles first. A product can be retired once none of its vehicles is in the fleet.",
-    "model_retired": "This product is retired. Restore it first."
+    "model_retired": "This product is retired. Restore it first.",
+    "specs_required": "Give the make, model, engine size and transmission first."
   },
   "Fleet": {
     "title": "Fleet",
@@ -367,8 +366,8 @@
     "model": {
       "newTitle": "New product",
       "editTitle": "Product",
-      "name": "Name",
-      "nameHelp": "Your own name for it. Several products can share one known model.",
+      "name": "Product name",
+      "nameHelp": "What you call it. No two products can have the same name.",
       "description": "Description",
       "bookableOnline": "Can be booked online",
       "bufferBefore": "Buffer before pickup (minutes)",
@@ -389,7 +388,6 @@
       "photosLater": "Photos are added with the online booking page.",
       "make": "Make",
       "newIntro": "Something you rent out, like a Honda Click 160. Add the vehicles themselves afterwards, on the product's Units tab.",
-      "nameHelpNew": "Optional. Your own name for it; blank uses the make and model.",
       "saveNew": "Save product",
       "saveThenInventory": "Save and add a vehicle",
       "retire": "Retire product",
@@ -397,7 +395,9 @@
       "retiredTitle": "Retired",
       "retiredOn": "Retired on {date}. It is hidden from the Products and Fleet lists and from “Add vehicle”, and is not listed on Moto Mangos. Find it under Show: Retired.",
       "restore": "Restore product",
-      "deleteConfirmWaiting": "Delete this product? This can't be undone. Its Moto Mangos review request will be withdrawn."
+      "deleteConfirmWaiting": "Delete this product? This can't be undone. Its Moto Mangos review request will be withdrawn.",
+      "detailsTitle": "Product details",
+      "namePlaceholder": "e.g. Honda PCX 160"
     },
     "unit": {
       "newTitle": "Add vehicle",
@@ -590,7 +590,7 @@
       "rejectReason": "The reviewer's note:",
       "rejectNoReason": "The reviewer left no note. You can change the details and send it again.",
       "approved": "Moto Mangos added this model to its list on {date}.",
-      "categoryFirst": "Choose a category for this model on the Details tab, save, and then you can send it to Moto Mangos.",
+      "categoryFirst": "Choose a category for this product on the Details tab, save, and then you can send it to Moto Mangos.",
       "notOnList": "This make and model isn’t on the Moto Mangos list yet. You can still list it: switch it on and we’ll review it first, because it’s a new make and model. It goes live once approved. Or select the model if already in the list below.",
       "submitAgain": "Send for review again",
       "nextTitle": "What to do next",
@@ -599,7 +599,8 @@
       "chooseInstead": "Choose a model from the list instead",
       "chooseTitle": "Choose a model from the list",
       "chooseHelp": "It takes the list’s make, model and specs, and needs no review.",
-      "useChosen": "Use this model"
+      "useChosen": "Use this model",
+      "submitHelp": "Give its make, model, engine size and transmission: all four are needed for a motorbike. We review it first because it is new to our list."
     },
     "editModel": "Open product",
     "addUnitRow": "Add vehicle",
@@ -635,32 +636,22 @@
       "utv": "UTV",
       "jet_ski": "Jet ski",
       "speedboat": "Speedboat",
-      "pontoon": "Pontoon"
+      "pontoon": "Pontoon",
+      "dirt_bike": "Dirt bike"
     },
     "what": {
-      "kindLegend": "What kind of vehicle is it?",
+      "kindLegend": "What kind of product is it?",
       "make": "Make",
-      "makeHelp": "Taken from what you typed. Correct it if the make has more than one word.",
       "model": "Model",
       "cc": "Engine size (cc)",
       "transmission": "Transmission",
-      "optional": "Optional.",
       "category": "Categories",
       "categoryHelp": "Choose at least one; you can choose several. Helps renters find it when they search and filter.",
       "categoryOptional": "Optional; you can choose several. Helps renters find it when they search and filter.",
       "tip": {
         "label": "Helpful tip",
-        "fromList": "This is a known model, so it can be listed on Moto Mangos, the marketplace that matches renters with rental providers.",
-        "typed": "To add this vehicle to the Moto Mangos marketplace, save it first, then send it for review from its product page."
-      },
-      "makeModel": "Make and model",
-      "makeModelPlaceholder": "e.g. Honda PCX 160",
-      "makeModelHelp": "Start typing and pick your model when it appears: its details are filled in for you. If it doesn't appear, just keep typing.",
-      "makeModelHelpTyped": "Type the make and model, e.g. Toyota Yaris.",
-      "suggestions": "Known models",
-      "filled": "Filled in from the known model",
-      "filledHelp": "Filled in for you. To use a different model, type over the name above.",
-      "notKnown": "We don't know this model yet. Check the make and model below and add its details."
+        "text": "To put this vehicle on the Moto Mangos marketplace, save it first. Then, on its product page, choose its model from the Moto Mangos list or send its details for review."
+      }
     }
   },
   "Products": {

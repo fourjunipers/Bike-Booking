@@ -7,7 +7,6 @@ import {
   TextArea,
   TextInput,
 } from "@/components/action-form";
-import type { KnownModel } from "@/lib/known-models";
 import { addYearBand, deleteYearBand, saveModel } from "../fleet/actions";
 import { CategoryField, WhatFields, type WhatValues } from "./what-fields";
 
@@ -35,30 +34,39 @@ export function ProductForm({
   currency,
   values,
   what,
-  known,
-  waiting,
+  locked,
   then,
 }: {
   slug: string;
   currency: string;
   values: ProductFormValues;
   what: WhatValues;
-  /** Known models, for the make-and-model type-ahead. */
-  known: KnownModel[];
-  /** Sent to Moto Mangos and not yet reviewed: its description stays as it is. */
-  waiting?: boolean;
+  /** On a Moto Mangos list entry, or waiting on one: its kind is the entry's. */
+  locked?: boolean;
   /** Added on the way to adding a vehicle: saving goes back to that form. */
   then?: "inventory";
 }) {
   const t = useTranslations("Fleet.model");
   const isNew = !values.id;
+  // The one line a product needs: what the shop calls it.
+  const name = (
+    <TextInput
+      name="name"
+      label={t("name")}
+      help={t("nameHelp")}
+      placeholder={t("namePlaceholder")}
+      required
+      maxLength={120}
+      defaultValue={values.name}
+    />
+  );
   return (
     <ActionForm
       action={saveModel}
       hidden={{
         slug,
         ...(values.id ? { id: values.id } : {}),
-        ...(waiting ? { waiting: "1", vehicle_type: what.vehicle_type } : {}),
+        ...(locked ? { locked: "1", vehicle_type: what.vehicle_type } : {}),
         ...(then ? { then } : {}),
       }}
       submitLabel={
@@ -66,22 +74,19 @@ export function ProductForm({
       }
       className="max-w-3xl"
     >
-      {waiting ? (
-        <CategoryField
-          kind={what.vehicle_type}
-          defaultValue={what.categories}
-        />
+      {locked ? (
+        <>
+          {name}
+          <CategoryField
+            kind={what.vehicle_type}
+            defaultValue={what.categories}
+          />
+        </>
       ) : (
-        <WhatFields values={what} known={known} showTip={isNew} />
+        <WhatFields values={what} showTip={isNew}>
+          {name}
+        </WhatFields>
       )}
-      <TextInput
-        name="name"
-        label={t("name")}
-        help={t(isNew ? "nameHelpNew" : "nameHelp")}
-        required={!isNew}
-        maxLength={120}
-        defaultValue={values.name}
-      />
       <TextArea
         name="description"
         label={t("description")}

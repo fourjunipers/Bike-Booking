@@ -41,7 +41,7 @@ describe("kinds of vehicle and their categories (owner, 12 Nov 2026)", () => {
       "convertible",
     ]);
     // Dirt bikes are motorbikes ("off_road"); the Off-road kind is ATV and UTV.
-    expect(categoriesFor("atv")).toEqual(["atv", "utv"]);
+    expect(categoriesFor("atv")).toEqual(["atv", "utv", "dirt_bike"]);
     expect(categoriesFor("boat")).toEqual(["jet_ski", "speedboat", "pontoon"]);
     expect(categoriesFor("other")).toEqual([]);
   });

@@ -128,7 +128,8 @@ export default async function FleetPage({
         id: model.id,
         name: model.name,
         make: model.catalog?.make ?? "",
-        model: model.catalog?.model ?? model.name,
+        // A product with no make and model yet goes by its name.
+        model: model.catalog?.make ? model.catalog.model : model.name,
         cc: model.catalog?.cc ?? null,
         transmission: model.catalog?.transmission ?? null,
         kind: model.vehicle_type,
@@ -168,7 +169,7 @@ export default async function FleetPage({
           : t("bands.all");
   const groupTitle = (group: FleetGroup) =>
     group.kind === "band"
-      ? `${group.make} ${group.model} · ${bandLabel(group)}`
+      ? `${[group.make, group.model].filter(Boolean).join(" ")} · ${bandLabel(group)}`
       : group.kind === "status"
         ? t(`status.${group.status}` as "status.active")
         : group.kind === "all"

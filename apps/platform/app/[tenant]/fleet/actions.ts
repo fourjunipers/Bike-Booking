@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { FormState } from "@/components/action-form";
-import { exactPresets } from "@/lib/catalog-match";
 import { CsvError, parseCsv } from "@/lib/csv";
 import { toKm } from "@/lib/distance";
 import {
@@ -14,17 +13,17 @@ import {
   fieldErrors,
   isIsoDate,
   modelSchema,
-  ownModelSchema,
   parseModelChoice,
   renewalSchema,
   runningAt,
   unitSchema,
   unitStatuses,
+  vehicleTypes,
   wholeMinute,
   yearBandSchema,
 } from "@/lib/fleet";
 import { getCatalog, getLocations } from "@/lib/fleet-data";
-import { catalogName, planImport, type ImportError } from "@/lib/fleet-import";
+import { planImport, type ImportError } from "@/lib/fleet-import";
 import { parseMoney } from "@/lib/money";
 import { canManageFleet, canWorkOnUnits } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
@@ -81,15 +80,12 @@ export async function saveModel(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const id = field(formData, "id");
-  // Adding a make & model on the way to adding a vehicle: back to that form.
+  // Adding a product on the way to adding a vehicle: back to that form.
   const thenInventory = field(formData, "then") === "inventory";
 
   const raw = Object.fromEntries(formData);
-  // A new make & model with no name of its own is named after what it is.
-  const wantsDefaultName = !id && field(formData, "name") === "";
   const parsed = modelSchema.safeParse({
-    name: wantsDefaultName ? "-" : raw.name,
-    catalog_id: raw.catalog_id,
+    name: raw.name,
     description: raw.description,
     bookable_online: raw.bookable_online,
     buffer_before_minutes: raw.buffer_before_minutes,
@@ -110,86 +106,33 @@ export async function saveModel(
     };
   }
 
-  // What the model is. Three cases:
-  //  - a preset: its make, model and specs come from the catalog entry;
-  //  - the shop's own: typed in, with the specs Moto Mangos search needs;
-  //  - waiting on its own submission to Moto Mangos: left as it is.
-  const { catalog_id: presetId, ...rest } = parsed.data;
-  let what: {
-    catalog_id: string | null;
-    make: string;
-    model: string;
-    vehicle_type: string;
-    cc: number | null;
-    transmission: "automatic" | "semi_auto" | "manual" | null;
-  } | null = null;
-  // The kind of vehicle decides which categories there are. A model waiting
-  // on Moto Mangos keeps its kind; the form sends it along.
-  let kind = field(formData, "vehicle_type");
-  if (field(formData, "waiting") !== "1") {
-    const catalog = await getCatalog();
-    if (presetId) {
-      const entry = catalog.find((c) => c.id === presetId);
-      if (!entry) return { errors: { catalog_id: "catalog_entry_not_usable" } };
-      kind = "motorbike";
-      what = {
-        catalog_id: entry.id,
-        make: entry.make,
-        model: entry.model,
-        vehicle_type: "motorbike",
-        cc: entry.cc,
-        transmission: entry.transmission,
-      };
-    } else {
-      const own = ownModelSchema.safeParse({
-        make: raw.make,
-        model: raw.model,
-        vehicle_type: raw.vehicle_type,
-        cc: raw.cc,
-        transmission: raw.transmission,
-      });
-      if (!own.success) return { errors: fieldErrors(own.error) };
-      // One of the shop's own can't be a preset under another spelling.
-      const presets = exactPresets(own.data.make, own.data.model, catalog);
-      if (presets.length > 0)
-        return {
-          errors: { model: "inPresets" },
-          suggestions: presets.map((c) => ({
-            label: catalogName(c),
-            href: `/${slug}/products/new?catalog=${c.id}`,
-          })),
-        };
-      kind = own.data.vehicle_type;
-      what = { catalog_id: null, ...own.data };
-    }
-  }
+  // A product is a kind and a name (owner, 13 Nov 2026). Its make, model,
+  // engine size and transmission are asked for when it is sent to Moto
+  // Mangos, or come from the list entry it is put on.
+  const kind = field(formData, "vehicle_type");
+  if (!(vehicleTypes as readonly string[]).includes(kind))
+    return { errors: { vehicle_type: "required" } };
   // One or more categories (the chips are checkboxes named "category"). A
-  // motorbike or a car needs at least one, list model or not: until 12 Nov
-  // 2026 a list model with none ticked was let through here ("as Moto Mangos
-  // files it") and the database filled it in, so the form never refused it.
+  // motorbike or a car needs at least one.
   const checked = checkCategories(kind, formData.getAll("category"));
   if ("error" in checked) return { errors: { category: checked.error } };
 
-  const defaultName = what ? `${what.make} ${what.model}` : "";
   const common = {
-    ...rest,
-    ...(wantsDefaultName ? { name: defaultName } : {}),
+    ...parsed.data,
     categories: checked.categories,
     deposit,
     deposit_currency: deposit === null ? null : tenant.currency,
   };
   const failed = (error: Parameters<typeof dbErrorKey>[0]): FormState => {
     const key = dbErrorKey(error);
-    if (key === "ownModelExists") return { errors: { model: key } };
     if (key === "nameExists") return { errors: { name: key } };
     return { errors: { form: key } };
   };
 
   if (!id) {
-    if (!what) return { errors: { form: "saveFailed" } };
     const { data, error } = await supabase
       .from("products")
-      .insert({ ...common, ...what, tenant_id: tenant.id })
+      .insert({ ...common, vehicle_type: kind, tenant_id: tenant.id })
       .select("id")
       .single();
     if (error) return failed(error);
@@ -205,7 +148,9 @@ export async function saveModel(
     .from("products")
     .update({
       ...common,
-      ...(what ?? {}),
+      // On a list entry (or waiting on one) the kind is the entry's: the
+      // form sends it back unchanged and the database keeps it either way.
+      ...(field(formData, "locked") === "1" ? {} : { vehicle_type: kind }),
       ...(common.ready_now > 0
         ? { ready_updated_at: new Date().toISOString() }
         : {}),
@@ -850,8 +795,8 @@ export async function submitModelToCatalog(
   const { slug, tenant, role, supabase } = await context(formData);
   if (!canManageFleet(role)) return notAllowed;
   const raw = Object.fromEntries(formData);
-  // Moto Mangos files a motorbike under one type: the model's first category
-  // (in the order of the list in lib/vehicle-kinds.ts).
+  // Moto Mangos files a motorbike under one type: the product's first
+  // category (in the order of the list in lib/vehicle-kinds.ts).
   const { data: model } = await supabase
     .from("products")
     .select("categories")
@@ -861,19 +806,31 @@ export async function submitModelToCatalog(
   const type =
     bikeTypes.find((bikeType) => model?.categories.includes(bikeType)) ?? null;
   if (!type) return { errors: { form: "categoryFirst" } };
+  // Make, model, engine size and transmission are given with the request:
+  // all four are required for a motorbike.
   const parsed = catalogSubmitSchema.safeParse({
+    make: raw.make,
+    model: raw.model,
+    cc: raw.cc,
+    transmission: raw.transmission,
     year_from: raw.year_from,
     year_to: raw.year_to,
     note: raw.note,
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
 
+  // One transaction in the database: the details are saved on the product
+  // and the request is made, or neither.
   const { error } = await supabase.rpc("submit_product_to_catalog", {
     p_product_id: field(formData, "id"),
     p_type: type,
     p_year_from: parsed.data.year_from ?? undefined,
     p_year_to: parsed.data.year_to ?? undefined,
     p_note: parsed.data.note ?? undefined,
+    p_make: parsed.data.make,
+    p_model: parsed.data.model,
+    p_cc: parsed.data.cc,
+    p_transmission: parsed.data.transmission,
   });
   if (error) return { errors: { form: dbErrorKey(error) } };
   refresh(slug);

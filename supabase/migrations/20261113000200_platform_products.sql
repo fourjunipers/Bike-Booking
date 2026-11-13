@@ -10,8 +10,13 @@
 -- 2. products.type (vehicle, gear, sale_item, service) and products.tracking
 --    (unit, bulk, consumable, none). Every existing row is a vehicle tracked
 --    by unit. The type never changes once a product exists.
--- 3. Vehicle-only columns (make, model, vehicle_type and the rest) are
---    required for a vehicle and must be empty for anything else.
+-- 3. A vehicle needs its kind (vehicle_type); a product of any other type
+--    must leave every vehicle-only column empty. Make, model, engine size
+--    and transmission are optional on a vehicle (owner, 13 Nov 2026: the
+--    create form asks for a name only). They are filled in when a motorbike
+--    is sent to Moto Mangos, or copied from the list entry it is put on, so
+--    products_required_specs_check (20261111000500) is dropped. A product's
+--    name is unique in its shop ignoring case and all spacing.
 -- 4. units.product_type, kept equal to its product's type by a composite
 --    foreign key, so later checks on a unit can depend on what it is a unit
 --    of. Only vehicles and gear have units.
@@ -125,7 +130,9 @@ alter table platform.products
   add constraint products_vehicle_fields_check check (
     case
       when type = 'vehicle' then
-        make is not null and model is not null and vehicle_type is not null
+        vehicle_type is not null
+        -- Both or neither: a make with no model matches nothing.
+        and (make is null) = (model is null)
       else
         make is null and model is null and vehicle_type is null
         and cc is null and transmission is null and catalog_id is null
@@ -138,11 +145,25 @@ alter table platform.products
     end
   );
 
--- "No two of the shop's own with the same make and model" is about vehicles.
+-- A motorbike no longer needs its engine size and transmission to be saved
+-- (20261111000500 required them): they are asked for when it is sent to Moto
+-- Mangos (submit_product_to_catalog below refuses without them) and a
+-- product can be listed only on an approved list entry, which carries them.
+alter table platform.products drop constraint products_required_specs_check;
+
+-- "No two of the shop's own with the same make and model" is about vehicles
+-- that have a make and model.
 drop index platform.models_own_make_model_idx;
 create unique index products_own_make_model_idx
   on platform.products (tenant_id, platform_private.norm(make), platform_private.norm(model))
-  where catalog_id is null and type = 'vehicle';
+  where catalog_id is null and type = 'vehicle' and make is not null;
+
+-- The name is what a product is known by: no two alike in a shop, ignoring
+-- case and all spacing ("Honda PCX 160", "honda pcx160"). It was lower-case
+-- and trimmed only.
+drop index platform.products_name_idx;
+create unique index products_name_idx
+  on platform.products (tenant_id, platform_private.norm(name));
 
 -- What a product is never changes: its units, bookings and history all
 -- depend on it. (Tracking can change, between bulk and unit, for gear only;
@@ -179,9 +200,10 @@ alter table platform.units
 -- 5. Functions that name the old table or column ------------------------------------------------
 -- Each is its latest definition (20261111000300 to 20261113000100) with
 -- platform.models -> platform.products and model_id -> product_id; nothing
--- else changes, except: the clamp's audit row is filed under 'products', and
+-- else changes, except: the clamp's audit row is filed under 'products';
 -- import_fleet() answers {"products": n, "units": n} and reads "product_id"
--- from each unit.
+-- from each unit; and submit_product_to_catalog() (written out at the end)
+-- takes the make, model, engine size and transmission with the request.
 
 drop function platform.submit_model_to_catalog(uuid, public.bike_type, integer, integer, text);
 
@@ -613,18 +635,33 @@ end;
 $function$
 ;
 
-create or replace function platform.submit_product_to_catalog(p_product_id uuid, p_type bike_type, p_year_from integer DEFAULT NULL::integer, p_year_to integer DEFAULT NULL::integer, p_note text DEFAULT NULL::text)
- RETURNS uuid
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+-- Sending a motorbike to Moto Mangos. The shop gives its make, model, engine
+-- size and transmission at this moment (a product is created with a name
+-- only); what it already has is used where nothing is given. Everything
+-- happens in one transaction: the details are saved on the product and the
+-- request is made, or neither.
+create function platform.submit_product_to_catalog(
+  p_product_id uuid,
+  p_type public.bike_type,
+  p_year_from integer default null,
+  p_year_to integer default null,
+  p_note text default null,
+  p_make text default null,
+  p_model text default null,
+  p_cc integer default null,
+  p_transmission public.transmission default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
 declare
   v_model platform.products;
   v_id uuid;
 begin
-  select * into v_model from platform.products where id = p_product_id;
-  -- Same answer for "no such model" and "not your shop".
+  select * into v_model from platform.products where id = p_product_id for update;
+  -- Same answer for "no such product" and "not your shop".
   if v_model.id is null or not platform_private.has_role(v_model.tenant_id, '{owner,manager}') then
     raise exception 'only_owner_or_manager' using errcode = '42501';
   end if;
@@ -633,6 +670,17 @@ begin
   end if;
   if v_model.vehicle_type <> 'motorbike' then
     raise exception 'only_motorbikes' using errcode = 'P0001';
+  end if;
+
+  v_model.make := coalesce(nullif(btrim(p_make), ''), v_model.make);
+  v_model.model := coalesce(nullif(btrim(p_model), ''), v_model.model);
+  v_model.cc := coalesce(p_cc, v_model.cc);
+  v_model.transmission := coalesce(p_transmission, v_model.transmission);
+  -- Moto Mangos search filters by all four.
+  if v_model.make is null or v_model.model is null
+    or v_model.cc is null or v_model.transmission is null
+  then
+    raise exception 'specs_required' using errcode = 'P0001';
   end if;
 
   insert into public.bike_catalog (
@@ -646,13 +694,19 @@ begin
   )
   returning id into v_id;
 
-  update platform.products set catalog_id = v_id where id = p_product_id;
+  -- On its own request now; products_guard copies the description from it.
+  update platform.products
+  set catalog_id = v_id,
+      make = v_model.make,
+      model = v_model.model,
+      cc = v_model.cc,
+      transmission = v_model.transmission
+  where id = p_product_id;
   perform platform_private.audit(v_model.tenant_id, 'bike_catalog', v_id::text, 'submit',
     null, jsonb_build_object('product_id', p_product_id, 'make', v_model.make, 'model', v_model.model));
   return v_id;
 end;
-$function$
-;
+$$;
 
-revoke all on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, integer, text) from public, anon;
-grant execute on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, integer, text) to authenticated;
+revoke all on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, integer, text, text, text, integer, public.transmission) from public, anon;
+grant execute on function platform.submit_product_to_catalog(uuid, public.bike_type, integer, integer, text, text, text, integer, public.transmission) to authenticated;

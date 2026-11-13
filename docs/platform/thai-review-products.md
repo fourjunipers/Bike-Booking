@@ -6,7 +6,8 @@ New or changed Thai texts in `apps/platform/messages/th.json` on the branch `pla
 
 "Vehicle" stays รถ (counted in คัน) for a vehicle unit, as before. The Fleet menu entry stays รถทั้งหมด.
 
-Gone: `Fleet.what.typeIt`, `Fleet.what.useList`, `Fleet.what.notInList` (the create form has one type-ahead now, no "Manually enter" button).
+
+**Second round (13 Nov 2026, after the owner's click-through).** The create form is a kind and a product name; the make-and-model type-ahead and its texts are gone (`Fleet.what.makeModel*`, `suggestions`, `filled*`, `notKnown`, `makeHelp`, `optional`, `tip.fromList`, `tip.typed`, `Fleet.model.nameHelpNew`, `FormErrors.inPresets`, `FormErrors.requiredSpecs`, and earlier `Fleet.what.typeIt`, `useList`, `notInList`). New or changed in this round: `Fleet.what.kindLegend`, `Fleet.what.tip.text`, `Fleet.category.dirt_bike` (Dirt bike, รถวิบาก: for approval), `Fleet.model.detailsTitle`, `name`, `namePlaceholder`, `nameHelp`, `Fleet.motoMangos.submitHelp`, `categoryFirst`, `FormErrors.specs_required`.
 
 | Key | English | Thai |
 | --- | --- | --- |
@@ -85,7 +86,6 @@ Gone: `Fleet.what.typeIt`, `Fleet.what.useList`, `Fleet.what.notInList` (the cre
 | `Fleet.editModel` | Open product | เปิดสินค้า |
 | `Fleet.model.newTitle` | New product | สินค้าใหม่ |
 | `Fleet.model.editTitle` | Product | สินค้า |
-| `Fleet.model.nameHelp` | Your own name for it. Several products can share one known model. | ชื่อที่ร้านใช้เรียก สินค้าหลายรายการใช้รุ่นเดียวกันในรายการได้ |
 | `Fleet.model.units` | Vehicles of this product | รถของสินค้านี้ |
 | `Fleet.model.delete` | Delete product | ลบสินค้า |
 | `Fleet.model.deleteConfirm` | Delete this product? This can't be undone. | ลบสินค้านี้หรือไม่? ไม่สามารถย้อนกลับได้ |
@@ -103,22 +103,19 @@ Gone: `Fleet.what.typeIt`, `Fleet.what.useList`, `Fleet.what.notInList` (the cre
 | `Fleet.unit.modelHelp` | Only your own products are listed. | แสดงเฉพาะสินค้าของร้าน |
 | `Fleet.unit.noModelsYet` | Add a product first. Then come back to add the vehicles you have of it. | เพิ่มสินค้าก่อน แล้วกลับมาเพิ่มรถที่ร้านมี |
 | `Fleet.import.done` | Imported {units, plural, one {# vehicle} other {# vehicles}} and {products, plural, =0 {no new products} one {# new product} other {# new products}}. | นำเข้า {units, plural, other {รถ # คัน}} และ {products, plural, =0 {ไม่มีสินค้าใหม่} other {สินค้าใหม่ # รายการ}} |
-| `Fleet.motoMangos.categoryFirst` | Choose a category for this model on the Details tab, save, and then you can send it to Moto Mangos. | เลือกหมวดหมู่ของรุ่นนี้ที่แท็บรายละเอียด บันทึก แล้วจึงส่งให้ Moto Mangos ได้ |
-| `Fleet.what.makeModel` | Make and model | ยี่ห้อและรุ่น |
-| `Fleet.what.makeModelPlaceholder` | e.g. Honda PCX 160 | เช่น Honda PCX 160 |
-| `Fleet.what.makeModelHelp` | Start typing and pick your model when it appears: its details are filled in for you. If it doesn't appear, just keep typing. | เริ่มพิมพ์ แล้วเลือกรุ่นของคุณเมื่อปรากฏ ระบบจะกรอกรายละเอียดให้ หากไม่ปรากฏ ให้พิมพ์ต่อได้เลย |
-| `Fleet.what.makeModelHelpTyped` | Type the make and model, e.g. Toyota Yaris. | พิมพ์ยี่ห้อและรุ่น เช่น Toyota Yaris |
-| `Fleet.what.suggestions` | Known models | รุ่นที่มีในรายการ |
-| `Fleet.what.filled` | Filled in from the known model | กรอกจากรุ่นในรายการ |
-| `Fleet.what.filledHelp` | Filled in for you. To use a different model, type over the name above. | ระบบกรอกให้แล้ว หากต้องการใช้รุ่นอื่น ให้พิมพ์ทับชื่อด้านบน |
-| `Fleet.what.notKnown` | We don't know this model yet. Check the make and model below and add its details. | เรายังไม่รู้จักรุ่นนี้ ตรวจยี่ห้อและรุ่นด้านล่าง แล้วเพิ่มรายละเอียด |
-| `Fleet.what.makeHelp` | Taken from what you typed. Correct it if the make has more than one word. | มาจากที่คุณพิมพ์ แก้ไขได้หากยี่ห้อมีมากกว่าหนึ่งคำ |
-| `Fleet.what.tip.fromList` | This is a known model, so it can be listed on Moto Mangos, the marketplace that matches renters with rental providers. | รุ่นนี้อยู่ในรายการแล้ว จึงลงประกาศบน Moto Mangos ได้ ซึ่งเป็นตลาดที่จับคู่ผู้เช่ากับผู้ให้เช่า |
-| `Fleet.what.tip.typed` | To add this vehicle to the Moto Mangos marketplace, save it first, then send it for review from its product page. | หากต้องการเพิ่มรถคันนี้ในตลาด Moto Mangos ให้บันทึกก่อน แล้วส่งให้ตรวจจากหน้าสินค้า |
-| `FormErrors.inPresets` | This make and model is a known model. Pick it from the suggestions instead. | ยี่ห้อและรุ่นนี้มีอยู่ในรายการแล้ว ให้เลือกจากรายการที่แนะนำแทน |
 | `FormErrors.model_retired` | This product is retired. Restore it first. | สินค้านี้ปลดระวางแล้ว กรุณานำกลับมาใช้ก่อน |
 | `FormErrors.model_has_active_units` | Retire or sell its vehicles first. A product can be retired once none of its vehicles is in the fleet. | ปลดระวางหรือขายรถของสินค้านี้ก่อน สินค้าจะปลดระวางได้เมื่อไม่มีรถคันใดอยู่ในฟลีตแล้ว |
 | `FormErrors.ownModelExists` | You already have a product with this make and model. | ร้านมีสินค้ายี่ห้อและรุ่นนี้อยู่แล้ว |
 | `Fleet.import.columnsHelp` | “make” and “model” are required. If they match the Moto Mangos list below, the vehicle goes on that entry; where a model has several generations, “model_year” picks the right one. If they don't match, the vehicle goes on a product of your own, which is created if you don't have it yet: give “vehicle_type” (motorbike, car, atv, boat or other; blank means motorbike) and “category” (the choices are under Categories below; required for a motorbike or a car; for several, separate them with a semicolon, like “adventure; touring”). A motorbike also needs “cc” and “transmission” (automatic, semi_auto or manual); for other vehicles both are optional. “name” is optional: your own name for the product. Leave “plate” blank for a vehicle without one yet. Dates are YYYY-MM-DD; odometer is in {unit}; purchase price is in {currency}. | ต้องมี “make” และ “model” หากตรงกับรายการของ Moto Mangos ด้านล่าง รถจะอยู่ในรายการนั้น หากรุ่นมีหลายเจเนอเรชัน “model_year” จะเลือกรายการที่ถูกต้อง หากไม่ตรง รถจะอยู่ในสินค้าของร้านเอง ซึ่งจะถูกสร้างให้ถ้ายังไม่มี: ระบุ “vehicle_type” (motorbike, car, atv, boat หรือ other เว้นว่างหมายถึง motorbike) และ “category” (ตัวเลือกอยู่ใต้หัวข้อ หมวด ด้านล่าง บังคับสำหรับมอเตอร์ไซค์และรถยนต์ หากมีหลายหมวดให้คั่นด้วยเครื่องหมาย ; เช่น “adventure; touring”) มอเตอร์ไซค์ต้องมี “cc” และ “transmission” (automatic, semi_auto หรือ manual) ด้วย สำหรับยานพาหนะประเภทอื่นไม่บังคับ “name” ไม่บังคับ: ชื่อที่ร้านใช้เรียกสินค้า เว้น “plate” ว่างสำหรับรถที่ยังไม่มีทะเบียน วันที่เป็น YYYY-MM-DD เลขไมล์เป็น {unit} ราคาซื้อเป็น {currency} |
 | `Fleet.view.group.model` | Product | สินค้า |
 | `Fleet.bands.intro` | How the Fleet list splits this product by model year. With none, it shows one group for all years. | วิธีที่หน้ารถทั้งหมดแบ่งสินค้านี้ตามปีของรุ่น หากไม่มี จะแสดงกลุ่มเดียวสำหรับทุกปี |
+| `Fleet.what.kindLegend` | What kind of product is it? | สินค้านี้เป็นประเภทใด |
+| `Fleet.category.dirt_bike` | Dirt bike | รถวิบาก |
+| `Fleet.model.detailsTitle` | Product details | รายละเอียดสินค้า |
+| `Fleet.model.name` | Product name | ชื่อสินค้า |
+| `Fleet.model.namePlaceholder` | e.g. Honda PCX 160 | เช่น Honda PCX 160 |
+| `Fleet.model.nameHelp` | What you call it. No two products can have the same name. | ชื่อที่ร้านใช้เรียก สินค้าสองรายการใช้ชื่อเดียวกันไม่ได้ |
+| `Fleet.what.tip.text` | To put this vehicle on the Moto Mangos marketplace, save it first. Then, on its product page, choose its model from the Moto Mangos list or send its details for review. | หากต้องการลงรถคันนี้ในตลาด Moto Mangos ให้บันทึกก่อน จากนั้นที่หน้าสินค้า ให้เลือกรุ่นจากรายการของ Moto Mangos หรือส่งรายละเอียดให้ตรวจ |
+| `Fleet.motoMangos.submitHelp` | Give its make, model, engine size and transmission: all four are needed for a motorbike. We review it first because it is new to our list. | ระบุยี่ห้อ รุ่น ขนาดเครื่องยนต์ และระบบเกียร์ มอเตอร์ไซค์ต้องมีครบทั้งสี่อย่าง เราจะตรวจก่อนเพราะยังไม่อยู่ในรายการของเรา |
+| `Fleet.motoMangos.categoryFirst` | Choose a category for this product on the Details tab, save, and then you can send it to Moto Mangos. | เลือกหมวดหมู่ของสินค้านี้ที่แท็บรายละเอียด บันทึก แล้วจึงส่งให้ Moto Mangos ได้ |
+| `FormErrors.specs_required` | Give the make, model, engine size and transmission first. | กรุณาระบุยี่ห้อ รุ่น ขนาดเครื่องยนต์ และระบบเกียร์ก่อน |

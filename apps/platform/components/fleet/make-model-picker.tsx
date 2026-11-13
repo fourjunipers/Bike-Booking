@@ -51,9 +51,10 @@ export function MakeModelPicker({
   /** Called with the model's value whenever the choice changes. */
   onModelChange?: (value: string) => void;
 }) {
-  const makes = [...new Set(models.map((m) => m.make))].sort((a, b) =>
-    a.localeCompare(b),
-  );
+  // A product may have no make (it is created with a name only).
+  const makes = [...new Set(models.map((m) => m.make))]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
   const startMake =
     defaultMake || models.find((m) => m.value === defaultModel)?.make || "";
   const [make, setMake] = useState(startMake);
@@ -76,7 +77,9 @@ export function MakeModelPicker({
           id={makeId}
           name={makeName}
           value={make}
-          required={required}
+          // Only where every choice has a make: one without can't be reached
+          // through this dropdown, and is chosen from the second one directly.
+          required={required && models.every((m) => m.make)}
           onChange={(event) => {
             const next = event.target.value;
             setMake(next);
@@ -124,7 +127,7 @@ export function MakeModelPicker({
                 .filter((m) => (m.group ?? "") === group)
                 .map((m) => (
                   <option key={m.value} value={m.value}>
-                    {make ? m.label : `${m.make}: ${m.label}`}
+                    {make || !m.make ? m.label : `${m.make}: ${m.label}`}
                   </option>
                 ));
               return group ? (

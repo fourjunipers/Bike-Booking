@@ -103,8 +103,6 @@ const optionalPhone = z.preprocess(
 export const modelSchema = z
   .object({
     name: z.string().trim().min(1, "required").max(120, "tooLong"),
-    // Blank for one of the shop's own models (not a preset).
-    catalog_id: z.preprocess(blankToNull, uuid.nullable()),
     description: optionalText(2000),
     bookable_online: checkbox,
     buffer_before_minutes: optionalInt(0, 10080),
@@ -288,12 +286,37 @@ export type OwnModelInput = z.infer<typeof ownModelSchema>;
 /** Sending one of the shop's own models to Moto Mangos for a catalog entry. */
 export const catalogSubmitSchema = z
   .object({
+    // Asked for at this moment (owner, 13 Nov 2026): a product is created
+    // with a name only, and Moto Mangos search needs all four.
+    make: z.string().trim().min(1, "required").max(40, "tooLong"),
+    model: z.string().trim().min(1, "required").max(60, "tooLong"),
+    cc: z.preprocess(
+      (value) => (value === "" || value == null ? undefined : value),
+      z.coerce
+        .number("ccRange")
+        .int("ccRange")
+        .min(1, "ccRange")
+        .max(20000, "ccRange")
+        .optional(),
+    ),
+    transmission: z.preprocess(
+      (value) => (value === "" || value == null ? undefined : value),
+      z.enum(transmissions, "required").optional(),
+    ),
     year_from: optionalInt(1950, 2100, "invalidYear"),
     year_to: optionalInt(1950, 2100, "invalidYear"),
     note: optionalText(500),
   })
   .strict()
   .superRefine((c, ctx) => {
+    if (c.cc === undefined)
+      ctx.addIssue({ code: "custom", path: ["cc"], message: "required" });
+    if (c.transmission === undefined)
+      ctx.addIssue({
+        code: "custom",
+        path: ["transmission"],
+        message: "required",
+      });
     if (c.year_from && c.year_to && c.year_to < c.year_from)
       ctx.addIssue({
         code: "custom",
@@ -354,7 +377,6 @@ export function dbErrorKey(
   if (message.includes("units_plate_idx")) return "plateExists";
   if (message.includes("products_name_idx")) return "nameExists";
   if (message.includes("products_own_make_model_idx")) return "ownModelExists";
-  if (message.includes("products_required_specs_check")) return "requiredSpecs";
   // Engine size outside 1 to 20000 cc, on a model or on the catalog entry made from it.
   if (/(products|bike_catalog)_cc_check/.test(message)) return "ccRange";
   if (message.includes("locations_name_idx")) return "nameExists";
@@ -373,6 +395,7 @@ export function dbErrorKey(
     "currency_locked",
     "model_has_active_units",
     "model_retired",
+    "specs_required",
   ])
     if (message.includes(known)) return known;
   if (message.includes("time zone")) return "timezoneOwnerOnly";

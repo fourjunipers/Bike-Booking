@@ -4,8 +4,6 @@ import { getTranslations } from "next-intl/server";
 import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page";
 import { requireArea } from "@/lib/access";
-import { getCatalog } from "@/lib/fleet-data";
-import { knownModels } from "@/lib/known-models";
 import { canManageFleet } from "@/lib/roles";
 import { ProductForm } from "../product-form";
 
@@ -16,8 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * "+ New product": the one place a product is added to the shop
- * (docs/products-redesign.md). Stage A: vehicles. Its vehicles are added
- * afterwards, on the product's Units tab.
+ * (docs/products-redesign.md). Stage A: vehicles. A product is a kind and a
+ * name (owner, 13 Nov 2026); its vehicles are added afterwards, on its Units
+ * tab, and its make and model are asked for if it is sent to Moto Mangos.
  */
 export default async function NewProductPage({
   params,
@@ -26,15 +25,11 @@ export default async function NewProductPage({
   const [{ tenant: slug }, query] = await Promise.all([params, searchParams]);
   const { membership } = await requireArea(slug, "products");
   if (!canManageFleet(membership.role)) notFound();
-  const [t, tFleet, tProducts, catalog] = await Promise.all([
+  const [t, tFleet, tProducts] = await Promise.all([
     getTranslations("Fleet.model"),
     getTranslations("Fleet"),
     getTranslations("Products"),
-    getCatalog(),
   ]);
-  // Arriving from "this is a known model": that one is already picked.
-  const preset = typeof query.catalog === "string" ? query.catalog : "";
-  const chosen = catalog.find((c) => c.id === preset);
   // Arriving from "Add vehicle": back there once it is saved.
   const then = query.then === "inventory" ? "inventory" : undefined;
 
@@ -45,21 +40,18 @@ export default async function NewProductPage({
         label={then ? tFleet("unit.newTitle") : tProducts("title")}
       />
       <PageHeader title={t("newTitle")} intro={t("newIntro")} />
-      <div className="rounded-lg border bg-card p-4 sm:p-5">
+      <section
+        aria-labelledby="product-details"
+        className="rounded-lg border bg-card p-4 sm:p-5"
+      >
+        <h2 id="product-details" className="mb-4 text-lg font-semibold">
+          {t("detailsTitle")}
+        </h2>
         <ProductForm
           slug={slug}
           currency={membership.tenant.currency}
           then={then}
-          known={knownModels(catalog)}
-          what={{
-            vehicle_type: "motorbike",
-            catalog_id: chosen?.id ?? "",
-            make: "",
-            model: "",
-            cc: "",
-            transmission: "",
-            categories: chosen ? [chosen.type] : [],
-          }}
+          what={{ vehicle_type: "motorbike", categories: [] }}
           values={{
             name: "",
             description: "",
@@ -74,7 +66,7 @@ export default async function NewProductPage({
             ready_now: "0",
           }}
         />
-      </div>
+      </section>
     </>
   );
 }
