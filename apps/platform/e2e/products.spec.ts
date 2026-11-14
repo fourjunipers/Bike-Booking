@@ -79,10 +79,16 @@ test("products list: one row per product, filters, and a product's three tabs", 
   expect(Math.round(pencilBox.width)).toBeGreaterThanOrEqual(44);
   expect(Math.round(pencilBox.height)).toBeGreaterThanOrEqual(44);
   await expect(page.getByRole("link", { name: /^Open / })).toHaveCount(0);
-  await expect(row).toContainText("Vehicle · Motorbike");
   await expect(row.getByText(/^\d+ vehicles? in the fleet$/)).toBeVisible();
-  await expect(row.getByText("Scooter", { exact: true })).toBeVisible();
-  await expect(row.getByText(/Moto Mangos$/)).toBeVisible();
+  // The kind and category tags on a wide screen only (owner, 14 Nov 2026);
+  // the Moto Mangos mango, with its name, on both.
+  const wide = page.viewportSize()!.width >= 640;
+  for (const tag of ["Motorbike", "Scooter"]) {
+    const chip = row.getByText(tag, { exact: true });
+    if (wide) await expect(chip).toBeVisible();
+    else await expect(chip).toBeHidden();
+  }
+  await expect(row.getByRole("img", { name: /Moto Mangos$/ })).toBeVisible();
   expect(Math.round((await row.boundingBox())!.height)).toBeGreaterThanOrEqual(
     44,
   );
@@ -98,12 +104,16 @@ test("products list: one row per product, filters, and a product's three tabs", 
   await expect(
     page.getByText("No product matches. Change the search or the filters."),
   ).toBeVisible();
-  await expect(page.getByLabel("Kind of vehicle")).toHaveValue("car");
-  await page.getByLabel("Category").selectOption({ label: "Scooter" });
-  await page.getByLabel("Kind of vehicle").selectOption({ label: "Motorbike" });
-  await page.getByRole("button", { name: "Apply" }).click();
+  // The chips: only what the shop has; a chip keeps the search.
+  await page.goto("/bsr/products?q=pcx");
+  const chips = page.getByRole("navigation", { name: "Filter by type" });
+  await expect(chips.getByRole("link", { name: "Sedan" })).toHaveCount(0);
+  await chips.getByRole("link", { name: "Scooter" }).click();
   await expect(page).toHaveURL(/category=city_scooter/);
+  await expect(page).toHaveURL(/q=pcx/);
   await expect(row).toBeVisible();
+  // Reset view is in the Filters panel.
+  await page.getByText(/^Filters \(\d+\)$/).click();
   await page.getByRole("link", { name: "Reset view" }).click();
   await expect(page).toHaveURL(/\/bsr\/products$/);
 

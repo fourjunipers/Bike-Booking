@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ServiceWorker } from "@/components/service-worker";
+import { ThemeSync } from "@/components/theme-sync";
 import { parseTheme, themeCookie } from "@/lib/preferences";
 import "./globals.css";
 
@@ -43,6 +44,7 @@ export const viewport: Viewport = {
 };
 
 // "Match device": set the class before the first paint, so there's no flash.
+// After that, ThemeSync keeps it in step with the choice (and the device).
 const followSystemTheme = `if(matchMedia("(prefers-color-scheme: dark)").matches)document.documentElement.classList.add("dark")`;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -63,6 +65,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
         <ServiceWorker />
+        <ThemeSync theme={theme} />
       </body>
     </html>
   );
