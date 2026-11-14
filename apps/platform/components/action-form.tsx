@@ -6,7 +6,9 @@ import {
   startTransition,
   useActionState,
   useContext,
+  useEffect,
   useId,
+  useRef,
   type ComponentProps,
   type ReactNode,
 } from "react";
@@ -57,6 +59,9 @@ export function ActionForm({
   confirm,
   confirmIf,
   destructive,
+  quiet,
+  showSubmit = true,
+  onOk,
   className,
   offers,
   children,
@@ -72,6 +77,12 @@ export function ActionForm({
   confirmIf?: (data: FormData) => string | undefined;
   /** An outlined red button; "solid" fills it (deleting for good). */
   destructive?: boolean | "solid";
+  /** An outlined button: for an action that isn't its card's main one. */
+  quiet?: boolean;
+  /** False hides the button, e.g. until a value has changed. */
+  showSubmit?: boolean;
+  /** Called once each time the action answers ok, e.g. to close a dialog. */
+  onOk?: () => void;
   className?: string;
   /**
    * What to show under the form when the action answers with an `offer`,
@@ -86,6 +97,14 @@ export function ActionForm({
     action,
     {},
   );
+  // The latest onOk, so a new function each render doesn't call it again.
+  const onOkRef = useRef(onOk);
+  useEffect(() => {
+    onOkRef.current = onOk;
+  });
+  useEffect(() => {
+    if (state.ok) onOkRef.current?.();
+  }, [state]);
   const error = (field: string) => {
     const key = state.errors?.[field];
     if (!key) return undefined;
@@ -119,23 +138,26 @@ export function ActionForm({
         ))}
         {children}
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="submit"
-            variant={destructive === true ? "outline" : "default"}
-            className={cn(
-              "h-11 px-6",
-              destructive === true && "border-destructive/40 text-destructive",
-              // White on the red: 4.8:1 (light), and the lighter red of the
-              // dark theme takes near-black text.
-              destructive === "solid" &&
-                "bg-destructive text-white hover:bg-destructive/85 dark:text-zinc-950",
-            )}
-            disabled={pending}
-          >
-            {pending
-              ? (pendingLabel ?? tCommon("saving"))
-              : (submitLabel ?? tCommon("save"))}
-          </Button>
+          {showSubmit && (
+            <Button
+              type="submit"
+              variant={destructive === true || quiet ? "outline" : "default"}
+              className={cn(
+                "h-11 px-6",
+                destructive === true &&
+                  "border-destructive/40 text-destructive",
+                // White on the red: 4.8:1 (light), and the lighter red of the
+                // dark theme takes near-black text.
+                destructive === "solid" &&
+                  "bg-destructive text-white hover:bg-destructive/85 dark:text-zinc-950",
+              )}
+              disabled={pending}
+            >
+              {pending
+                ? (pendingLabel ?? tCommon("saving"))
+                : (submitLabel ?? tCommon("save"))}
+            </Button>
+          )}
           {state.ok && !pending && (
             <p role="status" className="text-sm text-muted-foreground">
               {tCommon("saved")}

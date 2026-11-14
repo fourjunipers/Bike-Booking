@@ -38,19 +38,25 @@ export type StockLine = {
   product_id: string;
   location_id: string;
   in_stock: number;
-  damaged: number;
+  in_repair: number;
   lost: number;
   available: number;
 };
 
 export type Stock = {
+  /** In use + in repair. */
   inStock: number;
-  damaged: number;
+  inRepair: number;
   lost: number;
   available: number;
 };
 
-export const noStock: Stock = { inStock: 0, damaged: 0, lost: 0, available: 0 };
+export const noStock: Stock = {
+  inStock: 0,
+  inRepair: 0,
+  lost: 0,
+  available: 0,
+};
 
 /** A product's stock over all its locations, or at one of them. */
 export function stockOf(
@@ -67,7 +73,7 @@ export function stockOf(
     .reduce(
       (sum, line) => ({
         inStock: sum.inStock + line.in_stock,
-        damaged: sum.damaged + line.damaged,
+        inRepair: sum.inRepair + line.in_repair,
         lost: sum.lost + line.lost,
         available: sum.available + line.available,
       }),
@@ -89,6 +95,53 @@ export function stockWording(
     inStock: stock.inStock,
     lost: stock.lost,
   };
+}
+
+/** Where a unit of gear stands (docs/products-redesign.md §5.9). */
+export type GearState = "inUse" | "repair" | "lost";
+
+/**
+ * A unit's state from its row: lost by its status; in repair while downtime
+ * is running on it; otherwise in use.
+ */
+export function gearState(unit: {
+  status: string;
+  inRepair: boolean;
+}): GearState {
+  if (unit.status === "lost") return "lost";
+  return unit.inRepair ? "repair" : "inUse";
+}
+
+/**
+ * The names a product's units go by at one location: its label, or "Unit 3"
+ * by its place in the list. Counted gear has no labels, so every unit is
+ * numbered.
+ */
+export function unitNames<T extends { id: string; label: string | null }>(
+  units: T[],
+  numbered: (number: number) => string,
+): Map<string, string> {
+  return new Map(
+    units.map((unit, index) => [unit.id, unit.label ?? numbered(index + 1)]),
+  );
+}
+
+/** A calendar day as a date field sends it: "2026-11-14". Null when it isn't one. */
+export function parseDay(text: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const date = new Date(`${text}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== text
+    ? null
+    : text;
+}
+
+/** A stored day ("2026-11-14") for a reader: "14 Nov 2026" in their locale. */
+export function formatDay(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T00:00:00Z`));
 }
 
 // The create form ----------------------------------------------------------------------

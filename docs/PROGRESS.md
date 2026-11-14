@@ -13,6 +13,64 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Rental gear: the stock rework (branch `platform/gear-stock-rework`, 14 Nov 2026)
+
+The owner's testing of the Rental gear Stock tab found it confusing. Reworked to his eleven points; the design is `docs/products-redesign.md` §5.9. Rental gear only: items for sale are as they were. Platform only. On staging; **not on live**. `docs/platform/SPEC.md` does not have this yet (the owner maintains it).
+
+**What changed**
+
+- **Details tab** (everyone who can open the product), top to bottom: the name and description for owners and managers; then large tiles (In stock, Available now, In repair; Lost only when above zero); "Change quantity" with a −/+ stepper and a "Save quantity" button that appears when the number changed; one "Report a problem" button; the "Out of service" list; Delete last, for owners and managers.
+- **Report a problem** is one dialog, a bottom sheet on a phone: What happened (In repair, Lost, Damaged for good), How many or Which unit, Date it happened, Expected back (In repair only), Notes.
+- **Stock tab:** one row per unit with its name or label and a status chip; a hint about "Track each unit on its own" for counted gear. Labels are edited here.
+- **Statuses:** In repair (in stock, not available), Lost (not in stock), written off (gone for good, kept in the History with its day and notes). "Damaged" for a unit that can come back is now "In repair" everywhere, the History included.
+- **Each unit out of service has its own record:** day, expected-back day and notes, edited on its own line.
+- **Permissions:** every existing rule kept. New: writing off as damaged is for owners and managers. All of it is in one place, `lib/gear-permissions.ts`, mirrored by `platform_private.gear_roles()`; a database test compares the two. Owner-set permissions are not built.
+- **One new migration, `20261114000100_platform_gear_stock_rework`**, on top of Stage B's, which is untouched. No new table: three columns on `platform.units`; `report_gear_problem()`, `update_unit_problem()` and `resolve_unit_problem()` in place of Stage B's four stock functions, which are dropped; `product_stock()` answers `in_repair` where it said `damaged`. Every new function starts closed and is granted to `authenticated` on purpose; `default-grants.test.ts` lists them.
+- **Wording:** 89 new or changed texts in English and Thai, listed in `docs/platform/thai-review-products.md` under "Rental gear, the stock rework". The confirmation before removing a unit is the owner's sentence.
+
+**Second round, after the owner's click-through (14 Nov 2026).** Steps 1 to 5, 7, 8, 10 and 12 passed as built. Changed, with no migration and nothing on staging:
+
+- "Write off" and "Write off as damaged" are "Remove from stock" on every button, in the confirmation ("Remove from stock? This cannot be undone. …") and in the History ("removed 1 from stock as damaged"). The stock-blocked message on Delete follows. Function and audit names are as built.
+- Product details is the first card on the Details tab; the stock cards follow; Delete stays last.
+- Under "Date it happened" and "Expected back", in the dialog and when editing a line: "For information only. It does not affect stock quantities."
+- The Stock tab's hint says the switch is under Product details on the Details tab, and links there for owners and managers.
+- Done from this chat's own worktree (`.claude/worktrees/gear-stock-rework`), by the owner's rule of the same day.
+
+**Decided here, not specified by the owner** (all in §5.9):
+
+- Staff and mechanics now get the Details tab for gear (they had only Stock), because the tiles, the dialog and the list are there. They do not see the name form, the stepper or Delete.
+- Every unit out of service gets its own line, tracked or not, so "Back in use", "Found" and "Remove from stock" act on one line and no longer ask "how many".
+- "Expected back" is information: a repair no longer ends by itself at that time. Someone presses "Back in use".
+- "Report a problem" takes only units that are in use and that no booking holds now or later. Before, "Mark lost" could take a unit that was damaged.
+- A unit in repair can't be marked lost in one step: put it back in use, then report it lost.
+- Whoever may mark a unit a certain way may edit its line (so a mechanic edits a repair's line, not a lost unit's).
+- "Date it happened" can't be in the future; "Expected back" can't be before it.
+- Tracked gear: the dialog reports one unit at a time.
+- More than one location: the cards repeat under each location's name.
+- An edited line is recorded in the History ("changed the details of a unit in repair").
+- `ActionForm` gained three optional props (`quiet`, `showSubmit`, `onOk`); nothing else that uses it changed.
+
+**On staging, not on live (14 Nov 2026).** Staging records 57 of 57. Live stays at 53 of 53.
+
+- Pushed from this branch on the owner's instruction with `supabase db push --db-url`, after a dry run that listed exactly one pending migration (`20261114000100`).
+- Staging's data came through unchanged: 196 units, 21 blocks and 29 products before and after, with the same checksums over the units (id, status, label, product, location) and the blocks (id, unit, kind, start). Staging had one gear product (BSR's Helmet "M", 20 units, 6 damaged, none lost): the 6 are now In repair with 13 Nov 2026 as their day, and its counts read 20 in stock, 6 in repair, 14 available. No vehicle carries a record. The audit log gained 6 rows, one for each of those units.
+- **Staging matches a fresh build:** its `platform` and `platform_private` schemas, dumped with their grants, are line for line identical to the local database built from the migration files (4,749 lines each).
+- The conversion's other paths (a damaged unit with an end time, with a note, with a later block behind it; a lost unit) were checked on local data before the push: the end time became Expected back, the note became the notes, the block became open-ended except where a later block stood in the way, and lost units stayed lost. Unit and block counts were the same before and after.
+- **Until this PR merges, the platform site's main deploy runs Stage B's code against staging:** the Products and Fleet lists work, but a gear product's Stock tab shows no damaged count and its damaged and lost buttons fail, because the functions they call are gone. Items for sale and vehicles are not affected.
+
+**Tests**
+
+- Database: 251, all passing locally (28 new in `gear-stock-rework.test.ts`; Stage B's damaged and lost tests moved there and were rewritten).
+- Unit: 191 on the platform, all passing (20 new in `gear-stock.test.ts`).
+- Browser: `gear-stock.spec.ts`, two tests at phone and desktop width, passing locally. The whole browser suite passes locally with two workers; at the default worker count this machine times out on "Delete product" redirects, and `fleet.spec.ts` "one line per product" fails when its phone and desktop runs overlap (both pass alone). Neither touches code changed here.
+
+**Known issues and follow-ups**
+
+- A unit booked for later can't be reported in repair or lost. Moving its booking to another unit belongs with orders (Phase 3).
+- The Fleet and Products list rows are being polished on another branch; this branch changed nothing in them (the lists read `in_stock` and `lost`, whose names did not change).
+- Thai: the 89 texts need a native check, "Out of service" (งดใช้งาน) and "Remove from stock" (นำออกจากสต็อก) first.
+- The owner asked for these permissions to be changeable in Settings (click-through, steps 13 to 15). Not built: `lib/gear-permissions.ts` and `gear_roles()` are ready for it.
+
 ## Products, stage B (branch `platform/products-stage-b`, 13 Nov 2026)
 
 General products: rental gear, items for sale, services. Built to `docs/products-redesign.md` §5.7 with the owner's twelve confirmations of 13 Nov 2026 (decision 21 there). Platform only: nothing in `apps/marketplace`. On staging; **not on live**. `docs/platform/SPEC.md` does not have this yet (the owner maintains it).

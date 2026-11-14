@@ -74,19 +74,11 @@ export function canManageFleet(role: Role): boolean {
 /**
  * Owners, managers, staff and mechanics add or end downtime, update the
  * odometer and switch a unit between active and maintenance. Drivers only read.
- * The database enforces both (units_guard, unit_blocks policies).
+ * The database enforces both (units_guard, unit_blocks policies). Rental
+ * gear's stock actions have their own table: lib/gear-permissions.
  */
 export function canWorkOnUnits(role: Role): boolean {
   return role !== "driver";
-}
-
-/**
- * Marking a unit or gear lost: owners, managers and staff. A mechanic may
- * mark it damaged but not lost (owner, 13 Nov 2026). The database enforces it
- * (units_guard). Bringing a lost unit back, or removing it, is canManageFleet.
- */
-export function canMarkLost(role: Role): boolean {
-  return role === "owner" || role === "manager" || role === "staff";
 }
 
 /**

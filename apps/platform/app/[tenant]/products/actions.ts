@@ -3,19 +3,28 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { FormState } from "@/components/action-form";
-import { dbErrorKey, fieldErrors, wholeMinute } from "@/lib/fleet";
+import { dbErrorKey, fieldErrors } from "@/lib/fleet";
 import { getLocations } from "@/lib/fleet-data";
 import {
   generalSchema,
   maxGearQuantity,
   maxSaleQuantity,
   orderProducts,
+  parseDay,
   parseQuantity,
   readQuantities,
 } from "@/lib/general-products";
-import { canManageFleet, canMarkLost, canWorkOnUnits } from "@/lib/roles";
+import {
+  canEditProblem,
+  canGear,
+  problemAction,
+  problemKinds,
+  type GearAction,
+  type OutState,
+  type ProblemKind,
+} from "@/lib/gear-permissions";
+import { canManageFleet } from "@/lib/roles";
 import { requireMembership } from "@/lib/session";
-import { fromLocalInput } from "@/lib/shop-time";
 import { createClient } from "@mango/db/platform-server";
 
 /**
@@ -53,20 +62,15 @@ type DbError = { code?: string; message?: string; details?: string | null };
  * A refusal from a stock function, with the number it names: how low the
  * quantity can go, or how many units there are to act on.
  */
-function stockError(error: DbError | null, blockedKey = "units_blocked") {
+function stockError(error: DbError | null) {
   const key = dbErrorKey(error);
-  const named = [
-    "units_blocked",
-    "not_enough_free",
-    "not_enough_damaged",
-    "not_enough_lost",
-  ].includes(key);
+  const named = ["units_blocked", "not_enough_free"].includes(key);
   const count = error?.details ? Number(error.details) : NaN;
   // A message that names a number is only shown with its number.
   if (named && !Number.isInteger(count))
     return { errors: { quantity: "saveFailed" } } satisfies FormState;
   return {
-    errors: { quantity: key === "units_blocked" ? blockedKey : key },
+    errors: { quantity: key },
     ...(named ? { values: { count } } : {}),
   } satisfies FormState;
 }
@@ -166,11 +170,10 @@ export async function setStockQuantity(
   formData: FormData,
 ): Promise<FormState> {
   const { slug, role, supabase } = await context(formData);
-  if (!canManageFleet(role)) return notAllowed;
-  const sent = stockFields(
-    formData,
-    field(formData, "type") === "gear" ? maxGearQuantity : maxSaleQuantity,
-  );
+  const gear = field(formData, "type") === "gear";
+  if (!(gear ? canGear(role, "set_quantity") : canManageFleet(role)))
+    return notAllowed;
+  const sent = stockFields(formData, gear ? maxGearQuantity : maxSaleQuantity);
   if (!sent) return { errors: { quantity: "invalidQuantity" } };
   const { error } = await supabase.rpc("set_stock_quantity", {
     p_product_id: sent.product,
@@ -182,103 +185,143 @@ export async function setStockQuantity(
   return { ok: true };
 }
 
-/** "Mark damaged": that many units out of use, until a time or until put back. */
-export async function markDamaged(
+/** Which field of the dialog a refusal belongs under. */
+const problemField: Record<string, string> = {
+  date_in_future: "happened_on",
+  expected_before_happened: "expected_back",
+  notes_too_long: "notes",
+  unit_not_free: "unit",
+  unit_not_found: "unit",
+};
+
+function problemError(error: DbError | null): FormState {
+  const key = dbErrorKey(error);
+  if (key === "not_enough_free" || key === "quantity_out_of_range")
+    return stockError(error);
+  return { errors: { [problemField[key] ?? "form"]: key } };
+}
+
+/** The day, the expected-back day and the notes, as the dialog sends them. */
+function problemFields(formData: FormData, withExpected: boolean) {
+  const errors: Record<string, string> = {};
+  const happened = parseDay(field(formData, "happened_on"));
+  if (!happened) errors.happened_on = "invalidDate";
+  const expectedText = withExpected ? field(formData, "expected_back") : "";
+  const expected = expectedText ? parseDay(expectedText) : null;
+  if (expectedText && !expected) errors.expected_back = "invalidDate";
+  else if (happened && expected && expected < happened)
+    errors.expected_back = "expected_before_happened";
+  const notes = field(formData, "notes");
+  if (notes.length > 500) errors.notes = "notes_too_long";
+  return Object.keys(errors).length > 0
+    ? { errors }
+    : { happened: happened!, expected, notes };
+}
+
+/**
+ * "Report a problem": units in use go into repair, are marked lost, or are
+ * written off as damaged for good. Counted gear says how many; tracked gear
+ * says which unit. Each unit gets its own record.
+ */
+export async function reportProblem(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const { slug, tenant, role, supabase } = await context(formData);
-  if (!canWorkOnUnits(role)) return notAllowed;
-  const sent = stockFields(formData, maxGearQuantity);
-  if (!sent || sent.quantity < 1)
-    return { errors: { quantity: "invalidQuantity" } };
-  // "Until" is typed in the location's time zone.
-  const untilText = field(formData, "until");
-  let until: Date | null = null;
-  if (untilText) {
-    const locations = await getLocations(tenant.id);
-    const zone = locations.find((l) => l.id === sent.location)?.timezone;
-    until = zone ? fromLocalInput(untilText, zone) : null;
-    if (!until) return { errors: { until: "invalidDate" } };
-    if (until <= wholeMinute(new Date()))
-      return { errors: { until: "until_in_past" } };
+  const { slug, role, supabase } = await context(formData);
+  const kind = field(formData, "kind") as ProblemKind;
+  if (!problemKinds.includes(kind)) return { errors: { kind: "required" } };
+  if (!canGear(role, problemAction[kind])) return notAllowed;
+  const product = field(formData, "id");
+  const location = field(formData, "location");
+  if (!uuid.test(product) || !uuid.test(location)) return notAllowed;
+
+  const errors: Record<string, string> = {};
+  // Tracked gear names the unit; counted gear says how many.
+  const unit = field(formData, "unit");
+  const tracked = formData.has("unit");
+  let quantity: number | undefined;
+  if (tracked) {
+    if (!uuid.test(unit)) errors.unit = "required";
+  } else {
+    const typed = field(formData, "quantity");
+    const parsed =
+      typed === "" ? "invalid" : parseQuantity(typed, maxGearQuantity);
+    if (parsed === "invalid" || parsed < 1) errors.quantity = "invalidQuantity";
+    else quantity = parsed;
   }
-  const { error } = await supabase.rpc("mark_units_damaged", {
-    p_product_id: sent.product,
-    p_location_id: sent.location,
-    p_quantity: sent.quantity,
-    p_until: until?.toISOString(),
+  const sent = problemFields(formData, kind === "repair");
+  if ("errors" in sent) Object.assign(errors, sent.errors);
+  if (Object.keys(errors).length > 0 || "errors" in sent) return { errors };
+
+  const { error } = await supabase.rpc("report_gear_problem", {
+    p_product_id: product,
+    p_location_id: location,
+    p_kind: kind,
+    p_quantity: quantity,
+    p_unit_ids: tracked ? [unit] : undefined,
+    p_happened_on: sent.happened,
+    p_expected_back: sent.expected ?? undefined,
+    p_notes: sent.notes || undefined,
   });
-  if (error) return stockError(error);
+  if (error) return problemError(error);
   refresh(slug);
   return { ok: true };
 }
 
-/** "Back in use": ends the downtime on that many damaged units. */
-export async function markRepaired(
+/** A line of the "Out of service" list, edited: its days and its notes. */
+export async function updateProblem(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const { slug, role, supabase } = await context(formData);
-  if (!canWorkOnUnits(role)) return notAllowed;
-  const sent = stockFields(formData, maxGearQuantity);
-  if (!sent || sent.quantity < 1)
-    return { errors: { quantity: "invalidQuantity" } };
-  const { error } = await supabase.rpc("mark_units_repaired", {
-    p_product_id: sent.product,
-    p_location_id: sent.location,
-    p_quantity: sent.quantity,
+  const state = field(formData, "state") as OutState;
+  const unit = field(formData, "unit");
+  if (
+    !["repair", "lost"].includes(state) ||
+    !canEditProblem(role, state) ||
+    !uuid.test(unit)
+  )
+    return notAllowed;
+  const sent = problemFields(formData, state === "repair");
+  if ("errors" in sent) return { errors: sent.errors };
+  const { error } = await supabase.rpc("update_unit_problem", {
+    p_unit_id: unit,
+    p_happened_on: sent.happened,
+    p_expected_back: sent.expected ?? undefined,
+    p_notes: sent.notes || undefined,
   });
-  if (error) return stockError(error);
+  if (error) return problemError(error);
   refresh(slug);
   return { ok: true };
 }
 
-/** "Mark lost": owners, managers and staff. A mechanic is refused. */
-export async function markLost(
+/**
+ * A line's buttons: "Back in use" (in repair), "Found, back in use" (lost),
+ * and "Write off", which removes the unit for good.
+ */
+export async function resolveProblem(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const { slug, role, supabase } = await context(formData);
-  if (!canMarkLost(role)) return notAllowed;
-  const sent = stockFields(formData, maxGearQuantity);
-  if (!sent || sent.quantity < 1)
-    return { errors: { quantity: "invalidQuantity" } };
-  const { error } = await supabase.rpc("mark_units_lost", {
-    p_product_id: sent.product,
-    p_location_id: sent.location,
-    p_quantity: sent.quantity,
-  });
-  if (error) return stockError(error, "notEnoughToLose");
-  refresh(slug);
-  return { ok: true };
-}
-
-/** Lost units found again ("restore") or gone for good ("remove"): owners and managers. */
-export async function resolveLost(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const { slug, role, supabase } = await context(formData);
-  if (!canManageFleet(role)) return notAllowed;
-  const sent = stockFields(formData, maxGearQuantity);
-  const action = field(formData, "resolve");
-  if (!sent || sent.quantity < 1 || !["restore", "remove"].includes(action))
-    return { errors: { quantity: "invalidQuantity" } };
-  const { error } = await supabase.rpc("resolve_lost_units", {
-    p_product_id: sent.product,
-    p_location_id: sent.location,
-    p_quantity: sent.quantity,
+  const action = field(formData, "resolve") as GearAction;
+  const unit = field(formData, "unit");
+  if (
+    !["back_in_use", "found", "write_off"].includes(action) ||
+    !canGear(role, action) ||
+    !uuid.test(unit)
+  )
+    return notAllowed;
+  const { error } = await supabase.rpc("resolve_unit_problem", {
+    p_unit_id: unit,
     p_action: action,
   });
-  if (error) return stockError(error);
+  if (error) return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
   return { ok: true };
 }
 
 // One unit of tracked gear ---------------------------------------------------------------
-// The same rules as above, on the unit the person picked. These write the
-// rows directly: RLS, units_guard and unit_blocks_guard decide.
 
 /** An optional label ("GoPro 3"). Owners and managers. */
 export async function setUnitLabel(
@@ -298,109 +341,6 @@ export async function setUnitLabel(
     .select("id");
   if (error || data.length !== 1)
     return { errors: { label: dbErrorKey(error) } };
-  refresh(slug);
-  return { ok: true };
-}
-
-/**
- * What a row's buttons do to one unit of gear: damaged (downtime from now),
- * repaired (that downtime ends), lost, restore (a lost unit back in stock) or
- * remove (deleted; retired instead if bookings on record need it).
- */
-export async function changeGearUnit(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const { slug, tenant, role, supabase } = await context(formData);
-  const unitId = field(formData, "unit");
-  const change = field(formData, "change");
-  const allowed =
-    change === "damaged" || change === "repaired"
-      ? canWorkOnUnits(role)
-      : change === "lost"
-        ? canMarkLost(role)
-        : canManageFleet(role);
-  if (!allowed || !uuid.test(unitId)) return notAllowed;
-  const failed = (error: DbError | null): FormState => ({
-    errors: { form: dbErrorKey(error) },
-  });
-  const now = wholeMinute(new Date());
-
-  if (change === "damaged") {
-    const { data: unit } = await supabase
-      .from("units")
-      .select("id")
-      .eq("tenant_id", tenant.id)
-      .eq("id", unitId)
-      .eq("product_type", "gear")
-      .maybeSingle();
-    if (!unit) return notAllowed;
-    const { error } = await supabase.from("unit_blocks").insert({
-      tenant_id: tenant.id,
-      unit_id: unitId,
-      kind: "downtime",
-      period: `[${now.toISOString()},)`,
-    });
-    if (error) return failed(error);
-  } else if (change === "repaired") {
-    const at = new Date().toISOString();
-    const { data: blocks, error } = await supabase
-      .from("unit_blocks")
-      .select("id, period")
-      .eq("tenant_id", tenant.id)
-      .eq("unit_id", unitId)
-      .eq("kind", "downtime")
-      .overlaps("period", `[${at},${at}]`);
-    if (error) return failed(error);
-    for (const block of blocks) {
-      const start = new Date(
-        String(block.period)
-          .replace(/^[[(]/, "")
-          .split(",")[0]
-          .replace(/"/g, ""),
-      );
-      const query =
-        start >= now
-          ? supabase.from("unit_blocks").delete()
-          : supabase.from("unit_blocks").update({
-              period: `[${start.toISOString()},${now.toISOString()})`,
-            });
-      const ended = await query.eq("tenant_id", tenant.id).eq("id", block.id);
-      if (ended.error) return failed(ended.error);
-    }
-  } else if (change === "lost" || change === "restore") {
-    const { data, error } = await supabase
-      .from("units")
-      .update({ status: change === "lost" ? "lost" : "active" })
-      .eq("tenant_id", tenant.id)
-      .eq("id", unitId)
-      .eq("product_type", "gear")
-      .select("id");
-    if (error || data.length !== 1) return failed(error);
-  } else if (change === "remove") {
-    const removed = await supabase
-      .from("units")
-      .delete()
-      .eq("tenant_id", tenant.id)
-      .eq("id", unitId)
-      .eq("product_type", "gear")
-      .select("id");
-    // Bookings on record point at it: it leaves stock but its row stays.
-    if (removed.error?.code === "23503") {
-      const retired = await supabase
-        .from("units")
-        .update({ status: "retired" })
-        .eq("tenant_id", tenant.id)
-        .eq("id", unitId)
-        .eq("product_type", "gear")
-        .select("id");
-      if (retired.error || retired.data.length !== 1)
-        return failed(retired.error);
-    } else if (removed.error || removed.data.length !== 1)
-      return failed(removed.error);
-  } else {
-    return notAllowed;
-  }
   refresh(slug);
   return { ok: true };
 }

@@ -373,14 +373,14 @@ isOneToOne: false
                   ]
                 },"units": {
                   Row: {
-                    "colour": string | null,"created_at": string,"current_odometer_km": number,"engine_number": string | null,"frame_number": string | null,"id": string,"label": string | null,"location_id": string,"model_year": number | null,"notes": string | null,"plate": string | null,"plate_pending": boolean,"product_id": string,"product_type": string,"qr_token": string,"status": string,"tenant_id": string,"updated_at": string
+                    "colour": string | null,"created_at": string,"current_odometer_km": number,"engine_number": string | null,"expected_back": string | null,"frame_number": string | null,"id": string,"label": string | null,"location_id": string,"model_year": number | null,"notes": string | null,"plate": string | null,"plate_pending": boolean,"problem_notes": string | null,"problem_on": string | null,"product_id": string,"product_type": string,"qr_token": string,"status": string,"tenant_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"frame_number"?: string | null,"id"?: string,"label"?: string | null,"location_id": string,"model_year"?: number | null,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"product_id": string,"product_type"?: string,"qr_token"?: string,"status"?: string,"tenant_id": string,"updated_at"?: string
+                    "colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"expected_back"?: string | null,"frame_number"?: string | null,"id"?: string,"label"?: string | null,"location_id": string,"model_year"?: number | null,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"problem_notes"?: string | null,"problem_on"?: string | null,"product_id": string,"product_type"?: string,"qr_token"?: string,"status"?: string,"tenant_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"frame_number"?: string | null,"id"?: string,"label"?: string | null,"location_id"?: string,"model_year"?: number | null,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"product_id"?: string,"product_type"?: string,"qr_token"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
+                    "colour"?: string | null,"created_at"?: string,"current_odometer_km"?: number,"engine_number"?: string | null,"expected_back"?: string | null,"frame_number"?: string | null,"id"?: string,"label"?: string | null,"location_id"?: string,"model_year"?: number | null,"notes"?: string | null,"plate"?: string | null,"plate_pending"?: boolean,"problem_notes"?: string | null,"problem_on"?: string | null,"product_id"?: string,"product_type"?: string,"qr_token"?: string,"status"?: string,"tenant_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -432,15 +432,6 @@ isOneToOne: false
 "import_fleet":
 { Args: { "p_models": Json,"p_tenant_id": string,"p_units": Json }; Returns: Json
                            },
-"mark_units_damaged":
-{ Args: { "p_location_id": string,"p_product_id": string,"p_quantity": number,"p_until"?: string }; Returns: Json
-                           },
-"mark_units_lost":
-{ Args: { "p_location_id": string,"p_product_id": string,"p_quantity": number }; Returns: Json
-                           },
-"mark_units_repaired":
-{ Args: { "p_location_id": string,"p_product_id": string,"p_quantity": number }; Returns: Json
-                           },
 "move_product":
 { Args: { "p_current_order"?: (string)[],"p_place": string,"p_product_id": string,"p_target_id": string }; Returns: undefined
                            },
@@ -466,7 +457,7 @@ isOneToOne: false
                            },
 "product_stock":
 { Args: { "p_tenant_id": string }; Returns: {
-              "available": number,"damaged": number,"in_stock": number,"location_id": string,"lost": number,"product_id": string
+              "available": number,"in_repair": number,"in_stock": number,"location_id": string,"lost": number,"product_id": string
             }[]
                            },
 "queue_renewal_notifications":
@@ -475,11 +466,14 @@ isOneToOne: false
 "remove_member":
 { Args: { "p_membership_id": string }; Returns: undefined
                            },
+"report_gear_problem":
+{ Args: { "p_expected_back"?: string,"p_happened_on"?: string,"p_kind": string,"p_location_id": string,"p_notes"?: string,"p_product_id": string,"p_quantity"?: number,"p_unit_ids"?: (string)[] }; Returns: Json
+                           },
 "reset_product_order":
 { Args: { "p_tenant_id": string }; Returns: undefined
                            },
-"resolve_lost_units":
-{ Args: { "p_action": string,"p_location_id": string,"p_product_id": string,"p_quantity": number }; Returns: Json
+"resolve_unit_problem":
+{ Args: { "p_action": string,"p_unit_id": string }; Returns: Json
                            },
 "review_catalog_request":
 { Args: { "p_approve": boolean,"p_catalog_id": string,"p_merge_into"?: string,"p_notes"?: string,"p_year_from"?: number,"p_year_to"?: number }; Returns: Json
@@ -497,6 +491,9 @@ isOneToOne: false
 { Args: { "p_tenant_id": string }; Returns: {
               "created_at": string,"email": string,"membership_id": string,"name": string,"role": Database["platform"]['Enums']["platform_role"],"user_id": string
             }[]
+                           },
+"update_unit_problem":
+{ Args: { "p_expected_back"?: string,"p_happened_on": string,"p_notes"?: string,"p_unit_id": string }; Returns: Json
                            }
           }
           Enums: {
