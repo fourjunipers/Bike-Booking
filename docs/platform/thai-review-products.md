@@ -312,3 +312,108 @@ After the owner's click-through. A unit of gear has three states, each under its
 | `Products.history.action.unit_lost` | {who} marked {what} lost | {who} ทำเครื่องหมายว่า{what}สูญหาย |
 | `Products.history.action.unit_found` | {who} marked {what} found, back in use | {who} ทำเครื่องหมายว่าพบ{what}แล้ว กลับมาใช้ได้ |
 | `Products.history.action.unit_written_off` | {who} wrote off {what} | {who} ตัดจำหน่าย{what} |
+
+### Rental gear, the stock rework (14 Nov 2026)
+
+After the owner's testing of the Stock tab. The counts, "Change quantity", one "Report a problem" dialog and the "Out of service" list are on the Details tab; the Stock tab is one row per unit. "Damaged" became "In repair" for a unit that can come back; "Damaged for good" is written off. 84 new or changed texts. Claude's translations: they need a native check.
+
+Words to look at first:
+
+| English | Thai used | Note |
+| --- | --- | --- |
+| In repair | กำลังซ่อม | A unit being cleaned or repaired: still the shop's, not rentable for now. Was "Damaged" (ชำรุด) |
+| Damaged for good | ชำรุดถาวร | Can't be repaired; the unit is removed |
+| Write off as damaged | ตัดจำหน่ายเนื่องจากชำรุด | The button that removes a unit for good because it is broken |
+| Out of service | งดใช้งาน | The heading over units in repair or lost. Check it reads naturally for gear, not only for vehicles |
+| Report a problem | แจ้งปัญหา | The one button that opens the dialog |
+| Date it happened | วันที่เกิดเหตุ | |
+| Expected back | คาดว่าจะกลับมาใช้ได้ | The day a repair is expected to finish |
+
+Gone with the old Stock tab: `Products.stockTab.counts`, `inStock`, `available`, `damaged`, `lost`, `quantityHelpGear`, `markDamaged`, `damagedHowMany`, `until`, `untilHelp`, `backInUse`, `repairedHowMany`, `markLost`, `lostHowMany`, `lostConfirm`, `lostWaiting`, `state.*`, `found`, `foundHowMany`, `writeOff`, `writeOffHowMany`, `writeOffConfirm`, `status.damaged`; and `FormErrors.notEnoughToLose`, `not_enough_damaged`, `not_enough_lost`.
+
+| Key | English | Thai |
+| --- | --- | --- |
+| `Products.gearStock.detailsTitle` | Product details | รายละเอียดสินค้า |
+| `Products.gearStock.summary` | Stock | สต็อก |
+| `Products.gearStock.summaryHelp` | In stock counts units in use and in repair. Lost units are not counted. | “มีในสต็อก” นับชิ้นที่ใช้งานได้และชิ้นที่กำลังซ่อม ไม่นับชิ้นที่สูญหาย |
+| `Products.gearStock.tile.inStock` | In stock | มีในสต็อก |
+| `Products.gearStock.tile.available` | Available now | พร้อมใช้ตอนนี้ |
+| `Products.gearStock.tile.inRepair` | In repair | กำลังซ่อม |
+| `Products.gearStock.tile.lost` | Lost | สูญหาย |
+| `Products.gearStock.quantityTitle` | Change quantity | เปลี่ยนจำนวน |
+| `Products.gearStock.quantity` | Quantity | จำนวน |
+| `Products.gearStock.quantityHelp` | Raising it adds units. Lowering it removes only free units, never ones in repair, lost or booked. | เพิ่มจำนวนคือเพิ่มชิ้น ลดจำนวนจะนำออกเฉพาะชิ้นที่ว่าง ไม่นำชิ้นที่กำลังซ่อม สูญหาย หรือถูกจองออก |
+| `Products.gearStock.fewer` | One fewer | ลดหนึ่งชิ้น |
+| `Products.gearStock.more` | One more | เพิ่มหนึ่งชิ้น |
+| `Products.gearStock.saveQuantity` | Save quantity | บันทึกจำนวน |
+| `Products.gearStock.reportTitle` | Report a problem | แจ้งปัญหา |
+| `Products.gearStock.reportIntro` | For a unit that is in repair, lost, or damaged for good. | สำหรับชิ้นที่กำลังซ่อม สูญหาย หรือชำรุดถาวร |
+| `Products.gearStock.reportButton` | Report a problem | แจ้งปัญหา |
+| `Products.gearStock.reportNone` | No unit is in use and free right now, so there is nothing to report. | ตอนนี้ไม่มีชิ้นที่ใช้งานได้และว่างอยู่ จึงไม่มีอะไรให้แจ้ง |
+| `Products.gearStock.what` | What happened | เกิดอะไรขึ้น |
+| `Products.gearStock.kind.repair` | In repair | กำลังซ่อม |
+| `Products.gearStock.kind.lost` | Lost | สูญหาย |
+| `Products.gearStock.kind.damaged` | Damaged for good | ชำรุดถาวร |
+| `Products.gearStock.kindHelp.repair` | Being cleaned or repaired. Still counted in stock, but not available to rent until it is back in use. | อยู่ระหว่างทำความสะอาดหรือซ่อม ยังนับอยู่ในสต็อก แต่ให้เช่าไม่ได้จนกว่าจะกลับมาใช้ได้ |
+| `Products.gearStock.kindHelp.lost` | Missing. Not counted in stock and not available. It can be marked found later. | หาไม่พบ ไม่นับในสต็อกและให้เช่าไม่ได้ ทำเครื่องหมายว่าพบแล้วได้ภายหลัง |
+| `Products.gearStock.kindHelp.damaged` | Can’t be repaired. Removed from this product for good. | ซ่อมไม่ได้ นำออกจากสินค้านี้ถาวร |
+| `Products.gearStock.howMany` | How many | กี่ชิ้น |
+| `Products.gearStock.howManyHelp` | {count} in use and free. | ใช้งานได้และว่างอยู่ {count} ชิ้น |
+| `Products.gearStock.whichUnit` | Which unit | ชิ้นไหน |
+| `Products.gearStock.happenedOn` | Date it happened | วันที่เกิดเหตุ |
+| `Products.gearStock.expectedBack` | Expected back (optional) | คาดว่าจะกลับมาใช้ได้ (ไม่บังคับ) |
+| `Products.gearStock.notes` | Notes (optional) | หมายเหตุ (ไม่บังคับ) |
+| `Products.gearStock.submit.repair` | Mark in repair | ทำเครื่องหมายว่ากำลังซ่อม |
+| `Products.gearStock.submit.lost` | Mark lost | ทำเครื่องหมายว่าสูญหาย |
+| `Products.gearStock.submit.damaged` | Write off as damaged | ตัดจำหน่ายเนื่องจากชำรุด |
+| `Products.gearStock.outTitle` | Out of service | งดใช้งาน |
+| `Products.gearStock.outIntro` | Units in repair or lost. Each can still come back. | ชิ้นที่กำลังซ่อมหรือสูญหาย ทุกชิ้นยังกลับมาใช้ได้ |
+| `Products.gearStock.outNone` | Nothing is out of service. | ไม่มีชิ้นที่งดใช้งาน |
+| `Products.gearStock.line.happenedOn` | Date it happened | วันที่เกิดเหตุ |
+| `Products.gearStock.line.expectedBack` | Expected back | คาดว่าจะกลับมาใช้ได้ |
+| `Products.gearStock.line.notes` | Notes | หมายเหตุ |
+| `Products.gearStock.line.notSet` | Not set | ยังไม่ระบุ |
+| `Products.gearStock.backInUse` | Back in use | กลับมาใช้ได้ |
+| `Products.gearStock.found` | Found, back in use | พบแล้ว กลับมาใช้ได้ |
+| `Products.gearStock.writeOffDamaged` | Write off as damaged | ตัดจำหน่ายเนื่องจากชำรุด |
+| `Products.gearStock.writeOff` | Write off | ตัดจำหน่าย |
+| `Products.gearStock.writeOffConfirm` | Write off? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record. | ตัดจำหน่ายหรือไม่? ไม่สามารถย้อนกลับได้ ชิ้นนี้จะถูกนำออกจากสินค้านี้ถาวร และทำเครื่องหมายว่าพบแล้วไม่ได้อีก ประวัติจะยังเก็บบันทึกไว้ |
+| `Products.gearStock.edit` | Edit | แก้ไข |
+| `Products.gearStock.editTitle` | Edit details | แก้ไขรายละเอียด |
+| `Products.gearStock.lostWaiting` | An owner or manager marks it found or writes it off. | เจ้าของหรือผู้จัดการเป็นผู้ทำเครื่องหมายว่าพบแล้วหรือตัดจำหน่าย |
+| `Products.gearStock.close` | Close | ปิด |
+| `Products.stockTab.units` | Units ({count}) | รายชิ้น ({count}) |
+| `Products.stockTab.unitsAt` | {location}: units ({count}) | {location}: รายชิ้น ({count}) |
+| `Products.stockTab.noUnits` | No units here yet. Set the quantity on the Details tab to add some. | ยังไม่มีชิ้นที่นี่ ตั้งจำนวนในแท็บรายละเอียดเพื่อเพิ่ม |
+| `Products.stockTab.untrackedHint` | These units are counted, not named. To give each one its own name or label, switch on “Track each unit on its own” on the Details tab. | ชิ้นเหล่านี้นับเป็นจำนวน ไม่มีชื่อ หากต้องการตั้งชื่อหรือป้ายชื่อให้แต่ละชิ้น ให้เปิด “ติดตามแต่ละชิ้นแยกกัน” ในแท็บรายละเอียด |
+| `Products.stockTab.untrackedHintStaff` | These units are counted, not named. An owner or manager can switch on “Track each unit on its own” to give each one a name or label. | ชิ้นเหล่านี้นับเป็นจำนวน ไม่มีชื่อ เจ้าของหรือผู้จัดการเปิด “ติดตามแต่ละชิ้นแยกกัน” ได้ เพื่อตั้งชื่อหรือป้ายชื่อให้แต่ละชิ้น |
+| `Products.stockTab.status.repair` | In repair | กำลังซ่อม |
+| `Products.history.action.units_damaged` | {who} marked {count} in repair on {what} | {who} ทำเครื่องหมายว่ากำลังซ่อม {count} ชิ้นใน{what} |
+| `Products.history.action.units_repaired` | {who} marked {count} back in use on {what} | {who} ทำเครื่องหมายว่ากลับมาใช้ได้ {count} ชิ้นใน{what} |
+| `Products.history.action.lost_removed` | {who} wrote off {count} as lost on {what} | {who} ตัดจำหน่าย {count} ชิ้นเนื่องจากสูญหายใน{what} |
+| `Products.history.action.units_in_repair` | {who} marked {count} in repair on {what} | {who} ทำเครื่องหมายว่ากำลังซ่อม {count} ชิ้นใน{what} |
+| `Products.history.action.units_back_in_use` | {who} marked {count} back in use on {what} | {who} ทำเครื่องหมายว่ากลับมาใช้ได้ {count} ชิ้นใน{what} |
+| `Products.history.action.units_found` | {who} marked {count} found, back in use on {what} | {who} ทำเครื่องหมายว่าพบแล้ว กลับมาใช้ได้ {count} ชิ้นใน{what} |
+| `Products.history.action.units_written_off_damaged` | {who} wrote off {count} as damaged on {what} | {who} ตัดจำหน่าย {count} ชิ้นเนื่องจากชำรุดใน{what} |
+| `Products.history.action.units_written_off_lost` | {who} wrote off {count} as lost on {what} | {who} ตัดจำหน่าย {count} ชิ้นเนื่องจากสูญหายใน{what} |
+| `Products.history.action.unit_problem_edit_repair` | {who} changed the details of a unit in repair on {what} | {who} แก้ไขรายละเอียดของชิ้นที่กำลังซ่อมใน{what} |
+| `Products.history.action.unit_problem_edit_lost` | {who} changed the details of a lost unit on {what} | {who} แก้ไขรายละเอียดของชิ้นที่สูญหายใน{what} |
+| `Products.history.action.unit_damaged` | {who} marked {what} in repair | {who} ทำเครื่องหมายว่า{what}กำลังซ่อม |
+| `Products.history.action.unit_repaired` | {who} marked {what} back in use | {who} ทำเครื่องหมายว่า{what}กลับมาใช้ได้ |
+| `Products.history.action.unit_written_off` | {who} wrote off {what} as lost | {who} ตัดจำหน่าย{what}เนื่องจากสูญหาย |
+| `Products.history.detail.units` | Unit: {names} | ชิ้น: {names} |
+| `Products.history.detail.happenedOn` | Date it happened: {date} | วันที่เกิดเหตุ: {date} |
+| `Products.history.detail.expectedBack` | Expected back: {date} | คาดว่าจะกลับมาใช้ได้: {date} |
+| `Products.history.detail.notes` | Notes: {notes} | หมายเหตุ: {notes} |
+| `Products.history.field.happened_on` | Date it happened | วันที่เกิดเหตุ |
+| `Products.history.field.expected_back` | Expected back | คาดว่าจะกลับมาใช้ได้ |
+| `FormErrors.units_blocked` | {count, plural, one {# unit is} other {# units are}} in repair or booked, so the quantity can’t go below {count}. | {count, plural, other {มี # ชิ้น}}ที่กำลังซ่อมหรือถูกจองอยู่ จึงลดจำนวนให้ต่ำกว่า {count} ไม่ได้ |
+| `FormErrors.not_enough_free` | Only {count} in use and free. The rest are booked or already out of service. | มีเพียง {count} ชิ้นที่ใช้งานได้และว่างอยู่ ที่เหลือถูกจองหรืองดใช้งานอยู่แล้ว |
+| `FormErrors.date_in_future` | Choose today or an earlier date. | เลือกวันนี้หรือวันก่อนหน้า |
+| `FormErrors.expected_before_happened` | Choose the date it happened or a later one. | เลือกวันที่เกิดเหตุหรือวันหลังจากนั้น |
+| `FormErrors.notes_too_long` | Keep the notes to 500 characters. | หมายเหตุยาวได้ไม่เกิน 500 ตัวอักษร |
+| `FormErrors.unit_not_free` | This unit is booked or already out of service. | ชิ้นนี้ถูกจองอยู่หรืองดใช้งานอยู่แล้ว |
+| `FormErrors.unit_not_found` | This unit is no longer here. Reload the page. | ไม่พบชิ้นนี้แล้ว กรุณาโหลดหน้าใหม่ |
+| `FormErrors.not_in_repair` | This unit is no longer in repair. Reload the page. | ชิ้นนี้ไม่ได้กำลังซ่อมแล้ว กรุณาโหลดหน้าใหม่ |
+| `FormErrors.not_lost` | This unit is no longer marked lost. Reload the page. | ชิ้นนี้ไม่ได้ถูกทำเครื่องหมายว่าสูญหายแล้ว กรุณาโหลดหน้าใหม่ |
+| `FormErrors.not_out_of_service` | This unit is no longer out of service. Reload the page. | ชิ้นนี้ไม่ได้งดใช้งานแล้ว กรุณาโหลดหน้าใหม่ |

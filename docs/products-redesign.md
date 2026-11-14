@@ -360,9 +360,11 @@ price_template_days   tenant_id, template_id, day (1..30), total bigint, source 
 | See Fleet | Yes | Yes | Yes | Yes (their home) | Read only |
 | Create, edit, retire, restore, delete a product | Yes | Yes | No | No | No |
 | Add or remove units; change gear quantity; switch tracking | Yes | Yes | No | No | No |
-| Unit status active ↔ maintenance, odometer, downtime, gear marked damaged | Yes | Yes | Yes | Yes | No |
-| Mark a unit or gear lost | Yes | Yes | Yes | No | No |
-| Bring a lost unit back, or remove it | Yes | Yes | No | No | No |
+| Unit status active ↔ maintenance, odometer, downtime | Yes | Yes | Yes | Yes | No |
+| Gear: mark in repair, back in use, edit a repair's line (§5.9) | Yes | Yes | Yes | Yes | No |
+| Mark a unit or gear lost; edit a lost unit's line | Yes | Yes | Yes | No | No |
+| Mark a lost unit found, back in use | Yes | Yes | No | No | No |
+| Write off gear for good, as damaged or as lost (§5.9) | Yes | Yes | No | No | No |
 | Tax and insurance records: add and edit / delete | Yes / Yes | Yes / Yes | Yes / No | Yes / No | No |
 | Purchase, sale and renewal costs | Yes | Yes | Hidden | Hidden | Hidden |
 | Prices, templates, tax profiles, deposits: see / change | Yes / Yes | Yes / Yes | See | Hidden | Hidden |
@@ -589,6 +591,8 @@ Mark's direction (decision 18), confirmed point by point on 13 Nov 2026 (decisio
 - `move_product` already takes "before or after any product", which is what a drop needs: dragging (§5.8) adds no database work.
 
 
+**Superseded in part (14 Nov 2026):** the Stock tab's damaged and lost forms described above were replaced by the stock rework, §5.9. Items for sale, the manual order and the Moto Mangos functions are as built here.
+
 ### 5.8 Dragging to reorder: proposal for a follow-up PR (not built)
 
 Not built in PR 17, by instruction. This is the proposal; the library needs Mark's approval first (root `CLAUDE.md`: ask before adding a dependency).
@@ -618,6 +622,62 @@ Not built in PR 17, by instruction. This is the proposal; the library needs Mark
 **Tests.** Mouse drag at desktop width; keyboard drag (the dependable one); one touch long-press drag at phone width, which is the test most likely to be flaky and is why this was split out; and that a tap on a line, the pencil and "+ Vehicle" still do what they did.
 
 **Size of the work.** About one session, most of it the touch test.
+
+### 5.9 Rental gear: the stock rework (built 14 Nov 2026)
+
+Mark's testing of the Stock tab found it confusing: three state sections, each with its own "how many" forms, up to six full-width buttons in one card. Reworked on `platform/gear-stock-rework` to his eleven points. Rental gear only; items for sale are untouched.
+
+**The three states of a unit**
+
+| State | In stock | Available | How it is stored |
+| --- | --- | --- | --- |
+| In use | Yes | Yes, unless a booking holds it | `status = 'active'`, no downtime running |
+| In repair | Yes | No | An open-ended downtime block (as before, so the availability rule is unchanged) |
+| Lost | No | No | `status = 'lost'` |
+
+Stock = in use + in repair. Available = in use, minus bookings. A unit written off (damaged for good, or a loss confirmed) is permanent: its row is deleted, or retired when bookings on record need it, and the History keeps the event with its day and notes. "Out of service" holds only units that can still come back: in repair and lost.
+
+**Details tab, top to bottom** (everyone who can open the product; one set of cards per location when the shop has more than one):
+
+1. **Stock:** large tiles for In stock, Available now and In repair; Lost only when above zero.
+2. **Change quantity** (owners and managers): − and + beside a number field. "Save quantity" appears only when the number differs from what is saved.
+3. **Report a problem:** one button, one dialog (a bottom sheet on a phone). What happened (In repair, Lost, Damaged for good; a role sees only what it may report); How many, or Which unit for tracked gear; Date it happened (today by default, never later); Expected back (In repair only, optional); Notes (optional, 500 characters).
+4. **Out of service:** one line per unit, tracked or not, with its status chip, day, expected-back day and notes. In repair: Back in use, Edit, Write off as damaged. Lost: Found, back in use, Edit, Write off.
+5. **Product details** (owners and managers): name, description, "Track each unit on its own". Delete below.
+
+Each card has its title above a divider and at most one filled button; every action on a line is outlined.
+
+**Stock tab:** one row per unit with its name or label and a status chip. Owners and managers label tracked units there. Counted gear shows a hint about "Track each unit on its own". Nothing on this tab changes a unit's state.
+
+**Each unit has its own record.** Three columns on `platform.units`: `problem_on` (the day it happened, a calendar day at the unit's location), `expected_back` and `problem_notes`. Reporting three units writes three records, each edited and resolved on its own afterwards. `units_problem_check` keeps them to gear, requires the day, keeps expected back on or after it and off a lost unit. The record is cleared when the unit is back in use.
+
+**"Expected back" is information.** Stage B's "until" time ended the downtime by itself. A repair now runs until someone presses "Back in use"; the expected day is shown on the line and in the History.
+
+**Only units in use and free are reported.** A unit that a booking holds now or later is never put out of service from under its booking; the dialog says how many are free. (Moving a booking to another unit comes with orders, Phase 3.)
+
+**Who may do what: one place.** `platform_private.gear_roles(action)` in the database and `lib/gear-permissions.ts` in the app hold the same table, and a database test compares them. Every function and every screen asks it, so owner-set permissions can later replace the table without touching the callers. Not built now.
+
+| Action | Roles |
+| --- | --- |
+| `set_quantity` | owner, manager |
+| `mark_repair` (and edit a repair's line), `back_in_use` | owner, manager, staff, mechanic |
+| `mark_lost` (and edit a lost unit's line) | owner, manager, staff |
+| `found` | owner, manager |
+| `write_off` (as damaged or as lost) | owner, manager |
+
+New: writing off as damaged is for owners and managers only. Everything else is as it was. RLS and `units_guard` remain the real rule underneath: a mechanic who writes `status = 'lost'` by hand is refused, as is anyone but an owner or manager deleting or retiring a unit.
+
+**Database: `20261114000100_platform_gear_stock_rework`**, on top of Stage B's migration, which is untouched. No new table.
+
+- `report_gear_problem()`, `update_unit_problem()` and `resolve_unit_problem()` replace `mark_units_damaged()`, `mark_units_repaired()`, `mark_units_lost()` and `resolve_lost_units()`, which are dropped. They run as the caller, take the product-and-location lock then the unit locks (Stage B's order), and write one audit event each.
+- `product_stock()` answers `in_repair` where it said `damaged`.
+- `units_guard` lets staff and mechanics write the three record columns on gear, and clears the record when a unit stops being lost.
+- Lowering a quantity still removes only free units: `set_stock_quantity()` is unchanged, and a test holds that units in repair and lost keep their records.
+- **Existing data:** a gear unit damaged at the moment of migration becomes In repair. Its day is the day the downtime started, the downtime's end (if it had one) becomes Expected back, its note becomes the notes, and the downtime is made open-ended unless a later block on that unit is in the way. A lost unit stays Lost, with the day it was last changed. Nothing is deleted.
+
+**History, in the buttons' words.** One line per event from the functions themselves: "marked 2 in repair", "marked 1 lost", "marked 1 back in use", "marked 1 found, back in use", "wrote off 1 as damaged", "wrote off 1 as lost", "changed the details of a unit in repair". Under each: the unit's label (tracked gear), the day it happened, expected back and notes. Events from before the rework read in the same words ("marked 2 damaged" now reads "marked 2 in repair").
+
+**Tests.** Database (`tests/db/gear-stock-rework.test.ts`): every action by every role, by the function and by hand; each unit's own record; what is refused; written off as damaged and as lost, with the audit event; tracked gear by unit; booked units never taken; the quantity rule; six races (the last free unit, three kinds of report at once, back in use against write off, found against write off, lowering the quantity against reports, two edits); another shop's five roles and a signed-out visitor. Browser (`e2e/gear-stock.spec.ts`, phone and desktop): the whole click-through by owner, staff, mechanic and driver, the bottom sheet's position, tracked gear, and the History.
 
 ## 6. The brief and this design side by side
 
