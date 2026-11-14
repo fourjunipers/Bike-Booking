@@ -115,6 +115,7 @@ export type FleetRow<U extends ListUnit> = {
   id: string;
   name: string;
   kind: string;
+  categories: string[];
   retired: boolean;
   /** Vehicles in the fleet: active or in maintenance. */
   vehicles: number;
@@ -201,6 +202,7 @@ export function buildFleetList<U extends ListUnit>(
       id: product.id,
       name: product.name,
       kind: product.kind,
+      categories: product.categories,
       retired: product.retired,
       vehicles: inFleet.length,
       available: inFleet.filter(

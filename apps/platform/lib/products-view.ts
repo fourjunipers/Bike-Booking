@@ -107,8 +107,9 @@ const plain = (value: string) =>
 
 /**
  * Every product as a row, then the ones the tab and the view ask for, in the
- * shop's order (its own, or A to Z). The kind, category and Moto Mangos
- * filters are about vehicles: with one on, a general product is left out.
+ * shop's order (its own, or A to Z). The category and Moto Mangos filters
+ * are about vehicles: with one on, a general product is left out. The kind
+ * filter takes a general type too ("gear").
  */
 export function buildProductsView(
   products: ProductInput[],
@@ -136,7 +137,9 @@ export function buildProductsView(
     const retired = row.retired_at !== null;
     if (view.scope === "current" && retired) return false;
     if (view.scope === "retired" && !retired) return false;
-    if (view.kind && row.vehicle_type !== view.kind) return false;
+    // A kind is a vehicle's kind, or a general product's type (the chips
+    // offer Rental gear, Item for sale and Service beside the kinds).
+    if (view.kind && (row.vehicle_type ?? row.type) !== view.kind) return false;
     if (view.category && !row.categories.includes(view.category)) return false;
     if (view.listing && row.listing !== view.listing) return false;
     // By name: a product has no make or model on the platform.
