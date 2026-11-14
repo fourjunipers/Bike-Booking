@@ -24,7 +24,7 @@ import {
   defaultProductsView,
   type ProductInput,
 } from "./products-view";
-import { canManageFleet, canMarkLost, canWorkOnUnits, roles } from "./roles";
+import { canManageFleet, roles } from "./roles";
 
 /**
  * Products, stage B: general products on the list, stock wording, the
@@ -53,7 +53,7 @@ describe("the Products list tabs", () => {
   const products = [
     product({ name: "PCX", categories: ["city_scooter"] }),
     general("Helmet M", "gear", {
-      stock: { inStock: 18, damaged: 1, lost: 2, available: 17 },
+      stock: { inStock: 18, inRepair: 1, lost: 2, available: 17 },
     }),
     general("Sticker", "sale_item"),
     general("Full cover", "service"),
@@ -108,7 +108,7 @@ describe("the Products list tabs", () => {
     expect(row.listing).toBeNull();
     expect(row.stock).toEqual({
       inStock: 18,
-      damaged: 1,
+      inRepair: 1,
       lost: 2,
       available: 17,
     });
@@ -121,7 +121,7 @@ describe("stock", () => {
       product_id: "h",
       location_id: "a",
       in_stock: 10,
-      damaged: 1,
+      in_repair: 1,
       lost: 2,
       available: 9,
     },
@@ -129,7 +129,7 @@ describe("stock", () => {
       product_id: "h",
       location_id: "b",
       in_stock: 8,
-      damaged: 0,
+      in_repair: 0,
       lost: 0,
       available: 8,
     },
@@ -137,7 +137,7 @@ describe("stock", () => {
       product_id: "s",
       location_id: "a",
       in_stock: 45,
-      damaged: 0,
+      in_repair: 0,
       lost: 0,
       available: 45,
     },
@@ -146,19 +146,19 @@ describe("stock", () => {
   it("adds a product's stock over its locations, or reads one location", () => {
     expect(stockOf(lines, "h")).toEqual({
       inStock: 18,
-      damaged: 1,
+      inRepair: 1,
       lost: 2,
       available: 17,
     });
     expect(stockOf(lines, "h", "b")).toEqual({
       inStock: 8,
-      damaged: 0,
+      inRepair: 0,
       lost: 0,
       available: 8,
     });
     expect(stockOf(lines, "nothing")).toEqual({
       inStock: 0,
-      damaged: 0,
+      inRepair: 0,
       lost: 0,
       available: 0,
     });
@@ -272,16 +272,8 @@ describe("the General form", () => {
 });
 
 describe("who may do what with stock", () => {
-  it("quantity: owners and managers. Damaged: everyone but a driver. Lost: owners, managers and staff", () => {
+  it("an item for sale's quantity and a unit's label: owners and managers. Gear's own actions are in gear-stock.test.ts", () => {
     expect(roles.filter(canManageFleet)).toEqual(["owner", "manager"]);
-    expect(roles.filter(canWorkOnUnits)).toEqual([
-      "owner",
-      "manager",
-      "staff",
-      "mechanic",
-    ]);
-    expect(roles.filter(canMarkLost)).toEqual(["owner", "manager", "staff"]);
-    expect(canMarkLost("mechanic")).toBe(false);
   });
 });
 
@@ -443,8 +435,6 @@ describe("refusals and wording", () => {
     for (const raised of [
       "units_blocked",
       "not_enough_free",
-      "not_enough_damaged",
-      "not_enough_lost",
       "quantity_out_of_range",
       "until_in_past",
       "label_needs_tracking",
@@ -487,59 +477,6 @@ describe("refusals and wording", () => {
     });
     expect(en.Fleet.motoMangos.changeModel).toBe("Change model");
     expect(en.Fleet.motoMangos.disconnect).toBe("Disconnect");
-  });
-});
-
-describe("the Stock tab's three states, in the same words everywhere", () => {
-  const tab = en.Products.stockTab;
-  const actions = en.Products.history.action;
-
-  it("names each action for what happens", () => {
-    expect(tab.markDamaged).toBe("Mark damaged");
-    expect(tab.backInUse).toBe("Back in use");
-    expect(tab.markLost).toBe("Mark lost");
-    expect(tab.found).toBe("Found, back in use");
-    expect(tab.writeOff).toBe("Write off");
-    // The old labels are gone, from every text.
-    const all = JSON.stringify({ en, th });
-    for (const old of ["Remove for good", "Back in stock"])
-      expect(all).not.toContain(old);
-    expect(Object.keys(tab)).not.toContain("restore");
-    expect(Object.keys(tab)).not.toContain("remove");
-    expect(Object.keys(tab)).not.toContain("removeConfirm");
-  });
-
-  it("has one line of help under each state's heading, in both languages", () => {
-    expect(Object.keys(tab.state)).toEqual(["inUse", "damaged", "lost"]);
-    expect(tab.state.inUse.help).toMatch(/^In use: available to rent\./);
-    expect(tab.state.damaged.help).toMatch(/^Damaged: not available to rent/);
-    expect(tab.state.lost.help).toBe(
-      "Lost: not available to rent and not counted in your stock. Mark it found to put it back in use, or write it off to remove it permanently.",
-    );
-    for (const state of ["inUse", "damaged", "lost"] as const) {
-      expect(th.Products.stockTab.state[state].help).toBeTruthy();
-      expect(th.Products.stockTab.state[state].title).toContain("{count}");
-    }
-  });
-
-  it("Write off says it can't be undone, what it changes, and that History keeps a record", () => {
-    expect(tab.writeOffConfirm).toMatch(/cannot be undone/);
-    expect(tab.writeOffConfirm).toMatch(/leaves this product’s stock counts/);
-    expect(tab.writeOffConfirm).toMatch(/History keeps a record/);
-    expect(th.Products.stockTab.writeOffConfirm).toBeTruthy();
-  });
-
-  it("History uses the buttons' words, for counted gear and for one unit", () => {
-    expect(actions.units_damaged).toContain("marked {count} damaged");
-    expect(actions.units_repaired).toContain("back in use");
-    expect(actions.units_lost).toContain("marked {count} lost");
-    expect(actions.lost_restored).toContain("found, back in use");
-    expect(actions.lost_removed).toContain("wrote off {count}");
-    expect(actions.unit_damaged).toBe("{who} marked {what} damaged");
-    expect(actions.unit_repaired).toBe("{who} put {what} back in use");
-    expect(actions.unit_lost).toBe("{who} marked {what} lost");
-    expect(actions.unit_found).toBe("{who} marked {what} found, back in use");
-    expect(actions.unit_written_off).toBe("{who} wrote off {what}");
   });
 });
 

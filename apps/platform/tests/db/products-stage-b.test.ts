@@ -1,9 +1,12 @@
 /**
  * Products, stage B (migration 20261113000300): general products. Unit rules
- * per type, the lost status, quantities, damaged and lost, the stock ledger
- * for items for sale, the manual order, and changing or disconnecting a
- * product's Moto Mangos list entry. Every rule is tried by role and across
- * two shops.
+ * per type, quantities, the stock ledger for items for sale, the manual
+ * order, and changing or disconnecting a product's Moto Mangos list entry.
+ * Every rule is tried by role and across two shops.
+ *
+ * In repair, lost and written off (the stock rework, 20261114000100, which
+ * replaced stage B's damaged and lost functions) are in
+ * gear-stock-rework.test.ts.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Role } from "@/lib/roles";
@@ -78,7 +81,7 @@ async function stock(productId: string, tenant: TestTenant = shop) {
   const row = data.find((r) => r.product_id === productId);
   return {
     in_stock: row?.in_stock ?? 0,
-    damaged: row?.damaged ?? 0,
+    in_repair: row?.in_repair ?? 0,
     lost: row?.lost ?? 0,
     available: row?.available ?? 0,
   };
@@ -100,36 +103,23 @@ const setQuantity = (role: Role, productId: string, quantity: number) =>
     p_location_id: shop.locationId,
     p_quantity: quantity,
   });
-const damaged = (role: Role, productId: string, quantity: number) =>
-  db(role).rpc("mark_units_damaged", {
-    p_product_id: productId,
-    p_location_id: shop.locationId,
-    p_quantity: quantity,
-  });
-const repaired = (role: Role, productId: string, quantity: number) =>
-  db(role).rpc("mark_units_repaired", {
-    p_product_id: productId,
-    p_location_id: shop.locationId,
-    p_quantity: quantity,
-  });
-const lost = (role: Role, productId: string, quantity: number) =>
-  db(role).rpc("mark_units_lost", {
-    p_product_id: productId,
-    p_location_id: shop.locationId,
-    p_quantity: quantity,
-  });
-const resolveLost = (
+/** "Report a problem": that many units into repair, or marked lost. */
+const report = (
   role: Role,
   productId: string,
   quantity: number,
-  action: "restore" | "remove",
+  kind: "repair" | "lost",
 ) =>
-  db(role).rpc("resolve_lost_units", {
+  db(role).rpc("report_gear_problem", {
     p_product_id: productId,
     p_location_id: shop.locationId,
+    p_kind: kind,
     p_quantity: quantity,
-    p_action: action,
   });
+const damaged = (role: Role, productId: string, quantity: number) =>
+  report(role, productId, quantity, "repair");
+const lost = (role: Role, productId: string, quantity: number) =>
+  report(role, productId, quantity, "lost");
 
 beforeAll(async () => {
   [shop, other, presetA, presetB] = await Promise.all([
@@ -292,7 +282,7 @@ describe("unit rules per type", () => {
     expect((await unitsOf(camera)).map((u) => u.id).sort()).toEqual(
       before.map((u) => u.id).sort(),
     );
-    expect((await stock(camera)).damaged).toBe(1);
+    expect((await stock(camera)).in_repair).toBe(1);
 
     const back = await db("owner")
       .from("products")
@@ -301,7 +291,7 @@ describe("unit rules per type", () => {
       .select("id");
     expect(back.error).toBeNull();
     expect((await unitsOf(camera)).every((u) => u.label === null)).toBe(true);
-    expect(await stock(camera)).toMatchObject({ in_stock: 2, damaged: 1 });
+    expect(await stock(camera)).toMatchObject({ in_stock: 2, in_repair: 1 });
     // Staff can't switch it; nothing but counted and tracked is accepted.
     const byStaff = await db("staff")
       .from("products")
@@ -323,7 +313,7 @@ describe("quantity", () => {
     const helmet = await general("gear", 20);
     expect(await stock(helmet)).toEqual({
       in_stock: 20,
-      damaged: 0,
+      in_repair: 0,
       lost: 0,
       available: 20,
     });
@@ -412,7 +402,7 @@ describe("quantity", () => {
     expect((await stock(helmet)).in_stock).toBe(5);
     // Down to the blocked ones is fine: the free units go.
     expect((await setQuantity("owner", helmet, 3)).error).toBeNull();
-    expect(await stock(helmet)).toMatchObject({ in_stock: 3, damaged: 3 });
+    expect(await stock(helmet)).toMatchObject({ in_stock: 3, in_repair: 3 });
   });
 
   it("retires a unit that has bookings on record instead of deleting it", async () => {
@@ -433,135 +423,7 @@ describe("quantity", () => {
   });
 });
 
-describe("damaged and lost", () => {
-  it("staff and mechanics mark gear damaged and back in use; a driver can't", async () => {
-    const helmet = await general("gear", 6);
-    expect((await damaged("staff", helmet, 2)).error).toBeNull();
-    expect((await damaged("mechanic", helmet, 1)).error).toBeNull();
-    expect((await damaged("driver", helmet, 1)).error?.code).toBe("42501");
-    expect(await stock(helmet)).toEqual({
-      in_stock: 6,
-      damaged: 3,
-      lost: 0,
-      available: 3,
-    });
-    const tooMany = await damaged("staff", helmet, 4);
-    expect(tooMany.error?.message).toContain("not_enough_free");
-    expect(tooMany.error?.details).toBe("3");
-    expect((await repaired("mechanic", helmet, 2)).error).toBeNull();
-    expect(await stock(helmet)).toMatchObject({ damaged: 1, available: 5 });
-    expect((await repaired("staff", helmet, 2)).error?.message).toContain(
-      "not_enough_damaged",
-    );
-  });
-
-  it("owners, managers and staff mark gear lost; a mechanic and a driver are refused", async () => {
-    const helmet = await general("gear", 20);
-    expect((await lost("staff", helmet, 1)).error).toBeNull();
-    expect((await lost("manager", helmet, 1)).error).toBeNull();
-    for (const role of ["mechanic", "driver"] as const) {
-      const { error } = await lost(role, helmet, 1);
-      expect(error?.code, role).toBe("42501");
-    }
-    // "18 in stock, 2 lost".
-    expect(await stock(helmet)).toEqual({
-      in_stock: 18,
-      damaged: 0,
-      lost: 2,
-      available: 18,
-    });
-    // Directly on the row, the guard says the same.
-    const [unit] = (await unitsOf(helmet)).filter((u) => u.status === "active");
-    const byMechanic = await db("mechanic")
-      .from("units")
-      .update({ status: "lost" })
-      .eq("id", unit.id)
-      .select("id");
-    expect(byMechanic.error?.code).toBe("42501");
-    const byStaff = await db("staff")
-      .from("units")
-      .update({ status: "lost" })
-      .eq("id", unit.id)
-      .select("id");
-    expect(byStaff.data).toHaveLength(1);
-  });
-
-  it("only an owner or manager restores or removes a lost unit", async () => {
-    const helmet = await general("gear", 5);
-    expect((await lost("staff", helmet, 3)).error).toBeNull();
-    const lostUnit = (await unitsOf(helmet)).find((u) => u.status === "lost")!;
-    for (const role of ["staff", "mechanic", "driver"] as const) {
-      for (const action of ["restore", "remove"] as const) {
-        const { error } = await resolveLost(role, helmet, 1, action);
-        expect(error?.code, `${role} ${action}`).toBe("42501");
-      }
-      const back = await db(role)
-        .from("units")
-        .update({ status: "active" })
-        .eq("id", lostUnit.id)
-        .select("id");
-      expect(back.data ?? [], `${role} restoring by hand`).toEqual([]);
-      const gone = await db(role)
-        .from("units")
-        .delete()
-        .eq("id", lostUnit.id)
-        .select("id");
-      expect(gone.data ?? [], `${role} deleting by hand`).toEqual([]);
-    }
-    expect(await stock(helmet)).toMatchObject({ in_stock: 2, lost: 3 });
-
-    expect(
-      (await resolveLost("manager", helmet, 1, "restore")).error,
-    ).toBeNull();
-    expect(await stock(helmet)).toMatchObject({ in_stock: 3, lost: 2 });
-    expect((await resolveLost("owner", helmet, 2, "remove")).error).toBeNull();
-    expect(await stock(helmet)).toMatchObject({ in_stock: 3, lost: 0 });
-    expect(await unitsOf(helmet)).toHaveLength(3);
-    expect(
-      (await resolveLost("owner", helmet, 1, "remove")).error?.message,
-    ).toContain("not_enough_lost");
-  });
-
-  it("a lost unit ends its downtime, takes no new block, and a booked unit can't be lost", async () => {
-    const helmet = await general("gear", 1);
-    const [unit] = await unitsOf(helmet);
-    expect((await damaged("staff", helmet, 1)).error).toBeNull();
-    // The only unit is damaged: it is the one that is lost, and its downtime ends.
-    expect((await lost("staff", helmet, 1)).error).toBeNull();
-    expect(await stock(helmet)).toEqual({
-      in_stock: 0,
-      damaged: 0,
-      lost: 1,
-      available: 0,
-    });
-    const block = await db("staff")
-      .from("unit_blocks")
-      .insert({
-        tenant_id: shop.id,
-        unit_id: unit.id,
-        kind: "downtime",
-        period: period(hours(1), hours(2)),
-      });
-    expect(block.error?.message).toContain("unit_not_in_fleet");
-
-    const booked = await general("gear", 1);
-    const [bookedUnit] = await unitsOf(booked);
-    await service.from("unit_blocks").insert({
-      tenant_id: shop.id,
-      unit_id: bookedUnit.id,
-      kind: "allocation",
-      period: period(hours(1), hours(5)),
-    });
-    const refused = await lost("owner", booked, 1);
-    expect(refused.error?.message).toContain("units_blocked");
-    const byHand = await db("owner")
-      .from("units")
-      .update({ status: "lost" })
-      .eq("id", bookedUnit.id)
-      .select("id");
-    expect(byHand.error?.message).toContain("unit_has_future_blocks");
-  });
-
+describe("vehicles", () => {
   it("a vehicle's status rules for staff and mechanics are as they were", async () => {
     const bike = await vehicle();
     const { data: unit } = await db("owner")
@@ -617,7 +479,7 @@ describe("items for sale: the stock ledger", () => {
     ]);
     expect(await stock(sticker)).toEqual({
       in_stock: 60,
-      damaged: 0,
+      in_repair: 0,
       lost: 0,
       available: 60,
     });
@@ -763,18 +625,6 @@ describe("races", () => {
     const count = (await unitsOf(helmet)).length;
     expect([5, 9]).toContain(count);
     expect((await stock(helmet)).in_stock).toBe(count);
-  });
-
-  it("twelve staff marking the last free helmet damaged: one does, eleven are told there is none", async () => {
-    const helmet = await general("gear", 1);
-    const results = await Promise.all(
-      Array.from({ length: 12 }, () => damaged("staff", helmet, 1)),
-    );
-    expect(results.filter((r) => !r.error)).toHaveLength(1);
-    for (const result of results)
-      if (result.error)
-        expect(result.error.message).toContain("not_enough_free");
-    expect(await stock(helmet)).toMatchObject({ damaged: 1, available: 0 });
   });
 });
 
@@ -1183,9 +1033,10 @@ describe("Moto Mangos: change model and disconnect", () => {
 });
 
 describe("another shop", () => {
-  it("can't count, damage, lose or resolve this shop's stock, and reads none of it", async () => {
+  it("can't count, report on or resolve this shop's stock, and reads none of it", async () => {
     const helmet = await general("gear", 4);
     await lost("staff", helmet, 1);
+    const lostUnit = (await unitsOf(helmet)).find((u) => u.status === "lost")!;
     const args = {
       p_product_id: helmet,
       p_location_id: shop.locationId,
@@ -1193,19 +1044,22 @@ describe("another shop", () => {
     };
     for (const role of ["owner", "staff"] as const) {
       const them = db(role, other);
-      expect((await them.rpc("mark_units_damaged", args)).error?.code).toBe(
-        "42501",
-      );
-      expect((await them.rpc("mark_units_repaired", args)).error?.code).toBe(
-        "42501",
-      );
-      expect((await them.rpc("mark_units_lost", args)).error?.code).toBe(
-        "42501",
-      );
-      expect(
-        (await them.rpc("resolve_lost_units", { ...args, p_action: "remove" }))
-          .error?.code,
-      ).toBe("42501");
+      for (const kind of ["repair", "lost", "damaged"] as const)
+        expect(
+          (await them.rpc("report_gear_problem", { ...args, p_kind: kind }))
+            .error?.code,
+          kind,
+        ).toBe("42501");
+      for (const action of ["found", "write_off"] as const)
+        expect(
+          (
+            await them.rpc("resolve_unit_problem", {
+              p_unit_id: lostUnit.id,
+              p_action: action,
+            })
+          ).error?.code,
+          action,
+        ).toBe("42501");
       const seen = await them.rpc("product_stock", { p_tenant_id: shop.id });
       expect(seen.data ?? []).toEqual([]);
     }
@@ -1225,7 +1079,7 @@ describe("another shop", () => {
     }
     expect(await stock(helmet)).toEqual({
       in_stock: 3,
-      damaged: 0,
+      in_repair: 0,
       lost: 1,
       available: 3,
     });

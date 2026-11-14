@@ -428,8 +428,15 @@ export function dbErrorKey(
     // Products, stage B: stock, the manual order, the Moto Mangos panel.
     "units_blocked",
     "not_enough_free",
-    "not_enough_damaged",
-    "not_enough_lost",
+    // Rental gear, the stock rework: report a problem, the Out of service list.
+    "date_in_future",
+    "expected_before_happened",
+    "notes_too_long",
+    "unit_not_free",
+    "unit_not_found",
+    "not_in_repair",
+    "not_lost",
+    "not_out_of_service",
     "quantity_out_of_range",
     "until_in_past",
     "label_needs_tracking",

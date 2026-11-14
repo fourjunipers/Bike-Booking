@@ -429,7 +429,7 @@ export async function getProduct(tenantId: string, id: string) {
 
 /**
  * Stock by product and location, counted in the database: units in stock,
- * damaged, lost and available for gear; what is on hand for an item for sale.
+ * in repair, lost and available for gear; what is on hand for an item for sale.
  */
 export const getProductStock = cache(async (tenantId: string) => {
   const supabase = await createClient();
@@ -445,13 +445,19 @@ const runningNow = () => {
   return `[${at},${at}]`;
 };
 
-/** The units of one tracked gear product, labelled ones first, by label. */
+/**
+ * The units of one gear product, labelled ones first, by label; each with
+ * whether downtime is running on it (in repair) and its record while it is
+ * out of service.
+ */
 export async function getGearUnits(tenantId: string, productId: string) {
   const supabase = await createClient();
   const [units, blocks] = await Promise.all([
     supabase
       .from("units")
-      .select("id, label, status, location_id, created_at")
+      .select(
+        "id, label, status, location_id, created_at, problem_on, expected_back, problem_notes",
+      )
       .eq("tenant_id", tenantId)
       .eq("product_id", productId)
       .in("status", ["active", "maintenance", "lost"])
@@ -467,12 +473,15 @@ export async function getGearUnits(tenantId: string, productId: string) {
   ]);
   if (units.error) throw units.error;
   if (blocks.error) throw blocks.error;
-  const damaged = new Set(
+  const inRepair = new Set(
     blocks.data.filter((b) => b.kind === "downtime").map((b) => b.unit_id),
   );
+  const held = new Set(blocks.data.map((b) => b.unit_id));
   return units.data.map((unit) => ({
     ...unit,
-    damaged: damaged.has(unit.id),
+    inRepair: inRepair.has(unit.id),
+    /** A block of any kind is running on it now: a booking, or a repair. */
+    held: held.has(unit.id),
   }));
 }
 

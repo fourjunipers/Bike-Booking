@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from "react";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Panel } from "@/components/action-form";
@@ -10,26 +11,26 @@ import {
   getProductStock,
   getStockMovements,
 } from "@/lib/fleet-data";
-import { hasStock, stockOf, type GeneralType } from "@/lib/general-products";
 import {
-  canManageFleet,
-  canMarkLost,
-  canWorkOnUnits,
-  type Role,
-} from "@/lib/roles";
-import { formatInstant } from "@/lib/shop-time";
+  canEditProblem,
+  canGear,
+  problemKindsFor,
+} from "@/lib/gear-permissions";
+import {
+  formatDay,
+  gearState,
+  hasStock,
+  stockOf,
+  unitNames,
+  type GearState,
+  type GeneralType,
+} from "@/lib/general-products";
+import { canManageFleet, type Role } from "@/lib/roles";
+import { dateInZone, formatInstant } from "@/lib/shop-time";
 import { cn } from "@/lib/utils";
 import { DeleteProductButton } from "./delete-product";
-import {
-  DamagedForm,
-  GeneralForm,
-  LostForm,
-  QuantityForm,
-  RepairedForm,
-  ResolveLostForms,
-  UnitButton,
-  UnitLabelForm,
-} from "./general-forms";
+import { ProblemActions, QuantityStepper, ReportProblem } from "./gear-stock";
+import { GeneralForm, QuantityForm, UnitLabelForm } from "./general-forms";
 import { HistoryTab } from "./history-tab";
 
 const tabs = ["details", "stock", "history"] as const;
@@ -43,19 +44,25 @@ type GeneralProduct = {
   description: string | null;
 };
 
+type Locations = Awaited<ReturnType<typeof getLocations>>;
+type StockLines = Awaited<ReturnType<typeof getProductStock>>;
+
 /**
- * A general product's page (owner, 13 Nov 2026): Details, Stock and History.
- * - Details (owners and managers): name and description; for gear, whether
- *   each unit is tracked on its own; delete at the very bottom.
- * - Stock (gear and items for sale; everyone reads): the quantity per
- *   location, then a unit's three states, each under a heading with a line
- *   saying what it means: In use ("Mark damaged", "Mark lost"), Damaged
- *   ("Back in use") and Lost ("Found, back in use", "Write off"). "Change
- *   quantity" is for owners and managers; "Mark damaged" and "Back in use"
- *   for everyone who works on units; "Mark lost" for owners, managers and
- *   staff; only an owner or manager marks a lost unit found or writes it off.
+ * A general product's page: Details, Stock and History.
+ *
+ * Rental gear (owner, 14 Nov 2026; docs/products-redesign.md §5.9):
+ * - Details (everyone): for owners and managers, the name and description
+ *   first. Then, per location, the counts as large tiles (In stock,
+ *   Available now, In repair; Lost when above zero), "Change quantity", one
+ *   "Report a problem" button and the "Out of service" list. Delete is last.
+ * - Stock (everyone): one row per unit with its name or label and a status
+ *   chip. Counted gear gets a hint about tracking each unit on its own.
  * - History (owners and managers).
- * No Moto Mangos panel, no buffers, no deposit, no licence class.
+ * Who may do what is in lib/gear-permissions.
+ *
+ * Items for sale are as they were: Details (owners and managers), Stock
+ * (everyone reads; the quantity and its ledger) and History. A service has
+ * no stock. No Moto Mangos panel, no buffers, no deposit, no licence class.
  */
 export async function GeneralProductPage({
   slug,
@@ -78,9 +85,11 @@ export async function GeneralProductPage({
   const stocked = hasStock(type);
   const allowed: Tab[] = manage
     ? tabs.filter((tab) => tab !== "stock" || stocked)
-    : stocked
-      ? ["stock"]
-      : [];
+    : type === "gear"
+      ? ["details", "stock"]
+      : stocked
+        ? ["stock"]
+        : [];
   const tab: Tab | null = (allowed as string[]).includes(asked)
     ? (asked as Tab)
     : (allowed[0] ?? null);
@@ -145,45 +154,70 @@ export async function GeneralProductPage({
       )}
 
       {tab === "details" && (
-        <div className="space-y-6">
-          <Panel id="product-details" className="max-w-3xl">
-            <GeneralForm
+        <div className="max-w-3xl space-y-6">
+          {manage && (
+            <Card id="product-details" title={t("gearStock.detailsTitle")}>
+              <GeneralForm
+                slug={slug}
+                locations={[]}
+                values={{
+                  id: product.id,
+                  type,
+                  name: product.name,
+                  description: product.description ?? "",
+                  track: tracked,
+                }}
+              />
+            </Card>
+          )}
+          {type === "gear" && (
+            <GearStock
               slug={slug}
-              locations={[]}
-              values={{
-                id: product.id,
-                type,
-                name: product.name,
-                description: product.description ?? "",
-                track: tracked,
-              }}
+              tenantId={tenant.id}
+              role={role}
+              product={product}
+              tracked={tracked}
+              locations={locations}
+              lines={lines}
+              locale={locale}
             />
-          </Panel>
-          <section
-            aria-label={t("deleteTitle")}
-            className="flex flex-wrap gap-3 border-t pt-6"
-          >
-            <DeleteProductButton
-              slug={slug}
-              id={product.id}
-              general
-              hasVehicles={total.inStock + total.lost > 0}
-              label={t("delete")}
-              confirm={t("deleteConfirm")}
-              blocked={t("deleteBlocked")}
-            />
-          </section>
+          )}
+          {manage && (
+            <section
+              aria-label={t("deleteTitle")}
+              className="flex flex-wrap gap-3 border-t pt-6"
+            >
+              <DeleteProductButton
+                slug={slug}
+                id={product.id}
+                general
+                hasVehicles={total.inStock + total.lost > 0}
+                label={t("delete")}
+                confirm={t("deleteConfirm")}
+                blocked={t("deleteBlocked")}
+              />
+            </section>
+          )}
         </div>
       )}
 
-      {tab === "stock" && (
-        <StockTab
+      {tab === "stock" && type === "gear" && (
+        <GearUnits
           slug={slug}
           tenantId={tenant.id}
           role={role}
           product={product}
-          type={type as "gear" | "sale_item"}
           tracked={tracked}
+          locations={locations}
+        />
+      )}
+
+      {tab === "stock" && type === "sale_item" && (
+        <SaleStock
+          slug={slug}
+          tenantId={tenant.id}
+          role={role}
+          product={product}
           locations={locations}
           lines={lines}
           locale={locale}
@@ -194,9 +228,8 @@ export async function GeneralProductPage({
         <HistoryTab
           tenantId={tenant.id}
           productId={product.id}
-          // Counted gear is nameless rows: the product's own events tell the
-          // story ("quantity 20 → 25", "wrote off 1"). Tracked units add
-          // theirs, one line per unit.
+          // Gear's stock events are the product's own ("marked 1 in
+          // repair"). Tracked units add their labels' changes.
           units={[]}
           unitsAre="gear"
           trackedGear={tracked}
@@ -208,23 +241,88 @@ export async function GeneralProductPage({
   );
 }
 
+/**
+ * One section of the page: a card with its title above a divider. One main
+ * (filled) button at most goes inside.
+ */
+function Card({
+  id,
+  title,
+  intro,
+  children,
+  ...rest
+}: {
+  id?: string;
+  title: string;
+  intro?: string;
+  children: ReactNode;
+  "data-card"?: string;
+}) {
+  const heading = useId();
+  return (
+    <section
+      id={id}
+      aria-labelledby={heading}
+      className="scroll-mt-20 rounded-lg border bg-card"
+      {...rest}
+    >
+      <div className="border-b px-4 py-3 sm:px-5">
+        <h2 id={heading} className="text-base font-semibold">
+          {title}
+        </h2>
+        {intro && (
+          <p className="mt-0.5 text-sm text-muted-foreground">{intro}</p>
+        )}
+      </div>
+      <div className="p-4 sm:p-5">{children}</div>
+    </section>
+  );
+}
+
 const chip = "rounded-full px-2 py-0.5 text-xs font-medium";
-/** The three states of a unit of gear, in the order the Stock tab shows them. */
-const stateNames = ["inUse", "damaged", "lost"] as const;
-const chipClass = {
+const chipClass: Record<GearState, string> = {
   inUse:
     "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  damaged: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  repair: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
   lost: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
 };
 
-/** The quantity per location, with what each role may do to it. */
-async function StockTab({
+/** Today at a location, as a date field takes it: "2026-11-14". */
+function todayAt(timeZone: string): string {
+  const { year, month, day } = dateInZone(new Date(), timeZone);
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${year}-${two(month)}-${two(day)}`;
+}
+
+/** A location's name above its cards, when the shop has more than one. */
+function LocationGroup({
+  name,
+  show,
+  children,
+}: {
+  name: string;
+  show: boolean;
+  children: ReactNode;
+}) {
+  // One location: its cards stand on their own, with no group around them.
+  if (!show) return <div className="space-y-6">{children}</div>;
+  return (
+    <section aria-label={name} data-location className="space-y-4">
+      <p className="text-lg font-semibold">{name}</p>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * Rental gear's stock on the Details tab, per location: the tiles, "Change
+ * quantity", "Report a problem" and "Out of service".
+ */
+async function GearStock({
   slug,
   tenantId,
   role,
   product,
-  type,
   tracked,
   locations,
   lines,
@@ -234,22 +332,319 @@ async function StockTab({
   tenantId: string;
   role: Role;
   product: GeneralProduct;
-  type: "gear" | "sale_item";
   tracked: boolean;
-  locations: Awaited<ReturnType<typeof getLocations>>;
-  lines: Awaited<ReturnType<typeof getProductStock>>;
+  locations: Locations;
+  lines: StockLines;
+  locale: string;
+}) {
+  const [t, tUnit, units] = await Promise.all([
+    getTranslations("Products.gearStock"),
+    getTranslations("Products.stockTab"),
+    getGearUnits(tenantId, product.id),
+  ]);
+  const kinds = problemKindsFor(role);
+  const can = {
+    backInUse: canGear(role, "back_in_use"),
+    found: canGear(role, "found"),
+    writeOff: canGear(role, "write_off"),
+  };
+
+  return locations.map((location) => {
+    const stock = stockOf(lines, product.id, location.id);
+    const target = { slug, id: product.id, location: location.id };
+    const here = units.filter((unit) => unit.location_id === location.id);
+    const names = unitNames(here, (number) => tUnit("unit", { number }));
+    const today = todayAt(location.timezone);
+    // In repair first, then lost; the longest out at the top of each.
+    const out = here
+      .map((unit) => ({ unit, state: gearState(unit) }))
+      .filter(
+        (row): row is typeof row & { state: "repair" | "lost" } =>
+          row.state !== "inUse",
+      )
+      .sort(
+        (a, b) =>
+          Number(a.state === "lost") - Number(b.state === "lost") ||
+          (a.unit.problem_on ?? "").localeCompare(b.unit.problem_on ?? ""),
+      );
+    // In use and held by nothing right now. (A unit booked for later is
+    // refused by the database, with a message.)
+    const free = here.filter((unit) => unit.status === "active" && !unit.held);
+    const tiles: {
+      key: "inStock" | "available" | "inRepair" | "lost";
+      count: number;
+    }[] = [
+      { key: "inStock", count: stock.inStock },
+      { key: "available", count: stock.available },
+      { key: "inRepair", count: stock.inRepair },
+      // Lost shows only while something is lost.
+      ...(stock.lost > 0 ? [{ key: "lost" as const, count: stock.lost }] : []),
+    ];
+
+    return (
+      <LocationGroup
+        key={location.id}
+        name={location.name}
+        show={locations.length > 1}
+      >
+        <Card data-card="summary" title={t("summary")} intro={t("summaryHelp")}>
+          <dl
+            data-stock-line
+            className={cn(
+              "grid gap-2 sm:gap-3",
+              tiles.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3",
+            )}
+          >
+            {tiles.map((tile) => (
+              <div
+                key={tile.key}
+                data-tile={tile.key}
+                className="flex flex-col justify-between rounded-lg border bg-background p-3"
+              >
+                <dt className="text-xs font-medium text-muted-foreground sm:text-sm">
+                  {t(`tile.${tile.key}`)}
+                </dt>
+                <dd className="mt-1 text-3xl font-semibold tabular-nums">
+                  {tile.count}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+
+        {canGear(role, "set_quantity") && (
+          <Card data-card="quantity" title={t("quantityTitle")}>
+            <QuantityStepper
+              // A saved quantity redraws the field with it.
+              key={stock.inStock}
+              target={target}
+              current={stock.inStock}
+            />
+          </Card>
+        )}
+
+        {kinds.length > 0 && (
+          <Card
+            data-card="report"
+            title={t("reportTitle")}
+            intro={t("reportIntro")}
+          >
+            <ReportProblem
+              target={target}
+              kinds={kinds}
+              units={
+                tracked
+                  ? free.map((unit) => ({
+                      id: unit.id,
+                      name: names.get(unit.id) ?? "",
+                    }))
+                  : undefined
+              }
+              free={tracked ? free.length : stock.available}
+              today={today}
+            />
+          </Card>
+        )}
+
+        <Card data-card="out" title={t("outTitle")} intro={t("outIntro")}>
+          {out.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("outNone")}</p>
+          ) : (
+            <ul className="-my-4 divide-y">
+              {out.map(({ unit, state }) => {
+                const name = tracked ? names.get(unit.id) : undefined;
+                return (
+                  <li
+                    key={unit.id}
+                    data-out-unit={state}
+                    className="space-y-3 py-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      {name && <span className="font-medium">{name}</span>}
+                      <span className={cn(chip, chipClass[state])}>
+                        {tUnit(`status.${state}`)}
+                      </span>
+                    </div>
+                    <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-xs text-muted-foreground">
+                          {t("line.happenedOn")}
+                        </dt>
+                        <dd>
+                          {unit.problem_on
+                            ? formatDay(unit.problem_on, locale)
+                            : t("line.notSet")}
+                        </dd>
+                      </div>
+                      {state === "repair" && (
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            {t("line.expectedBack")}
+                          </dt>
+                          <dd>
+                            {unit.expected_back
+                              ? formatDay(unit.expected_back, locale)
+                              : t("line.notSet")}
+                          </dd>
+                        </div>
+                      )}
+                      {unit.problem_notes && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-xs text-muted-foreground">
+                            {t("line.notes")}
+                          </dt>
+                          <dd className="whitespace-pre-line">
+                            {unit.problem_notes}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                    <ProblemActions
+                      slug={slug}
+                      unit={unit.id}
+                      state={state}
+                      name={name}
+                      can={{ ...can, edit: canEditProblem(role, state) }}
+                      values={{
+                        happenedOn: unit.problem_on ?? "",
+                        expectedBack: unit.expected_back ?? "",
+                        notes: unit.problem_notes ?? "",
+                      }}
+                      today={today}
+                    />
+                    {state === "lost" && !can.found && (
+                      <p className="text-sm text-muted-foreground">
+                        {t("lostWaiting")}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </LocationGroup>
+    );
+  });
+}
+
+/**
+ * Rental gear's Stock tab: one row per unit with its name or label and a
+ * status chip. Owners and managers label the units of tracked gear here.
+ * Everything that changes a unit's state is on the Details tab.
+ */
+async function GearUnits({
+  slug,
+  tenantId,
+  role,
+  product,
+  tracked,
+  locations,
+}: {
+  slug: string;
+  tenantId: string;
+  role: Role;
+  product: GeneralProduct;
+  tracked: boolean;
+  locations: Locations;
+}) {
+  const manage = canManageFleet(role);
+  const [t, units] = await Promise.all([
+    getTranslations("Products.stockTab"),
+    getGearUnits(tenantId, product.id),
+  ]);
+  return (
+    <div className="max-w-3xl space-y-6">
+      {!tracked && (
+        <p
+          data-untracked-hint
+          className="rounded-lg border border-highlight-border bg-highlight p-3 text-sm text-highlight-foreground"
+        >
+          {t(manage ? "untrackedHint" : "untrackedHintStaff")}
+          {manage && (
+            <>
+              {" "}
+              <Link
+                href={`/${slug}/products/${product.id}#product-details`}
+                className="font-medium underline underline-offset-2"
+              >
+                {t("untrackedLink")}
+              </Link>
+            </>
+          )}
+        </p>
+      )}
+      {locations.map((location) => {
+        const here = units.filter((unit) => unit.location_id === location.id);
+        const names = unitNames(here, (number) => t("unit", { number }));
+        return (
+          <Card
+            key={location.id}
+            data-card={`units-${location.id}`}
+            title={
+              locations.length > 1
+                ? t("unitsAt", { location: location.name, count: here.length })
+                : t("units", { count: here.length })
+            }
+          >
+            {here.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("noUnits")}</p>
+            ) : (
+              <ul className="-my-4 divide-y">
+                {here.map((unit) => {
+                  const state = gearState(unit);
+                  return (
+                    <li key={unit.id} data-gear-unit className="space-y-3 py-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium">
+                          {names.get(unit.id)}
+                        </span>
+                        <span className={cn(chip, chipClass[state])}>
+                          {t(`status.${state}`)}
+                        </span>
+                      </div>
+                      {tracked && manage && (
+                        <UnitLabelForm
+                          slug={slug}
+                          unit={unit.id}
+                          label={unit.label ?? ""}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+/** An item for sale's Stock tab, as it was: what is on hand, and its ledger. */
+async function SaleStock({
+  slug,
+  tenantId,
+  role,
+  product,
+  locations,
+  lines,
+  locale,
+}: {
+  slug: string;
+  tenantId: string;
+  role: Role;
+  product: GeneralProduct;
+  locations: Locations;
+  lines: StockLines;
   locale: string;
 }) {
   const manage = canManageFleet(role);
-  const work = canWorkOnUnits(role);
-  const lose = canMarkLost(role);
-  const [t, units, movements, names] = await Promise.all([
+  const [t, movements, names] = await Promise.all([
     getTranslations("Products.stockTab"),
-    tracked ? getGearUnits(tenantId, product.id) : [],
-    type === "sale_item" ? getStockMovements(tenantId, product.id, 20) : [],
-    type === "sale_item" && manage
-      ? getMemberNames(tenantId)
-      : new Map<string, string>(),
+    getStockMovements(tenantId, product.id, 20),
+    manage ? getMemberNames(tenantId) : new Map<string, string>(),
   ]);
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
 
@@ -257,21 +652,6 @@ async function StockTab({
     <div className="max-w-3xl space-y-6">
       {locations.map((location) => {
         const stock = stockOf(lines, product.id, location.id);
-        const target = { slug, id: product.id, location: location.id };
-        // Tracked gear: this location's units, each with its state and the
-        // name its line and buttons use.
-        const named = units
-          .filter((unit) => unit.location_id === location.id)
-          .map((unit, index) => ({
-            unit,
-            name: unit.label ?? t("unit", { number: index + 1 }),
-            state:
-              unit.status === "lost"
-                ? ("lost" as const)
-                : unit.damaged
-                  ? ("damaged" as const)
-                  : ("inUse" as const),
-          }));
         return (
           <section
             key={location.id}
@@ -281,217 +661,56 @@ async function StockTab({
             <h2 id={`stock-${location.id}`} className="text-lg font-semibold">
               {location.name}
             </h2>
-            {type === "sale_item" ? (
-              <p className="mt-1 text-sm" data-stock-line>
-                {t("onHand", { count: stock.inStock })}
-              </p>
-            ) : (
-              <ul
-                data-stock-line
-                aria-label={t("counts")}
-                className="mt-2 flex flex-wrap gap-1.5 text-sm"
-              >
-                <li className={cn(chip, "bg-foreground text-background")}>
-                  {t("inStock", { count: stock.inStock })}
-                </li>
-                <li className={cn(chip, chipClass.inUse)}>
-                  {t("available", { count: stock.available })}
-                </li>
-                {stock.damaged > 0 && (
-                  <li className={cn(chip, chipClass.damaged)}>
-                    {t("damaged", { count: stock.damaged })}
-                  </li>
-                )}
-                {stock.lost > 0 && (
-                  <li className={cn(chip, chipClass.lost)}>
-                    {t("lost", { count: stock.lost })}
-                  </li>
-                )}
-              </ul>
-            )}
-
+            <p className="mt-1 text-sm" data-stock-line>
+              {t("onHand", { count: stock.inStock })}
+            </p>
             {manage && (
               <div className="mt-4">
                 <QuantityForm
-                  target={target}
-                  type={type}
+                  target={{ slug, id: product.id, location: location.id }}
                   current={stock.inStock}
                 />
               </div>
             )}
-
-            {/* Gear: three states, each under its own heading with a line
-                saying what it means and the actions that belong to it.
-                Counted gear asks "how many"; tracked gear lists its units. */}
-            {type === "gear" &&
-              stateNames.map((state) => {
-                const count =
-                  state === "inUse"
-                    ? stock.inStock - stock.damaged
-                    : stock[state];
-                // Damaged and Lost appear once something is in them.
-                if (state !== "inUse" && count === 0) return null;
-                const rows = named.filter((unit) => unit.state === state);
-                // Its own id: the forms below have fields named after the states.
-                const heading = `state-${state}-${location.id}`;
-                return (
-                  <section
-                    key={state}
-                    aria-labelledby={heading}
-                    data-stock-state={state}
-                    className="mt-5 border-t pt-4"
-                  >
-                    <h3 id={heading} className="font-medium">
-                      {t(`state.${state}.title`, { count })}
-                    </h3>
-                    <p className="mt-1 mb-3 text-sm text-muted-foreground">
-                      {t(`state.${state}.help`)}
-                      {state === "lost" && !manage && ` ${t("lostWaiting")}`}
-                    </p>
-
-                    {!tracked && state === "inUse" && (
-                      <div className="grid gap-5 sm:grid-cols-2">
-                        {work && stock.available > 0 && (
-                          <DamagedForm
-                            target={target}
-                            zone={location.timezone}
-                          />
-                        )}
-                        {lose && stock.inStock > 0 && (
-                          <LostForm target={target} />
-                        )}
-                      </div>
-                    )}
-                    {!tracked && state === "damaged" && work && (
-                      <RepairedForm target={target} />
-                    )}
-                    {!tracked && state === "lost" && manage && (
-                      <ResolveLostForms target={target} />
-                    )}
-
-                    {tracked && rows.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        {t("noUnits")}
-                      </p>
-                    )}
-                    {tracked && rows.length > 0 && (
-                      <ul
-                        aria-labelledby={heading}
-                        className="divide-y rounded-md border"
-                      >
-                        {rows.map(({ unit, name }) => (
-                          <li
-                            key={unit.id}
-                            data-gear-unit
-                            className="space-y-3 p-3"
-                          >
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-medium">{name}</span>
-                              <span className={cn(chip, chipClass[state])}>
-                                {t(`status.${state}`)}
-                              </span>
-                            </div>
-                            {manage && (
-                              <UnitLabelForm
-                                slug={slug}
-                                unit={unit.id}
-                                label={unit.label ?? ""}
-                              />
-                            )}
-                            <div className="flex flex-wrap gap-2">
-                              {state === "inUse" && work && (
-                                <UnitButton
-                                  slug={slug}
-                                  unit={unit.id}
-                                  change="damaged"
-                                  label={`${t("markDamaged")}: ${name}`}
-                                />
-                              )}
-                              {state === "damaged" && work && (
-                                <UnitButton
-                                  slug={slug}
-                                  unit={unit.id}
-                                  change="repaired"
-                                  label={`${t("backInUse")}: ${name}`}
-                                />
-                              )}
-                              {state !== "lost" && lose && (
-                                <UnitButton
-                                  slug={slug}
-                                  unit={unit.id}
-                                  change="lost"
-                                  label={`${t("markLost")}: ${name}`}
-                                  confirm={t("lostConfirm")}
-                                  destructive
-                                />
-                              )}
-                              {state === "lost" && manage && (
-                                <>
-                                  <UnitButton
-                                    slug={slug}
-                                    unit={unit.id}
-                                    change="restore"
-                                    label={`${t("found")}: ${name}`}
-                                  />
-                                  <UnitButton
-                                    slug={slug}
-                                    unit={unit.id}
-                                    change="remove"
-                                    label={`${t("writeOff")}: ${name}`}
-                                    confirm={t("writeOffConfirm")}
-                                    destructive
-                                  />
-                                </>
-                              )}
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                );
-              })}
           </section>
         );
       })}
 
-      {type === "sale_item" && (
-        <Panel title={t("ledger")} intro={t("ledgerIntro")}>
-          {movements.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("ledgerNone")}</p>
-          ) : (
-            <ol className="divide-y rounded-md border text-sm">
-              {movements.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 p-3"
-                >
-                  <span className="font-medium tabular-nums">
-                    {t(`kind.${row.kind}` as "kind.received")}{" "}
-                    {row.quantity > 0 ? `+${row.quantity}` : row.quantity}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {[
-                      locations.length > 1
-                        ? locationNames.get(row.location_id)
-                        : null,
-                      row.created_by ? names.get(row.created_by) : null,
-                      formatInstant(
-                        new Date(row.created_at),
-                        locations.find((l) => l.id === row.location_id)
-                          ?.timezone ?? "UTC",
-                        locale,
-                      ),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </Panel>
-      )}
+      <Panel title={t("ledger")} intro={t("ledgerIntro")}>
+        {movements.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("ledgerNone")}</p>
+        ) : (
+          <ol className="divide-y rounded-md border text-sm">
+            {movements.map((row) => (
+              <li
+                key={row.id}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 p-3"
+              >
+                <span className="font-medium tabular-nums">
+                  {t(`kind.${row.kind}` as "kind.received")}{" "}
+                  {row.quantity > 0 ? `+${row.quantity}` : row.quantity}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {[
+                    locations.length > 1
+                      ? locationNames.get(row.location_id)
+                      : null,
+                    row.created_by ? names.get(row.created_by) : null,
+                    formatInstant(
+                      new Date(row.created_at),
+                      locations.find((l) => l.id === row.location_id)
+                        ?.timezone ?? "UTC",
+                      locale,
+                    ),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Panel>
     </div>
   );
 }

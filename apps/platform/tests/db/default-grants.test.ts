@@ -287,7 +287,7 @@ describe("products stage B: the stock ledger and the stock functions", () => {
         and p.proname in (
           'set_stock_quantity', 'mark_units_damaged', 'mark_units_repaired',
           'mark_units_lost', 'resolve_lost_units', 'create_general_product',
-          'product_stock', 'move_product', 'reset_product_order',
+          'move_product', 'reset_product_order',
           'change_listing_entry', 'disconnect_listing',
           'lock_product_stock', 'lock_units', 'stock_product', 'upcoming_bookings',
           'units_gear_fields', 'units_label_guard', 'products_tracking_guard',
@@ -299,13 +299,10 @@ describe("products stage B: the stock ledger and the stock functions", () => {
       "platform.change_listing_entry false true false",
       "platform.create_general_product false true false",
       "platform.disconnect_listing false true false",
-      "platform.mark_units_damaged false true false",
-      "platform.mark_units_lost false true false",
-      "platform.mark_units_repaired false true false",
+      // mark_units_damaged, mark_units_repaired, mark_units_lost and
+      // resolve_lost_units were dropped by the stock rework (below).
       "platform.move_product false true false",
-      "platform.product_stock false true false",
       "platform.reset_product_order false true false",
-      "platform.resolve_lost_units false true false",
       "platform.set_stock_quantity false true false",
       // Helpers the functions above call as the member.
       "platform_private.lock_product_stock false true false",
@@ -319,6 +316,40 @@ describe("products stage B: the stock ledger and the stock functions", () => {
       "platform_private.units_gear_fields false false false",
       "platform_private.units_label_guard false false false",
       "platform_private.upcoming_bookings false true false",
+    ]);
+  });
+});
+
+/**
+ * Rental gear, the stock rework (20261114000100): no new table; three
+ * functions in place of stage B's four, the counts again, and three helpers.
+ */
+describe("gear stock rework: the functions", () => {
+  it("every one is closed to signed-out visitors and to PUBLIC; members call them", () => {
+    const rows = lines(`
+      select n.nspname || '.' || p.proname || ' '
+        || has_function_privilege('anon', p.oid, 'execute') || ' '
+        || has_function_privilege('authenticated', p.oid, 'execute') || ' '
+        || coalesce((select bool_or(a.grantee = 0) from aclexplode(p.proacl) a), p.proacl is null)
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname in ('platform', 'platform_private')
+        and p.proname in (
+          'report_gear_problem', 'update_unit_problem', 'resolve_unit_problem',
+          'product_stock', 'gear_roles', 'gear_unit_state', 'location_today',
+          'mark_units_damaged', 'mark_units_repaired', 'mark_units_lost',
+          'resolve_lost_units')
+      order by 1;
+    `);
+    expect(rows).toEqual([
+      // name, anon, authenticated, PUBLIC
+      "platform.product_stock false true false",
+      "platform.report_gear_problem false true false",
+      "platform.resolve_unit_problem false true false",
+      "platform.update_unit_problem false true false",
+      // Helpers the functions above call as the member.
+      "platform_private.gear_roles false true false",
+      "platform_private.gear_unit_state false true false",
+      "platform_private.location_today false true false",
     ]);
   });
 });

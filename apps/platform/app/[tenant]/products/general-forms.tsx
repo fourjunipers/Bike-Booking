@@ -14,12 +14,7 @@ import { Field, inputClass } from "@/components/form";
 import { generalTypes, type GeneralType } from "@/lib/general-products";
 import { cn } from "@/lib/utils";
 import {
-  changeGearUnit,
   createGeneralProduct,
-  markDamaged,
-  markLost,
-  markRepaired,
-  resolveLost,
   saveGeneralProduct,
   setStockQuantity,
   setUnitLabel,
@@ -27,8 +22,9 @@ import {
 
 /**
  * Forms for general products (owner, 13 Nov 2026): the two-choice start of
- * "New product", the General form, and the Stock tab's quantity, damaged and
- * lost forms. Native inputs throughout; every control is 44 px tall.
+ * "New product", the General form, an item for sale's quantity and a gear
+ * unit's label. Rental gear's stock forms are in gear-stock.tsx. Native
+ * inputs throughout; every control is 44 px tall.
  */
 
 const choiceClass = (on: boolean) =>
@@ -259,10 +255,7 @@ function StockForm({
   help,
   defaultValue,
   submitLabel,
-  confirm,
-  destructive,
   hidden,
-  children,
 }: {
   target: StockTarget;
   action: FormAction;
@@ -272,18 +265,13 @@ function StockForm({
   help?: string;
   defaultValue?: number;
   submitLabel: string;
-  confirm?: string;
-  destructive?: boolean;
   hidden?: Record<string, string>;
-  children?: ReactNode;
 }) {
   return (
     <ActionForm
       action={action}
       hidden={{ ...hiddenOf(target), ...hidden }}
       submitLabel={submitLabel}
-      confirm={confirm}
-      destructive={destructive}
       className="space-y-3"
     >
       <CountField
@@ -292,19 +280,16 @@ function StockForm({
         help={help}
         defaultValue={defaultValue}
       />
-      {children}
     </ActionForm>
   );
 }
 
-/** "Change quantity": owners and managers. */
+/** An item for sale's "Change quantity": owners and managers. */
 export function QuantityForm({
   target,
-  type,
   current,
 }: {
   target: StockTarget;
-  type: "gear" | "sale_item";
   current: number;
 }) {
   const t = useTranslations("Products.stockTab");
@@ -316,122 +301,11 @@ export function QuantityForm({
       action={setStockQuantity}
       name="quantity"
       label={t("quantity")}
-      help={t(type === "gear" ? "quantityHelpGear" : "quantityHelpSale")}
+      help={t("quantityHelpSale")}
       defaultValue={current}
       submitLabel={t("changeQuantity")}
-      hidden={{ type }}
+      hidden={{ type: "sale_item" }}
     />
-  );
-}
-
-/** "Mark damaged": out of use from now, until a time if one is known. */
-export function DamagedForm({
-  target,
-  zone,
-}: {
-  target: StockTarget;
-  /** The location's time zone, named beside the time field. */
-  zone: string;
-}) {
-  const t = useTranslations("Products.stockTab");
-  return (
-    <StockForm
-      target={target}
-      action={markDamaged}
-      name="damaged"
-      label={t("damagedHowMany")}
-      submitLabel={t("markDamaged")}
-    >
-      <UntilField
-        id={`until-${target.location}`}
-        label={t("until")}
-        help={t("untilHelp", { zone })}
-      />
-    </StockForm>
-  );
-}
-
-function UntilField({
-  id,
-  label,
-  help,
-}: {
-  id: string;
-  label: string;
-  help: string;
-}) {
-  const error = useFieldError("until");
-  return (
-    <Field id={id} label={label} help={help} error={error}>
-      <input
-        id={id}
-        name="until"
-        type="datetime-local"
-        aria-invalid={error ? true : undefined}
-        aria-describedby={`${id}-help`}
-        className={cn(inputClass, "max-w-64")}
-      />
-    </Field>
-  );
-}
-
-/** "Back in use": that many damaged units return to stock now. */
-export function RepairedForm({ target }: { target: StockTarget }) {
-  const t = useTranslations("Products.stockTab");
-  return (
-    <StockForm
-      target={target}
-      action={markRepaired}
-      name="repaired"
-      label={t("repairedHowMany")}
-      submitLabel={t("backInUse")}
-    />
-  );
-}
-
-/** "Mark lost": owners, managers and staff. */
-export function LostForm({ target }: { target: StockTarget }) {
-  const t = useTranslations("Products.stockTab");
-  return (
-    <StockForm
-      target={target}
-      action={markLost}
-      name="lost"
-      label={t("lostHowMany")}
-      submitLabel={t("markLost")}
-      confirm={t("lostConfirm")}
-      destructive
-    />
-  );
-}
-
-/**
- * Lost units: "Found, back in use" puts them back; "Write off" removes them
- * for good, after a confirmation. Owners and managers.
- */
-export function ResolveLostForms({ target }: { target: StockTarget }) {
-  const t = useTranslations("Products.stockTab");
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <StockForm
-        target={target}
-        action={resolveLost}
-        name="restore"
-        label={t("foundHowMany")}
-        submitLabel={t("found")}
-        hidden={{ resolve: "restore" }}
-      />
-      <StockForm
-        target={target}
-        action={resolveLost}
-        name="remove"
-        label={t("writeOffHowMany")}
-        submitLabel={t("writeOff")}
-        confirm={t("writeOffConfirm")}
-        destructive
-        hidden={{ resolve: "remove" }}
-      />
-    </div>
   );
 }
 
@@ -453,7 +327,8 @@ export function UnitLabelForm({
       action={setUnitLabel}
       hidden={{ slug, unit }}
       submitLabel={t("saveLabel")}
-      className="space-y-3"
+      quiet
+      className="flex flex-wrap items-end space-y-0 gap-x-3 gap-y-2"
     >
       <LabelField id={`label-${unit}`} defaultValue={label} />
     </ActionForm>
@@ -482,35 +357,5 @@ function LabelField({
         className={cn(inputClass, "max-w-64")}
       />
     </Field>
-  );
-}
-
-/**
- * One button on a unit's row: Mark damaged, Back in use, Mark lost, Found,
- * back in use ("restore") or Write off ("remove").
- */
-export function UnitButton({
-  slug,
-  unit,
-  change,
-  label,
-  confirm,
-  destructive,
-}: {
-  slug: string;
-  unit: string;
-  change: "damaged" | "repaired" | "lost" | "restore" | "remove";
-  label: string;
-  confirm?: string;
-  destructive?: boolean;
-}) {
-  return (
-    <ActionForm
-      action={changeGearUnit}
-      hidden={{ slug, unit, change }}
-      submitLabel={label}
-      confirm={confirm}
-      destructive={destructive}
-    />
   );
 }
