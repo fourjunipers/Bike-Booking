@@ -312,3 +312,23 @@ After the owner's click-through. A unit of gear has three states, each under its
 | `Products.history.action.unit_lost` | {who} marked {what} lost | {who} ทำเครื่องหมายว่า{what}สูญหาย |
 | `Products.history.action.unit_found` | {who} marked {what} found, back in use | {who} ทำเครื่องหมายว่าพบ{what}แล้ว กลับมาใช้ได้ |
 | `Products.history.action.unit_written_off` | {who} wrote off {what} | {who} ตัดจำหน่าย{what} |
+
+## Fleet and Products lists on a phone (14 Nov 2026)
+
+New texts on the branch `platform/lists-mobile-polish`: the sort, the filter chips, Reorder mode, and the names of the Moto Mangos mango (read aloud by screen readers and shown as a tooltip on desktop). Gone: `Products.order.custom` and `Products.order.filtered` (the line above the list that the Reorder button replaces), `Fleet.view.kind` and `Fleet.view.category` (the two dropdowns the chips replace), and `Fleet.modelFacts` (the tags' list name). “A–Z” stays A–Z in Thai because the names it sorts are mostly in Latin letters. “My order” is ลำดับของร้าน (“the shop’s order”), since the order belongs to the shop, not to one person.
+
+| Key | English | Thai |
+| --- | --- | --- |
+| `Lists.sort.label` | Sort | เรียง |
+| `Lists.sort.az` | A–Z | A–Z |
+| `Lists.sort.type` | By type | ตามประเภท |
+| `Lists.sort.mine` | My order | ลำดับของร้าน |
+| `Lists.chips.label` | Show only | แสดงเฉพาะ |
+| `Lists.chips.all` | All | ทั้งหมด |
+| `Lists.reorder.start` | Reorder | จัดลำดับ |
+| `Lists.reorder.done` | Done | เสร็จ |
+| `Lists.reorder.help` | Move products up or down. Fleet and the Products list share this order. | เลื่อนสินค้าขึ้นหรือลง หน้ารถทั้งหมดและหน้าสินค้าใช้ลำดับเดียวกัน |
+| `Lists.mango.listed` | On Moto Mangos | อยู่บน Moto Mangos |
+| `Lists.mango.inReview` | In review for Moto Mangos | Moto Mangos กำลังตรวจ |
+| `Lists.mango.needsChanges` | Moto Mangos needs changes | Moto Mangos ขอให้แก้ไข |
+| `Lists.mango.notListed` | Not on Moto Mangos | ไม่อยู่บน Moto Mangos |
