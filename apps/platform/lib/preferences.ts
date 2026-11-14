@@ -21,5 +21,10 @@ export function parseTheme(value: string | undefined): Theme {
   return value === "light" || value === "dark" ? value : "system";
 }
 
+/** Whether the page should be dark: the choice, or the device's own setting for "Match device". */
+export function isDarkTheme(theme: Theme, deviceIsDark: boolean): boolean {
+  return theme === "dark" || (theme === "system" && deviceIsDark);
+}
+
 /** A year: long enough to feel permanent, short enough to expire on unused devices. */
 export const preferenceCookieMaxAge = 60 * 60 * 24 * 365;
