@@ -295,8 +295,8 @@
     "label_needs_tracking": "Switch on “Track each unit on its own” first.",
     "tracked_units_have_records": "These units have purchase details, so they stay tracked one by one.",
     "stock_below_zero": "Stock can’t go below zero.",
-    "productHasStock": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
-    "product_has_stock": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
+    "productHasStock": "This product still has stock. Set its quantity to 0, and mark any lost units found or remove them from stock, first.",
+    "product_has_stock": "This product still has stock. Set its quantity to 0, and mark any lost units found or remove them from stock, first.",
     "labelExists": "Another unit of this product already has that label.",
     "not_on_list": "This product isn’t on the Moto Mangos list.",
     "same_model": "It is already on that one. Choose a different one.",
@@ -704,12 +704,12 @@
         "units_repaired": "{who} marked {count} back in use on {what}",
         "units_lost": "{who} marked {count} lost on {what}",
         "lost_restored": "{who} marked {count} found, back in use on {what}",
-        "lost_removed": "{who} wrote off {count} as lost on {what}",
+        "lost_removed": "{who} removed {count} from stock as lost on {what}",
         "units_in_repair": "{who} marked {count} in repair on {what}",
         "units_back_in_use": "{who} marked {count} back in use on {what}",
         "units_found": "{who} marked {count} found, back in use on {what}",
-        "units_written_off_damaged": "{who} wrote off {count} as damaged on {what}",
-        "units_written_off_lost": "{who} wrote off {count} as lost on {what}",
+        "units_written_off_damaged": "{who} removed {count} from stock as damaged on {what}",
+        "units_written_off_lost": "{who} removed {count} from stock as lost on {what}",
         "unit_problem_edit_repair": "{who} changed the details of a unit in repair on {what}",
         "unit_problem_edit_lost": "{who} changed the details of a lost unit on {what}",
         "listing_change_model": "{who} moved {what} to another Moto Mangos list entry",
@@ -718,7 +718,7 @@
         "unit_repaired": "{who} marked {what} back in use",
         "unit_lost": "{who} marked {what} lost",
         "unit_found": "{who} marked {what} found, back in use",
-        "unit_written_off": "{who} wrote off {what} as lost"
+        "unit_written_off": "{who} removed {what} from stock as lost"
       },
       "change": "{field}: {from} → {to}",
       "detail": {
@@ -769,7 +769,7 @@
     "delete": "Delete product",
     "deleteTitle": "Delete this product",
     "deleteConfirm": "Delete this product? This can't be undone.",
-    "deleteBlocked": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
+    "deleteBlocked": "This product still has stock. Set its quantity to 0, and mark any lost units found or remove them from stock, first.",
     "order": {
       "up": "Move up",
       "down": "Move down",
@@ -814,7 +814,8 @@
       "unitsAt": "{location}: units ({count})",
       "unit": "Unit {number}",
       "noUnits": "No units here yet. Set the quantity on the Details tab to add some.",
-      "untrackedHint": "These units are counted, not named. To give each one its own name or label, switch on “Track each unit on its own” on the Details tab.",
+      "untrackedHint": "These units are counted, not named. To give each one its own name or label, switch on “Track each unit on its own” under Product details, on the Details tab.",
+      "untrackedLink": "Open Product details",
       "untrackedHintStaff": "These units are counted, not named. An owner or manager can switch on “Track each unit on its own” to give each one a name or label.",
       "label": "Label (optional)",
       "labelPlaceholder": "e.g. GoPro 3",
@@ -875,7 +876,7 @@
       "submit": {
         "repair": "Mark in repair",
         "lost": "Mark lost",
-        "damaged": "Write off as damaged"
+        "damaged": "Remove from stock"
       },
       "outTitle": "Out of service",
       "outIntro": "Units in repair or lost. Each can still come back.",
@@ -888,13 +889,14 @@
       },
       "backInUse": "Back in use",
       "found": "Found, back in use",
-      "writeOffDamaged": "Write off as damaged",
-      "writeOff": "Write off",
-      "writeOffConfirm": "Write off? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record.",
+      "writeOffDamaged": "Remove from stock",
+      "writeOff": "Remove from stock",
+      "writeOffConfirm": "Remove from stock? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record.",
       "edit": "Edit",
       "editTitle": "Edit details",
-      "lostWaiting": "An owner or manager marks it found or writes it off.",
-      "close": "Close"
+      "lostWaiting": "An owner or manager marks it found or removes it from stock.",
+      "close": "Close",
+      "dateHelp": "For information only. It does not affect stock quantities."
     }
   },
   "Locations": {

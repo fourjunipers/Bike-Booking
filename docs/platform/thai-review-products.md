@@ -315,7 +315,7 @@ After the owner's click-through. A unit of gear has three states, each under its
 
 ### Rental gear, the stock rework (14 Nov 2026)
 
-After the owner's testing of the Stock tab. The counts, "Change quantity", one "Report a problem" dialog and the "Out of service" list are on the Details tab; the Stock tab is one row per unit. "Damaged" became "In repair" for a unit that can come back; "Damaged for good" is written off. 84 new or changed texts. Claude's translations: they need a native check.
+After the owner's testing of the Stock tab. The counts, "Change quantity", one "Report a problem" dialog and the "Out of service" list are on the Details tab; the Stock tab is one row per unit. "Damaged" became "In repair" for a unit that can come back; "Damaged for good" is removed from stock. Second round the same day, after the owner's click-through: "Write off" became "Remove from stock" on every button, in the confirmation and in the History; a note sits under each date ("For information only. It does not affect stock quantities."); the tracking hint names Product details and links to it. 89 new or changed texts. Claude's translations: they need a native check.
 
 Words to look at first:
 
@@ -323,7 +323,7 @@ Words to look at first:
 | --- | --- | --- |
 | In repair | กำลังซ่อม | A unit being cleaned or repaired: still the shop's, not rentable for now. Was "Damaged" (ชำรุด) |
 | Damaged for good | ชำรุดถาวร | Can't be repaired; the unit is removed |
-| Write off as damaged | ตัดจำหน่ายเนื่องจากชำรุด | The button that removes a unit for good because it is broken |
+| Remove from stock | นำออกจากสต็อก | The button that removes a unit for good, broken or lost. Was "Write off" (ตัดจำหน่าย), changed by the owner on 14 Nov 2026; ตัดจำหน่าย is no longer used anywhere |
 | Out of service | งดใช้งาน | The heading over units in repair or lost. Check it reads naturally for gear, not only for vehicles |
 | Report a problem | แจ้งปัญหา | The one button that opens the dialog |
 | Date it happened | วันที่เกิดเหตุ | |
@@ -365,7 +365,7 @@ Gone with the old Stock tab: `Products.stockTab.counts`, `inStock`, `available`,
 | `Products.gearStock.notes` | Notes (optional) | หมายเหตุ (ไม่บังคับ) |
 | `Products.gearStock.submit.repair` | Mark in repair | ทำเครื่องหมายว่ากำลังซ่อม |
 | `Products.gearStock.submit.lost` | Mark lost | ทำเครื่องหมายว่าสูญหาย |
-| `Products.gearStock.submit.damaged` | Write off as damaged | ตัดจำหน่ายเนื่องจากชำรุด |
+| `Products.gearStock.submit.damaged` | Remove from stock | นำออกจากสต็อก |
 | `Products.gearStock.outTitle` | Out of service | งดใช้งาน |
 | `Products.gearStock.outIntro` | Units in repair or lost. Each can still come back. | ชิ้นที่กำลังซ่อมหรือสูญหาย ทุกชิ้นยังกลับมาใช้ได้ |
 | `Products.gearStock.outNone` | Nothing is out of service. | ไม่มีชิ้นที่งดใช้งาน |
@@ -375,32 +375,35 @@ Gone with the old Stock tab: `Products.stockTab.counts`, `inStock`, `available`,
 | `Products.gearStock.line.notSet` | Not set | ยังไม่ระบุ |
 | `Products.gearStock.backInUse` | Back in use | กลับมาใช้ได้ |
 | `Products.gearStock.found` | Found, back in use | พบแล้ว กลับมาใช้ได้ |
-| `Products.gearStock.writeOffDamaged` | Write off as damaged | ตัดจำหน่ายเนื่องจากชำรุด |
-| `Products.gearStock.writeOff` | Write off | ตัดจำหน่าย |
-| `Products.gearStock.writeOffConfirm` | Write off? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record. | ตัดจำหน่ายหรือไม่? ไม่สามารถย้อนกลับได้ ชิ้นนี้จะถูกนำออกจากสินค้านี้ถาวร และทำเครื่องหมายว่าพบแล้วไม่ได้อีก ประวัติจะยังเก็บบันทึกไว้ |
+| `Products.gearStock.writeOffDamaged` | Remove from stock | นำออกจากสต็อก |
+| `Products.gearStock.writeOff` | Remove from stock | นำออกจากสต็อก |
+| `Products.gearStock.writeOffConfirm` | Remove from stock? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record. | นำออกจากสต็อกหรือไม่? ไม่สามารถย้อนกลับได้ ชิ้นนี้จะถูกนำออกจากสินค้านี้ถาวร และทำเครื่องหมายว่าพบแล้วไม่ได้อีก ประวัติจะยังเก็บบันทึกไว้ |
 | `Products.gearStock.edit` | Edit | แก้ไข |
 | `Products.gearStock.editTitle` | Edit details | แก้ไขรายละเอียด |
-| `Products.gearStock.lostWaiting` | An owner or manager marks it found or writes it off. | เจ้าของหรือผู้จัดการเป็นผู้ทำเครื่องหมายว่าพบแล้วหรือตัดจำหน่าย |
+| `Products.gearStock.lostWaiting` | An owner or manager marks it found or removes it from stock. | เจ้าของหรือผู้จัดการเป็นผู้ทำเครื่องหมายว่าพบแล้วหรือนำออกจากสต็อก |
 | `Products.gearStock.close` | Close | ปิด |
+| `Products.gearStock.dateHelp` | For information only. It does not affect stock quantities. | เพื่อเป็นข้อมูลเท่านั้น ไม่มีผลต่อจำนวนสต็อก |
 | `Products.stockTab.units` | Units ({count}) | รายชิ้น ({count}) |
 | `Products.stockTab.unitsAt` | {location}: units ({count}) | {location}: รายชิ้น ({count}) |
 | `Products.stockTab.noUnits` | No units here yet. Set the quantity on the Details tab to add some. | ยังไม่มีชิ้นที่นี่ ตั้งจำนวนในแท็บรายละเอียดเพื่อเพิ่ม |
-| `Products.stockTab.untrackedHint` | These units are counted, not named. To give each one its own name or label, switch on “Track each unit on its own” on the Details tab. | ชิ้นเหล่านี้นับเป็นจำนวน ไม่มีชื่อ หากต้องการตั้งชื่อหรือป้ายชื่อให้แต่ละชิ้น ให้เปิด “ติดตามแต่ละชิ้นแยกกัน” ในแท็บรายละเอียด |
+| `Products.stockTab.untrackedHint` | These units are counted, not named. To give each one its own name or label, switch on “Track each unit on its own” under Product details, on the Details tab. | ชิ้นเหล่านี้นับเป็นจำนวน ไม่มีชื่อ หากต้องการตั้งชื่อหรือป้ายชื่อให้แต่ละชิ้น ให้เปิด “ติดตามแต่ละชิ้นแยกกัน” ในส่วนรายละเอียดสินค้า ที่แท็บรายละเอียด |
+| `Products.stockTab.untrackedLink` | Open Product details | เปิดรายละเอียดสินค้า |
 | `Products.stockTab.untrackedHintStaff` | These units are counted, not named. An owner or manager can switch on “Track each unit on its own” to give each one a name or label. | ชิ้นเหล่านี้นับเป็นจำนวน ไม่มีชื่อ เจ้าของหรือผู้จัดการเปิด “ติดตามแต่ละชิ้นแยกกัน” ได้ เพื่อตั้งชื่อหรือป้ายชื่อให้แต่ละชิ้น |
 | `Products.stockTab.status.repair` | In repair | กำลังซ่อม |
+| `Products.deleteBlocked` | This product still has stock. Set its quantity to 0, and mark any lost units found or remove them from stock, first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และทำเครื่องหมายว่าพบแล้วหรือนำออกจากสต็อกชิ้นที่สูญหายก่อน |
 | `Products.history.action.units_damaged` | {who} marked {count} in repair on {what} | {who} ทำเครื่องหมายว่ากำลังซ่อม {count} ชิ้นใน{what} |
 | `Products.history.action.units_repaired` | {who} marked {count} back in use on {what} | {who} ทำเครื่องหมายว่ากลับมาใช้ได้ {count} ชิ้นใน{what} |
-| `Products.history.action.lost_removed` | {who} wrote off {count} as lost on {what} | {who} ตัดจำหน่าย {count} ชิ้นเนื่องจากสูญหายใน{what} |
+| `Products.history.action.lost_removed` | {who} removed {count} from stock as lost on {what} | {who} นำ {count} ชิ้นออกจากสต็อกเนื่องจากสูญหายใน{what} |
 | `Products.history.action.units_in_repair` | {who} marked {count} in repair on {what} | {who} ทำเครื่องหมายว่ากำลังซ่อม {count} ชิ้นใน{what} |
 | `Products.history.action.units_back_in_use` | {who} marked {count} back in use on {what} | {who} ทำเครื่องหมายว่ากลับมาใช้ได้ {count} ชิ้นใน{what} |
 | `Products.history.action.units_found` | {who} marked {count} found, back in use on {what} | {who} ทำเครื่องหมายว่าพบแล้ว กลับมาใช้ได้ {count} ชิ้นใน{what} |
-| `Products.history.action.units_written_off_damaged` | {who} wrote off {count} as damaged on {what} | {who} ตัดจำหน่าย {count} ชิ้นเนื่องจากชำรุดใน{what} |
-| `Products.history.action.units_written_off_lost` | {who} wrote off {count} as lost on {what} | {who} ตัดจำหน่าย {count} ชิ้นเนื่องจากสูญหายใน{what} |
+| `Products.history.action.units_written_off_damaged` | {who} removed {count} from stock as damaged on {what} | {who} นำ {count} ชิ้นออกจากสต็อกเนื่องจากชำรุดใน{what} |
+| `Products.history.action.units_written_off_lost` | {who} removed {count} from stock as lost on {what} | {who} นำ {count} ชิ้นออกจากสต็อกเนื่องจากสูญหายใน{what} |
 | `Products.history.action.unit_problem_edit_repair` | {who} changed the details of a unit in repair on {what} | {who} แก้ไขรายละเอียดของชิ้นที่กำลังซ่อมใน{what} |
 | `Products.history.action.unit_problem_edit_lost` | {who} changed the details of a lost unit on {what} | {who} แก้ไขรายละเอียดของชิ้นที่สูญหายใน{what} |
 | `Products.history.action.unit_damaged` | {who} marked {what} in repair | {who} ทำเครื่องหมายว่า{what}กำลังซ่อม |
 | `Products.history.action.unit_repaired` | {who} marked {what} back in use | {who} ทำเครื่องหมายว่า{what}กลับมาใช้ได้ |
-| `Products.history.action.unit_written_off` | {who} wrote off {what} as lost | {who} ตัดจำหน่าย{what}เนื่องจากสูญหาย |
+| `Products.history.action.unit_written_off` | {who} removed {what} from stock as lost | {who} นำ{what}ออกจากสต็อกเนื่องจากสูญหาย |
 | `Products.history.detail.units` | Unit: {names} | ชิ้น: {names} |
 | `Products.history.detail.happenedOn` | Date it happened: {date} | วันที่เกิดเหตุ: {date} |
 | `Products.history.detail.expectedBack` | Expected back: {date} | คาดว่าจะกลับมาใช้ได้: {date} |
@@ -417,3 +420,5 @@ Gone with the old Stock tab: `Products.stockTab.counts`, `inStock`, `available`,
 | `FormErrors.not_in_repair` | This unit is no longer in repair. Reload the page. | ชิ้นนี้ไม่ได้กำลังซ่อมแล้ว กรุณาโหลดหน้าใหม่ |
 | `FormErrors.not_lost` | This unit is no longer marked lost. Reload the page. | ชิ้นนี้ไม่ได้ถูกทำเครื่องหมายว่าสูญหายแล้ว กรุณาโหลดหน้าใหม่ |
 | `FormErrors.not_out_of_service` | This unit is no longer out of service. Reload the page. | ชิ้นนี้ไม่ได้งดใช้งานแล้ว กรุณาโหลดหน้าใหม่ |
+| `FormErrors.productHasStock` | This product still has stock. Set its quantity to 0, and mark any lost units found or remove them from stock, first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และทำเครื่องหมายว่าพบแล้วหรือนำออกจากสต็อกชิ้นที่สูญหายก่อน |
+| `FormErrors.product_has_stock` | This product still has stock. Set its quantity to 0, and mark any lost units found or remove them from stock, first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และทำเครื่องหมายว่าพบแล้วหรือนำออกจากสต็อกชิ้นที่สูญหายก่อน |

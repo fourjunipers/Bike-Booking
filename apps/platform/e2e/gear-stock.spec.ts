@@ -28,7 +28,7 @@ async function noSidewaysScroll(page: Page) {
 }
 
 const WRITE_OFF_QUESTION =
-  "Write off? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record.";
+  "Remove from stock? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record.";
 
 const productTabs = (page: Page) =>
   page.getByRole("navigation", { name: "Sections of this product" });
@@ -112,7 +112,7 @@ async function saveQuantity(page: Page, quantity: string) {
 
 /**
  * "Report a problem": opens the dialog, fills it and sends it. Answers with
- * the question the browser asked first, if any ("Write off?").
+ * the question the browser asked first, if any ("Remove from stock?").
  */
 async function report(
   page: Page,
@@ -153,7 +153,7 @@ async function report(
           ? "Mark in repair"
           : what === "Lost"
             ? "Mark lost"
-            : "Write off as damaged",
+            : "Remove from stock",
     })
     .click();
   await expect(dialog).toBeHidden();
@@ -180,13 +180,14 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
   const url = await addGear(page, name, { quantity: "20" });
   const path = new URL(url).pathname;
 
-  // The owner's Details tab, top to bottom: the four cards, then the product.
+  // The owner's Details tab, top to bottom: the product, then the four
+  // stock cards.
   await expect(page.getByRole("heading", { level: 2 })).toHaveText([
+    "Product details",
     "Stock",
     "Change quantity",
     "Report a problem",
     "Out of service",
-    "Product details",
   ]);
   await expectTiles(page, { inStock: 20, available: 20, inRepair: 0 });
   await expect(card(page, "Out of service")).toContainText(
@@ -244,6 +245,12 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
   // for a repair only.
   await expect(sheet.getByLabel("How many")).toHaveValue("1");
   await expect(sheet.getByLabel("Date it happened")).not.toHaveValue("");
+  // Under each date: it is a record, and changes no count.
+  await expect(
+    sheet.getByText(
+      "For information only. It does not affect stock quantities.",
+    ),
+  ).toHaveCount(2);
   await expect(sheet.getByLabel("Expected back (optional)")).toBeVisible();
   await sheet.getByRole("radio", { name: /^Lost/ }).check();
   await expect(sheet.getByLabel("Expected back (optional)")).toHaveCount(0);
@@ -285,7 +292,7 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
   await expect(staffLost).not.toContainText("Expected back");
   await expect(staffLost.getByRole("button")).toHaveText(["Edit"]);
   await expect(staffLost).toContainText(
-    "An owner or manager marks it found or writes it off.",
+    "An owner or manager marks it found or removes it from stock.",
   );
 
   // Each unit has its own record: editing one line leaves the other alone.
@@ -339,7 +346,7 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
     "Back in use",
     "Edit",
     "Found, back in use",
-    "Write off",
+    "Remove from stock",
     "Save quantity",
   ])
     await expect(driver.page.getByRole("button", { name: gone })).toHaveCount(
@@ -375,22 +382,22 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
   await expect(lost.getByRole("button")).toHaveText([
     "Found, back in use",
     "Edit",
-    "Write off",
+    "Remove from stock",
   ]);
   await expect(
     lines.filter({ hasText: "Cracked visor" }).getByRole("button"),
-  ).toHaveText(["Back in use", "Edit", "Write off as damaged"]);
-  // "Write off" asks first, in the owner's words. Saying no changes nothing.
+  ).toHaveText(["Back in use", "Edit", "Remove from stock"]);
+  // "Remove from stock" asks first, in the owner's words. Saying no changes nothing.
   let asked = "";
   page.once("dialog", (dialog) => {
     asked = dialog.message();
     void dialog.dismiss();
   });
-  await lost.getByRole("button", { name: "Write off" }).click();
+  await lost.getByRole("button", { name: "Remove from stock" }).click();
   expect(asked).toBe(WRITE_OFF_QUESTION);
   await expect(lines).toHaveCount(3);
   page.once("dialog", (dialog) => void dialog.accept());
-  await lost.getByRole("button", { name: "Write off" }).click();
+  await lost.getByRole("button", { name: "Remove from stock" }).click();
   // Written off: it leaves the list, and the Lost tile goes with it.
   await expect(lines).toHaveCount(2);
   await expectTiles(page, { inStock: 20, available: 18, inRepair: 2 });
@@ -402,7 +409,7 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
   });
   await lines
     .filter({ hasText: "Cracked visor" })
-    .getByRole("button", { name: "Write off as damaged" })
+    .getByRole("button", { name: "Remove from stock" })
     .click();
   await expect(lines).toHaveCount(1);
   expect(asked).toBe(`again: ${WRITE_OFF_QUESTION}`);
@@ -439,8 +446,14 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
   await expect(rows.filter({ hasText: "In repair" })).toHaveCount(1);
   await expect(rows.first()).toContainText("Unit 1");
   await expect(page.locator("[data-untracked-hint]")).toContainText(
-    "switch on “Track each unit on its own” on the Details tab",
+    "switch on “Track each unit on its own” under Product details, on the Details tab.",
   );
+  // The hint takes an owner straight to that switch.
+  await expect(
+    page
+      .locator("[data-untracked-hint]")
+      .getByRole("link", { name: "Open Product details" }),
+  ).toHaveAttribute("href", /#product-details$/);
   // Nothing here changes a unit: no forms, no buttons in the rows.
   await expect(rows.getByRole("button")).toHaveCount(0);
   await noSidewaysScroll(page);
@@ -453,8 +466,8 @@ test("gear counted by quantity: tiles, stepper, Report a problem and Out of serv
     /marked 2 in repair on this product/,
     /marked 1 lost on this product/,
     /changed the details of a unit in repair on this product/,
-    /wrote off 1 as lost on this product/,
-    /wrote off 1 as damaged on this product/,
+    /removed 1 from stock as lost on this product/,
+    /removed 1 from stock as damaged on this product/,
     /marked 1 back in use on this product/,
     /marked 1 found, back in use on this product/,
   ])
@@ -561,7 +574,7 @@ test("tracked gear: which unit, its name on the line and in the History, and lab
   await expect(line.getByRole("button")).toHaveText([
     `Found, back in use: ${label}`,
     `Edit: ${label}`,
-    `Write off: ${label}`,
+    `Remove from stock: ${label}`,
   ]);
   await line
     .getByRole("button", { name: `Found, back in use: ${label}` })
@@ -573,7 +586,9 @@ test("tracked gear: which unit, its name on the line and in the History, and lab
     asked = dialog.message();
     void dialog.accept();
   });
-  await line.getByRole("button", { name: `Write off: ${label}` }).click();
+  await line
+    .getByRole("button", { name: `Remove from stock: ${label}` })
+    .click();
   await expect(outLines(page)).toHaveCount(0);
   expect(asked).toBe(WRITE_OFF_QUESTION);
   await expectTiles(page, { inStock: 1, available: 1, inRepair: 0 });
@@ -589,7 +604,7 @@ test("tracked gear: which unit, its name on the line and in the History, and lab
     /marked 1 back in use on this product/,
     /marked 1 lost on this product/,
     /marked 1 found, back in use on this product/,
-    /wrote off 1 as lost on this product/,
+    /removed 1 from stock as lost on this product/,
   ])
     await expect(page.getByText(said).first()).toBeVisible();
   await expect(

@@ -19,19 +19,27 @@ The owner's testing of the Rental gear Stock tab found it confusing. Reworked to
 
 **What changed**
 
-- **Details tab** (everyone who can open the product), top to bottom: large tiles (In stock, Available now, In repair; Lost only when above zero); "Change quantity" with a −/+ stepper and a "Save quantity" button that appears when the number changed; one "Report a problem" button; the "Out of service" list; then the name and description and Delete, for owners and managers.
+- **Details tab** (everyone who can open the product), top to bottom: the name and description for owners and managers; then large tiles (In stock, Available now, In repair; Lost only when above zero); "Change quantity" with a −/+ stepper and a "Save quantity" button that appears when the number changed; one "Report a problem" button; the "Out of service" list; Delete last, for owners and managers.
 - **Report a problem** is one dialog, a bottom sheet on a phone: What happened (In repair, Lost, Damaged for good), How many or Which unit, Date it happened, Expected back (In repair only), Notes.
 - **Stock tab:** one row per unit with its name or label and a status chip; a hint about "Track each unit on its own" for counted gear. Labels are edited here.
 - **Statuses:** In repair (in stock, not available), Lost (not in stock), written off (gone for good, kept in the History with its day and notes). "Damaged" for a unit that can come back is now "In repair" everywhere, the History included.
 - **Each unit out of service has its own record:** day, expected-back day and notes, edited on its own line.
 - **Permissions:** every existing rule kept. New: writing off as damaged is for owners and managers. All of it is in one place, `lib/gear-permissions.ts`, mirrored by `platform_private.gear_roles()`; a database test compares the two. Owner-set permissions are not built.
 - **One new migration, `20261114000100_platform_gear_stock_rework`**, on top of Stage B's, which is untouched. No new table: three columns on `platform.units`; `report_gear_problem()`, `update_unit_problem()` and `resolve_unit_problem()` in place of Stage B's four stock functions, which are dropped; `product_stock()` answers `in_repair` where it said `damaged`. Every new function starts closed and is granted to `authenticated` on purpose; `default-grants.test.ts` lists them.
-- **Wording:** 84 new or changed texts in English and Thai, listed in `docs/platform/thai-review-products.md` under "Rental gear, the stock rework". The Write off confirmation is the owner's sentence.
+- **Wording:** 89 new or changed texts in English and Thai, listed in `docs/platform/thai-review-products.md` under "Rental gear, the stock rework". The confirmation before removing a unit is the owner's sentence.
+
+**Second round, after the owner's click-through (14 Nov 2026).** Steps 1 to 5, 7, 8, 10 and 12 passed as built. Changed, with no migration and nothing on staging:
+
+- "Write off" and "Write off as damaged" are "Remove from stock" on every button, in the confirmation ("Remove from stock? This cannot be undone. …") and in the History ("removed 1 from stock as damaged"). The stock-blocked message on Delete follows. Function and audit names are as built.
+- Product details is the first card on the Details tab; the stock cards follow; Delete stays last.
+- Under "Date it happened" and "Expected back", in the dialog and when editing a line: "For information only. It does not affect stock quantities."
+- The Stock tab's hint says the switch is under Product details on the Details tab, and links there for owners and managers.
+- Done from this chat's own worktree (`.claude/worktrees/gear-stock-rework`), by the owner's rule of the same day.
 
 **Decided here, not specified by the owner** (all in §5.9):
 
 - Staff and mechanics now get the Details tab for gear (they had only Stock), because the tiles, the dialog and the list are there. They do not see the name form, the stepper or Delete.
-- Every unit out of service gets its own line, tracked or not, so "Back in use", "Found" and "Write off" act on one line and no longer ask "how many".
+- Every unit out of service gets its own line, tracked or not, so "Back in use", "Found" and "Remove from stock" act on one line and no longer ask "how many".
 - "Expected back" is information: a repair no longer ends by itself at that time. Someone presses "Back in use".
 - "Report a problem" takes only units that are in use and that no booking holds now or later. Before, "Mark lost" could take a unit that was damaged.
 - A unit in repair can't be marked lost in one step: put it back in use, then report it lost.
@@ -60,7 +68,8 @@ The owner's testing of the Rental gear Stock tab found it confusing. Reworked to
 
 - A unit booked for later can't be reported in repair or lost. Moving its booking to another unit belongs with orders (Phase 3).
 - The Fleet and Products list rows are being polished on another branch; this branch changed nothing in them (the lists read `in_stock` and `lost`, whose names did not change).
-- Thai: the 84 texts need a native check, "Out of service" (งดใช้งาน) and "Write off as damaged" first.
+- Thai: the 89 texts need a native check, "Out of service" (งดใช้งาน) and "Remove from stock" (นำออกจากสต็อก) first.
+- The owner asked for these permissions to be changeable in Settings (click-through, steps 13 to 15). Not built: `lib/gear-permissions.ts` and `gear_roles()` are ready for it.
 
 ## Products, stage B (branch `platform/products-stage-b`, 13 Nov 2026)
 

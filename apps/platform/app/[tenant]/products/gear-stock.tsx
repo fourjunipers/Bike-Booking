@@ -320,6 +320,7 @@ export function ReportProblem({
             <TextInput
               name="happened_on"
               label={t("happenedOn")}
+              help={t("dateHelp")}
               type="date"
               required
               max={today}
@@ -330,6 +331,7 @@ export function ReportProblem({
               <TextInput
                 name="expected_back"
                 label={t("expectedBack")}
+                help={t("dateHelp")}
                 type="date"
                 min={happened || undefined}
               />
@@ -346,8 +348,8 @@ export function ReportProblem({
 
 /**
  * What can be done with one unit out of service. In repair: "Back in use",
- * and "Write off as damaged" for owners and managers. Lost: "Found, back in
- * use" and "Write off", both for owners and managers. "Edit" opens the
+ * and "Remove from stock" for owners and managers. Lost: "Found, back in
+ * use" and "Remove from stock", both for owners and managers. "Edit" opens the
  * line's date, expected-back date and notes. None of these is the card's
  * main button, so all are outlined.
  */
@@ -426,6 +428,7 @@ export function ProblemActions({
             <TextInput
               name="happened_on"
               label={t("happenedOn")}
+              help={t("dateHelp")}
               type="date"
               required
               max={today}
@@ -436,6 +439,7 @@ export function ProblemActions({
               <TextInput
                 name="expected_back"
                 label={t("expectedBack")}
+                help={t("dateHelp")}
                 type="date"
                 min={happened || undefined}
                 defaultValue={values.expectedBack}

@@ -241,7 +241,7 @@ test("new product: Vehicle or General; one of each general type; the three list 
   });
   await page.getByRole("button", { name: "Delete product" }).click();
   expect(said).toBe(
-    "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
+    "This product still has stock. Set its quantity to 0, and mark any lost units found or remove them from stock, first.",
   );
   // Editing: the type is fixed; the name and description change.
   await expect(page.getByRole("radio")).toHaveCount(0);

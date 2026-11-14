@@ -169,8 +169,8 @@ describe("the History, in the buttons' words", () => {
     ).toEqual([
       "Mai marked 1 in repair on this product",
       "Mai marked 1 lost on this product",
-      "Mai wrote off 1 as damaged on this product",
-      "Mai wrote off 1 as lost on this product",
+      "Mai removed 1 from stock as damaged on this product",
+      "Mai removed 1 from stock as lost on this product",
       "Mai marked 1 found, back in use on this product",
       "Mai marked 1 back in use on this product",
     ]);
@@ -275,16 +275,31 @@ describe("wording", () => {
     expect(gear.expectedBack).toMatch(/^Expected back/);
     expect(gear.outTitle).toBe("Out of service");
     expect(gear.backInUse).toBe("Back in use");
-    expect(gear.writeOffDamaged).toBe("Write off as damaged");
+    expect(gear.writeOffDamaged).toBe("Remove from stock");
+    expect(gear.submit.damaged).toBe("Remove from stock");
     expect(gear.found).toBe("Found, back in use");
-    expect(gear.writeOff).toBe("Write off");
+    expect(gear.writeOff).toBe("Remove from stock");
   });
 
-  it("Write off asks first, in the owner's words", () => {
+  it("Remove from stock asks first, in the owner's words", () => {
     expect(gear.writeOffConfirm).toBe(
-      "Write off? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record.",
+      "Remove from stock? This cannot be undone. The unit is removed from this product for good and can’t be marked found again. The History keeps a record.",
     );
     expect(th.Products.gearStock.writeOffConfirm).toBeTruthy();
+  });
+
+  it("no button or line says “write off” any more; the dates carry their note", () => {
+    const texts = (value: unknown): string[] =>
+      typeof value === "string"
+        ? [value]
+        : Object.values(value as object).flatMap(texts);
+    expect(
+      texts([en.Products.gearStock, en.Products.history.action]).join(" | "),
+    ).not.toMatch(/wr(i|o)te(s)? (it )?off/i);
+    expect(gear.dateHelp).toBe(
+      "For information only. It does not affect stock quantities.",
+    );
+    expect(th.Products.gearStock.dateHelp).toBeTruthy();
   });
 
   it("nothing says “damaged” for a unit that can still come back", () => {
@@ -299,10 +314,8 @@ describe("wording", () => {
       en.FormErrors.units_blocked,
       en.FormErrors.not_enough_free,
     ]).join(" | ");
-    // What is left is for good: "Write off as damaged", "Damaged for good".
-    expect(
-      shown.replace(/Write off as damaged|damaged for good/gi, ""),
-    ).not.toMatch(/damaged/i);
+    // What is left is for good: "Damaged for good".
+    expect(shown.replace(/damaged for good/gi, "")).not.toMatch(/damaged/i);
     expect(en.Products.stockTab.status).toEqual({
       inUse: "In use",
       repair: "In repair",

@@ -51,10 +51,10 @@ type StockLines = Awaited<ReturnType<typeof getProductStock>>;
  * A general product's page: Details, Stock and History.
  *
  * Rental gear (owner, 14 Nov 2026; docs/products-redesign.md §5.9):
- * - Details (everyone): per location, the counts as large tiles (In stock,
- *   Available now, In repair; Lost when above zero), "Change quantity",
- *   one "Report a problem" button and the "Out of service" list. Then, for
- *   owners and managers, the name and description and Delete.
+ * - Details (everyone): for owners and managers, the name and description
+ *   first. Then, per location, the counts as large tiles (In stock,
+ *   Available now, In repair; Lost when above zero), "Change quantity", one
+ *   "Report a problem" button and the "Out of service" list. Delete is last.
  * - Stock (everyone): one row per unit with its name or label and a status
  *   chip. Counted gear gets a hint about tracking each unit on its own.
  * - History (owners and managers).
@@ -155,18 +155,6 @@ export async function GeneralProductPage({
 
       {tab === "details" && (
         <div className="max-w-3xl space-y-6">
-          {type === "gear" && (
-            <GearStock
-              slug={slug}
-              tenantId={tenant.id}
-              role={role}
-              product={product}
-              tracked={tracked}
-              locations={locations}
-              lines={lines}
-              locale={locale}
-            />
-          )}
           {manage && (
             <Card id="product-details" title={t("gearStock.detailsTitle")}>
               <GeneralForm
@@ -181,6 +169,18 @@ export async function GeneralProductPage({
                 }}
               />
             </Card>
+          )}
+          {type === "gear" && (
+            <GearStock
+              slug={slug}
+              tenantId={tenant.id}
+              role={role}
+              product={product}
+              tracked={tracked}
+              locations={locations}
+              lines={lines}
+              locale={locale}
+            />
           )}
           {manage && (
             <section
@@ -561,6 +561,17 @@ async function GearUnits({
           className="rounded-lg border border-highlight-border bg-highlight p-3 text-sm text-highlight-foreground"
         >
           {t(manage ? "untrackedHint" : "untrackedHintStaff")}
+          {manage && (
+            <>
+              {" "}
+              <Link
+                href={`/${slug}/products/${product.id}#product-details`}
+                className="font-medium underline underline-offset-2"
+              >
+                {t("untrackedLink")}
+              </Link>
+            </>
+          )}
         </p>
       )}
       {locations.map((location) => {

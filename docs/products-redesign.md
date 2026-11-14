@@ -637,17 +637,20 @@ Mark's testing of the Stock tab found it confusing: three state sections, each w
 
 Stock = in use + in repair. Available = in use, minus bookings. A unit written off (damaged for good, or a loss confirmed) is permanent: its row is deleted, or retired when bookings on record need it, and the History keeps the event with its day and notes. "Out of service" holds only units that can still come back: in repair and lost.
 
-**Details tab, top to bottom** (everyone who can open the product; one set of cards per location when the shop has more than one):
+**Details tab, top to bottom** (everyone who can open the product; one set of stock cards per location when the shop has more than one):
 
-1. **Stock:** large tiles for In stock, Available now and In repair; Lost only when above zero.
-2. **Change quantity** (owners and managers): − and + beside a number field. "Save quantity" appears only when the number differs from what is saved.
-3. **Report a problem:** one button, one dialog (a bottom sheet on a phone). What happened (In repair, Lost, Damaged for good; a role sees only what it may report); How many, or Which unit for tracked gear; Date it happened (today by default, never later); Expected back (In repair only, optional); Notes (optional, 500 characters).
-4. **Out of service:** one line per unit, tracked or not, with its status chip, day, expected-back day and notes. In repair: Back in use, Edit, Write off as damaged. Lost: Found, back in use, Edit, Write off.
-5. **Product details** (owners and managers): name, description, "Track each unit on its own". Delete below.
+1. **Product details** (owners and managers): name, description, "Track each unit on its own". First on the page since the owner's click-through of 14 Nov 2026.
+2. **Stock:** large tiles for In stock, Available now and In repair; Lost only when above zero.
+3. **Change quantity** (owners and managers): − and + beside a number field. "Save quantity" appears only when the number differs from what is saved.
+4. **Report a problem:** one button, one dialog (a bottom sheet on a phone). What happened (In repair, Lost, Damaged for good; a role sees only what it may report); How many, or Which unit for tracked gear; Date it happened (today by default, never later); Expected back (In repair only, optional); Notes (optional, 500 characters). Under each date: "For information only. It does not affect stock quantities."
+5. **Out of service:** one line per unit, tracked or not, with its status chip, day, expected-back day and notes. In repair: Back in use, Edit, Remove from stock. Lost: Found, back in use, Edit, Remove from stock.
+6. Delete (owners and managers), last.
+
+**"Remove from stock", not "Write off"** (owner, 14 Nov 2026, after the click-through). Every button that removes a unit for good says "Remove from stock": on a line in repair, on a lost line, and in the dialog for "Damaged for good". The confirmation opens "Remove from stock? This cannot be undone. …" and the History says "removed 1 from stock as damaged" or "as lost". The database keeps its names (`write_off`, `units_written_off`); only the words shown changed.
 
 Each card has its title above a divider and at most one filled button; every action on a line is outlined.
 
-**Stock tab:** one row per unit with its name or label and a status chip. Owners and managers label tracked units there. Counted gear shows a hint about "Track each unit on its own". Nothing on this tab changes a unit's state.
+**Stock tab:** one row per unit with its name or label and a status chip. Owners and managers label tracked units there. Counted gear shows a hint that "Track each unit on its own" is under Product details on the Details tab, with a link to it for owners and managers. Nothing on this tab changes a unit's state.
 
 **Each unit has its own record.** Three columns on `platform.units`: `problem_on` (the day it happened, a calendar day at the unit's location), `expected_back` and `problem_notes`. Reporting three units writes three records, each edited and resolved on its own afterwards. `units_problem_check` keeps them to gear, requires the day, keeps expected back on or after it and off a lost unit. The record is cleared when the unit is back in use.
 
@@ -675,7 +678,7 @@ New: writing off as damaged is for owners and managers only. Everything else is 
 - Lowering a quantity still removes only free units: `set_stock_quantity()` is unchanged, and a test holds that units in repair and lost keep their records.
 - **Existing data:** a gear unit damaged at the moment of migration becomes In repair. Its day is the day the downtime started, the downtime's end (if it had one) becomes Expected back, its note becomes the notes, and the downtime is made open-ended unless a later block on that unit is in the way. A lost unit stays Lost, with the day it was last changed. Nothing is deleted.
 
-**History, in the buttons' words.** One line per event from the functions themselves: "marked 2 in repair", "marked 1 lost", "marked 1 back in use", "marked 1 found, back in use", "wrote off 1 as damaged", "wrote off 1 as lost", "changed the details of a unit in repair". Under each: the unit's label (tracked gear), the day it happened, expected back and notes. Events from before the rework read in the same words ("marked 2 damaged" now reads "marked 2 in repair").
+**History, in the buttons' words.** One line per event from the functions themselves: "marked 2 in repair", "marked 1 lost", "marked 1 back in use", "marked 1 found, back in use", "removed 1 from stock as damaged", "removed 1 from stock as lost", "changed the details of a unit in repair". Under each: the unit's label (tracked gear), the day it happened, expected back and notes. Events from before the rework read in the same words ("marked 2 damaged" now reads "marked 2 in repair").
 
 **Tests.** Database (`tests/db/gear-stock-rework.test.ts`): every action by every role, by the function and by hand; each unit's own record; what is refused; written off as damaged and as lost, with the audit event; tracked gear by unit; booked units never taken; the quantity rule; six races (the last free unit, three kinds of report at once, back in use against write off, found against write off, lowering the quantity against reports, two edits); another shop's five roles and a signed-out visitor. Browser (`e2e/gear-stock.spec.ts`, phone and desktop): the whole click-through by owner, staff, mechanic and driver, the bottom sheet's position, tracked gear, and the History.
 
