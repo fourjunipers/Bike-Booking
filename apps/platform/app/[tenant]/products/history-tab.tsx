@@ -5,7 +5,13 @@ import {
   getMemberNames,
   getProductHistory,
 } from "@/lib/fleet-data";
-import { buildHistory, gearUnitHistory, historyValue } from "@/lib/history";
+import { formatDay } from "@/lib/general-products";
+import {
+  buildHistory,
+  gearStockActions,
+  gearUnitHistory,
+  historyValue,
+} from "@/lib/history";
 import { formatInstant } from "@/lib/shop-time";
 import { humanizeKey } from "@/lib/vehicle-kinds";
 
@@ -13,8 +19,9 @@ import { humanizeKey } from "@/lib/vehicle-kinds";
  * Who changed what on a product and its units, newest first (owners and
  * managers: the audit log's own rule). A vehicle product names its vehicles
  * by plate. Tracked gear names its units by label and says what was done to
- * each in the words of the Stock tab's buttons ("marked unit GoPro 3 lost",
- * "wrote off unit GoPro 3"); a unit that was written off keeps its lines.
+ * each in the words of the buttons ("marked 1 in repair", "wrote off 1 as
+ * damaged"), with the unit's label, the day it happened and its notes; a
+ * unit that was written off keeps its lines.
  */
 export async function HistoryTab({
   tenantId,
@@ -49,7 +56,17 @@ export async function HistoryTab({
     trackedGear ? getGearUnitAudit(tenantId, productId, limit) : [],
   ]);
   const gear = gearUnitHistory(unitRows);
-  const rows = [...productRows, ...gear.rows]
+  // A stock function's own line says what a unit's rows of the same moment
+  // would say again. A label's change stays.
+  const said = new Set(
+    productRows
+      .filter((row) => gearStockActions.has(row.action))
+      .map((row) => row.at),
+  );
+  const rows = [
+    ...productRows,
+    ...gear.rows.filter((row) => row.action === "update" || !said.has(row.at)),
+  ]
     .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id)
     .slice(0, limit);
   const entries = buildHistory(rows);
@@ -59,6 +76,11 @@ export async function HistoryTab({
     ...units.map((unit) => [unit.id, unit.name ?? unnamed] as const),
   ]);
   const words = { empty: t("empty"), yes: t("yes"), no: t("no") };
+  // A stored day reads as a date; anything else as it is.
+  const value = (stored: unknown) =>
+    typeof stored === "string" && /^\d{4}-\d{2}-\d{2}$/.test(stored)
+      ? formatDay(stored, locale)
+      : historyValue(stored, words);
   const fieldLabel = (field: string) =>
     t.has(`field.${field}` as "field.name")
       ? t(`field.${field}` as "field.name")
@@ -104,14 +126,44 @@ export async function HistoryTab({
                     {formatInstant(new Date(entry.at), timezone, locale)}
                   </time>
                 </p>
+                {entry.details && (
+                  <ul className="mt-2 space-y-1">
+                    {entry.details.labels && (
+                      <li>
+                        {t("detail.units", {
+                          names: entry.details.labels.join(", "),
+                        })}
+                      </li>
+                    )}
+                    {entry.details.happenedOn && (
+                      <li>
+                        {t("detail.happenedOn", {
+                          date: formatDay(entry.details.happenedOn, locale),
+                        })}
+                      </li>
+                    )}
+                    {entry.details.expectedBack && (
+                      <li>
+                        {t("detail.expectedBack", {
+                          date: formatDay(entry.details.expectedBack, locale),
+                        })}
+                      </li>
+                    )}
+                    {entry.details.notes && (
+                      <li className="whitespace-pre-line">
+                        {t("detail.notes", { notes: entry.details.notes })}
+                      </li>
+                    )}
+                  </ul>
+                )}
                 {entry.changes.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {entry.changes.map((change) => (
                       <li key={change.field}>
                         {t("change", {
                           field: fieldLabel(change.field),
-                          from: historyValue(change.from, words),
-                          to: historyValue(change.to, words),
+                          from: value(change.from),
+                          to: value(change.to),
                         })}
                       </li>
                     ))}

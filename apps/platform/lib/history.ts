@@ -33,7 +33,51 @@ export type HistoryEntry = {
   changes: HistoryChange[];
   /** For a stock event: how many units it was about. */
   quantity?: number;
+  /** For a gear stock event: the record of the units it was about. */
+  details?: GearDetails;
 };
+
+/** What a gear stock event keeps of a unit's record. Days are "2026-11-14". */
+export type GearDetails = {
+  /** Tracked gear: the labels of the units. */
+  labels?: string[];
+  happenedOn?: string;
+  expectedBack?: string;
+  notes?: string;
+};
+
+/**
+ * Gear stock events written by the stock functions, one line each in the
+ * words of the buttons. A tracked unit's own rows from the same moment say
+ * the same thing twice, so the History leaves those out (see HistoryTab).
+ */
+export const gearStockActions = new Set([
+  "units_in_repair",
+  "units_lost",
+  "units_back_in_use",
+  "units_found",
+  "units_written_off",
+  "unit_problem_edit",
+]);
+
+const text = (value: unknown) =>
+  typeof value === "string" && value ? value : undefined;
+
+function gearDetails(after: Record<string, unknown>): GearDetails | undefined {
+  const labels = Array.isArray(after.labels)
+    ? after.labels.filter((label) => typeof label === "string")
+    : [];
+  const happenedOn = text(after.happened_on);
+  const expectedBack = text(after.expected_back);
+  const notes = text(after.notes);
+  const details: GearDetails = {
+    ...(labels.length > 0 ? { labels } : {}),
+    ...(happenedOn ? { happenedOn } : {}),
+    ...(expectedBack ? { expectedBack } : {}),
+    ...(notes ? { notes } : {}),
+  };
+  return Object.keys(details).length > 0 ? details : undefined;
+}
 
 /** Columns that say nothing to a reader, or repeat another one. */
 const quiet = new Set([
@@ -92,6 +136,34 @@ export function toHistoryEntry(row: AuditRow): HistoryEntry {
         },
       ],
     };
+  // A line of "Out of service", edited: what changed, field by field.
+  if (row.action === "unit_problem_edit") {
+    const label = text(after.label);
+    return {
+      id: row.id,
+      at: row.at,
+      actor: row.actor,
+      entity: row.entity,
+      entityId: row.entity_id,
+      action: `unit_problem_edit_${after.state === "lost" ? "lost" : "repair"}`,
+      changes: (["happened_on", "expected_back", "notes"] as const)
+        .filter((field) => (before[field] ?? null) !== (after[field] ?? null))
+        .map((field) => ({
+          field,
+          from: before[field] ?? null,
+          to: after[field] ?? null,
+        })),
+      ...(label ? { details: { labels: [label] } } : {}),
+    };
+  }
+  // A write-off says why: "as damaged" or "as lost".
+  const action =
+    row.action === "units_written_off"
+      ? `units_written_off_${after.reason === "damaged" ? "damaged" : "lost"}`
+      : row.action;
+  const details = gearStockActions.has(row.action)
+    ? gearDetails(after)
+    : undefined;
   const quantity =
     row.action !== "update" && typeof after.quantity === "number"
       ? after.quantity
@@ -112,9 +184,10 @@ export function toHistoryEntry(row: AuditRow): HistoryEntry {
     actor: row.actor,
     entity: row.entity,
     entityId: row.entity_id,
-    action: row.action,
+    action,
     changes,
     ...(quantity === undefined ? {} : { quantity }),
+    ...(details ? { details } : {}),
   };
 }
 
@@ -146,11 +219,14 @@ export function historyValue(
 // Tracked gear ---------------------------------------------------------------------------
 
 /**
- * What happened to the units of a tracked gear product, in the words of the
- * buttons that did it. The audit trail holds rows of two tables: a unit
- * (marked lost, found, written off, given a label) and its downtime (marked
- * damaged, put back in use). This turns them into one line each:
- *   unit_damaged      "Mark damaged"
+ * What happened to the units of a tracked gear product, read from the units'
+ * own audit rows. Since the stock rework (14 Nov 2026) the stock functions
+ * write each event themselves (gearStockActions above), and HistoryTab drops
+ * the lines made here for the same moment; these remain for a label's
+ * changes and for what was done before the rework. The audit trail holds
+ * rows of two tables: a unit (marked lost, found, written off, given a
+ * label) and its downtime (marked in repair, back in use):
+ *   unit_damaged      "Mark in repair" (was "Mark damaged")
  *   unit_repaired     "Back in use"
  *   unit_lost         "Mark lost"
  *   unit_found        "Found, back in use"
