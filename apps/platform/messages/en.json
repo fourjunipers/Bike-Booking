@@ -907,7 +907,7 @@
       "mine": "My order"
     },
     "chips": {
-      "label": "Show only",
+      "label": "Filter by type",
       "all": "All"
     },
     "reorder": {

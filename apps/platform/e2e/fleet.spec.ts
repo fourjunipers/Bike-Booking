@@ -1076,7 +1076,9 @@ test("my own product: a kind and a name, no duplicate names, then matched or sen
   ).toContainText("Not added: see why");
   // The Moto Mangos chip is on the Products list.
   await page.goto(`/bsr/products?q=${make}`);
-  await expect(chips.getByText("Needs changes", { exact: true })).toBeVisible();
+  await expect(
+    chips.getByRole("img", { name: "Moto Mangos needs changes" }),
+  ).toBeVisible();
   await page.goto(modelUrl);
   // What to do next, beside the reason: two buttons and one line.
   await expect(mangos.getByText("What to do next")).toBeVisible();
@@ -1363,7 +1365,7 @@ test("fleet: New product at the top, Add vehicle in each opened line with one Pr
   await expect(fleetLine(page, "Honda PCX 160")).toBeVisible();
   // The category chip finds a product by any of its categories.
   await page
-    .getByRole("navigation", { name: "Show only" })
+    .getByRole("navigation", { name: "Filter by type" })
     .getByRole("link", { name: "Scooter" })
     .click();
   await expect(page).toHaveURL(/category=city_scooter/);

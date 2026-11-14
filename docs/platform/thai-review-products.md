@@ -323,7 +323,7 @@ New texts on the branch `platform/lists-mobile-polish`: the sort, the filter chi
 | `Lists.sort.az` | A–Z | A–Z |
 | `Lists.sort.type` | By type | ตามประเภท |
 | `Lists.sort.mine` | My order | ลำดับของร้าน |
-| `Lists.chips.label` | Show only | แสดงเฉพาะ |
+| `Lists.chips.label` | Filter by type | กรองตามประเภท |
 | `Lists.chips.all` | All | ทั้งหมด |
 | `Lists.reorder.start` | Reorder | จัดลำดับ |
 | `Lists.reorder.done` | Done | เสร็จ |

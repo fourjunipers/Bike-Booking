@@ -286,6 +286,7 @@ test("sort: A–Z and By type change one list only; My order is the shared one",
   });
 
   await page.goto("/bsr/fleet");
+  await expect(rows(fleetList(page)).first()).toBeVisible();
   const sortNav = page.getByRole("navigation", { name: "Sort" });
   await expect(sortNav.getByRole("link", { name: "My order" })).toHaveAttribute(
     "aria-current",
@@ -317,9 +318,15 @@ test("sort: A–Z and By type change one list only; My order is the shared one",
     "/bsr/products?tab=vehicles&reorder=1",
   );
 
-  // Fleet is still in its own order.
+  // Fleet is still in its own order. Other tests add and remove products
+  // in this shop meanwhile, so compare the names both reads have.
   await page.goto("/bsr/fleet");
-  expect(await names(fleetList(page))).toEqual(fleetMine);
+  await expect(rows(fleetList(page)).first()).toBeVisible();
+  const fleetNow = await names(fleetList(page));
+  const shared = (list: string[], other: string[]) =>
+    list.filter((name) => other.includes(name));
+  expect(shared(fleetNow, fleetMine).length).toBeGreaterThan(5);
+  expect(shared(fleetNow, fleetMine)).toEqual(shared(fleetMine, fleetNow));
 });
 
 test("filter chips: only what the shop has, and they work with the search", async ({
@@ -327,7 +334,7 @@ test("filter chips: only what the shop has, and they work with the search", asyn
 }) => {
   await signIn(page, demo.bsrOwner);
   await page.goto("/bsr/fleet");
-  const chips = page.getByRole("navigation", { name: "Show only" });
+  const chips = page.getByRole("navigation", { name: "Filter by type" });
   await expect(chips.getByRole("link", { name: "All" })).toHaveAttribute(
     "aria-current",
     "true",

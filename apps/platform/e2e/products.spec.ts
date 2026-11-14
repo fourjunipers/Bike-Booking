@@ -106,12 +106,14 @@ test("products list: one row per product, filters, and a product's three tabs", 
   ).toBeVisible();
   // The chips: only what the shop has; a chip keeps the search.
   await page.goto("/bsr/products?q=pcx");
-  const chips = page.getByRole("navigation", { name: "Show only" });
+  const chips = page.getByRole("navigation", { name: "Filter by type" });
   await expect(chips.getByRole("link", { name: "Sedan" })).toHaveCount(0);
   await chips.getByRole("link", { name: "Scooter" }).click();
   await expect(page).toHaveURL(/category=city_scooter/);
   await expect(page).toHaveURL(/q=pcx/);
   await expect(row).toBeVisible();
+  // Reset view is in the Filters panel.
+  await page.getByText(/^Filters \(\d+\)$/).click();
   await page.getByRole("link", { name: "Reset view" }).click();
   await expect(page).toHaveURL(/\/bsr\/products$/);
 

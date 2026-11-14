@@ -231,7 +231,7 @@ test("new product: Vehicle or General; one of each general type; the three list 
   // Moto Mangos is about vehicles; the chips are the general types.
   await expect(page.getByLabel("Moto Mangos", { exact: true })).toHaveCount(0);
   await expect(
-    page.getByRole("navigation", { name: "Show only" }).getByRole("link", {
+    page.getByRole("navigation", { name: "Filter by type" }).getByRole("link", {
       name: "Scooter",
     }),
   ).toHaveCount(0);
