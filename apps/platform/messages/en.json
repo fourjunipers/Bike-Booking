@@ -501,7 +501,6 @@
       "sortBy": "Sort by",
       "filters": "Filters ({count})",
       "any": "Any",
-      "category": "Category",
       "apply": "Apply",
       "reset": "Reset view",
       "noneMatch": "No vehicles match these filters.",
@@ -514,8 +513,7 @@
         "past": "Sold and retired",
         "all": "Everything"
       },
-      "pastLink": "{count} sold or retired",
-      "kind": "Kind of vehicle"
+      "pastLink": "{count} sold or retired"
     },
     "renewals": {
       "title": "Tax and insurance",
@@ -597,7 +595,6 @@
       "notListed": "Not on Moto Mangos",
       "retired": "Retired"
     },
-    "modelFacts": "About {name}",
     "kind": {
       "motorbike": "Motorbike",
       "car": "Car",
@@ -754,8 +751,6 @@
       "up": "Move up",
       "down": "Move down",
       "reset": "Reset to A–Z",
-      "custom": "Shown in your own order.",
-      "filtered": "Clear the search and filters to change the order.",
       "resetConfirm": "Reset to A–Z? Your own order of products is cleared, on Fleet and on the Products list."
     },
     "choice": {
@@ -903,5 +898,28 @@
     "yearFrom": "First model year",
     "yearTo": "Last model year",
     "yearsHelp": "The shop’s own bike is a {year}. Set the range of years before you approve."
+  },
+  "Lists": {
+    "sort": {
+      "label": "Sort",
+      "az": "A–Z",
+      "type": "By type",
+      "mine": "My order"
+    },
+    "chips": {
+      "label": "Show only",
+      "all": "All"
+    },
+    "reorder": {
+      "start": "Reorder",
+      "done": "Done",
+      "help": "Move products up or down. Fleet and the Products list share this order."
+    },
+    "mango": {
+      "listed": "On Moto Mangos",
+      "inReview": "In review for Moto Mangos",
+      "needsChanges": "Moto Mangos needs changes",
+      "notListed": "Not on Moto Mangos"
+    }
   }
 }

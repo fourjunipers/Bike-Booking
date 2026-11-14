@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ChevronDown, FileUp, Plus, Printer, Search } from "lucide-react";
-import { KindIcon } from "@/components/fleet/kind-icon";
+import { EditPencil } from "@/components/fleet/edit-pencil";
+import { RowIcon } from "@/components/fleet/kind-icon";
 import {
-  MoveButtons,
-  MoveForms,
-  OrderBar,
-} from "@/components/fleet/order-controls";
-import { EditPencil, ProductTags } from "@/components/fleet/product-tags";
+  cell,
+  FilterChips,
+  ListToolbar,
+  MangoStatus,
+  rowGrid,
+  RowTags,
+} from "@/components/fleet/list-bits";
+import { MoveButtons, MoveForms } from "@/components/fleet/order-controls";
 import { UnitRow } from "@/components/fleet/unit-bits";
 import { Field, inputClass } from "@/components/form";
 import { PageHeader } from "@/components/page";
@@ -29,13 +33,15 @@ import {
 } from "@/lib/fleet-list";
 import { hasCustomOrder, orderIndex } from "@/lib/general-products";
 import { shopModelOptions } from "@/lib/model-options";
-import { canManageFleet } from "@/lib/roles";
 import {
-  humanizeKey,
-  kindTypes,
-  listingStatus,
-  vehicleKinds,
-} from "@/lib/vehicle-kinds";
+  filterChips,
+  parseListSort,
+  parseReorder,
+  sortRows,
+  type ListSort,
+} from "@/lib/product-list";
+import { canManageFleet } from "@/lib/roles";
+import { humanizeKey, listingStatus } from "@/lib/vehicle-kinds";
 import { cn } from "@/lib/utils";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,11 +50,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Fleet (owner, 13 Nov 2026): the shop's vehicles, one line per product, A
- * to Z by name, each with how many vehicles it has and how many are
- * available now. A line opens to its vehicles. No group headings and no make
- * or model: a product is known by its name. Search and filters live in the
- * address. Everyone reads; owners and managers set up.
+ * Fleet (owner, 13 and 14 Nov 2026): the shop's vehicles, one line per
+ * product, each with how many vehicles it has and how many are available
+ * now. A line opens to its vehicles, with "Add vehicle" under them. Every
+ * line is two lines high (components/fleet/list-bits rowGrid). Sorted A–Z,
+ * by type or in the shop's own order; chips filter by kind and category.
+ * Search, filters and sort live in the address. Everyone reads; owners and
+ * managers set up and reorder.
  */
 export default async function FleetPage({
   params,
@@ -59,10 +67,11 @@ export default async function FleetPage({
   const { membership } = await requireArea(slug, "fleet");
   const { tenant, role } = membership;
   const manage = canManageFleet(role);
-  const [t, tCommon, locale, fleet, locations, blocked, everyProduct] =
+  const [t, tCommon, tLists, locale, fleet, locations, blocked, everyProduct] =
     await Promise.all([
       getTranslations("Fleet"),
       getTranslations("Common"),
+      getTranslations("Lists"),
       getLocale(),
       getFleet(tenant.id),
       getLocations(tenant.id),
@@ -73,7 +82,8 @@ export default async function FleetPage({
     ]);
 
   const view = parseFleetList(query);
-  const { rows, current, past, shown } = buildFleetList(
+  const sort = parseListSort(query);
+  const built = buildFleetList(
     fleet.map((product) => ({
       id: product.id,
       name: product.name,
@@ -86,14 +96,24 @@ export default async function FleetPage({
     view,
     orderIndex(everyProduct),
   );
+  const { current, past, shown } = built;
+  const rows = sortRows(
+    built.rows.map((row) => ({ ...row, type: "vehicle" })),
+    sort,
+  );
   const filters = fleetFilterCount(view);
-  // The order is changed on the whole list, never on a search or a filter.
+  // The order is changed on the whole list in its own order, never on a
+  // search, a filter or another sort.
   const lines = rows.map((row) => row.id);
-  const reorder = manage && filters === 0 && rows.length > 1;
+  const reordering =
+    manage &&
+    parseReorder(query) &&
+    sort === "mine" &&
+    filters === 0 &&
+    rows.length > 1;
   const listings = new Map(
     fleet.map((p) => [p.id, listingStatus(p, p.entry_status)]),
   );
-  const categoriesOf = new Map(fleet.map((p) => [p.id, p.categories]));
   const locationNames = new Map(locations.map((l) => [l.id, l.name]));
   // Open when someone is looking for a vehicle, or there is little to scroll.
   const openAll = view.q !== "" || filters > 0 || shown <= 12;
@@ -103,6 +123,64 @@ export default async function FleetPage({
     t.has(`category.${key}` as "category.sedan")
       ? t(`category.${key}` as "category.sedan")
       : humanizeKey(key);
+
+  /** This view with some of it changed, as an address. */
+  const href = (
+    changes: Partial<typeof view> & { sort?: ListSort; reorder?: boolean },
+  ) => {
+    const next = { ...view, sort, reorder: false, ...changes };
+    const search = new URLSearchParams();
+    if (next.q) search.set("q", next.q);
+    if (next.scope !== "current") search.set("scope", next.scope);
+    for (const key of [
+      "product",
+      "status",
+      "location",
+      "kind",
+      "category",
+    ] as const)
+      if (next[key]) search.set(key, next[key]);
+    if (next.year !== null) search.set("year", String(next.year));
+    if (next.sort !== "mine") search.set("sort", next.sort);
+    if (next.reorder) search.set("reorder", "1");
+    const text = search.toString();
+    return text ? `${base}?${text}` : base;
+  };
+
+  // Chips: only the kinds and categories the shop has (in the scope shown).
+  const chips = [
+    {
+      label: tLists("chips.all"),
+      href: href({ kind: "", category: "" }),
+      current: !view.kind && !view.category,
+    },
+    ...filterChips(
+      fleet
+        .filter((p) => view.scope !== "current" || p.retired_at === null)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          type: "vehicle",
+          kind: p.vehicle_type,
+          categories: p.categories,
+        })),
+    ).map((chip) =>
+      chip.by === "kind"
+        ? {
+            label: t(`kind.${chip.key}` as "kind.car"),
+            href: href({ kind: chip.key, category: "" }),
+            current: view.kind === chip.key && !view.category,
+          }
+        : {
+            label: categoryLabel(chip.key),
+            href: href({ kind: "", category: chip.key }),
+            current: view.category === chip.key,
+          },
+    ),
+  ];
+  // The filters panel holds the rest: kind and category are the chips.
+  const panelFilters =
+    filters - Number(view.kind !== "") - Number(view.category !== "");
 
   return (
     <>
@@ -153,11 +231,17 @@ export default async function FleetPage({
 
       <form
         // A new view redraws the form, so its fields show the view on screen.
-        key={JSON.stringify(view)}
+        key={JSON.stringify([view, sort])}
         role="search"
         action={base}
-        className="mb-4 space-y-3 rounded-lg border bg-card p-3 sm:p-4"
+        className="mb-3 space-y-3 rounded-lg border bg-card p-3 sm:p-4"
       >
+        {/* A search keeps the chip and the sort. */}
+        {view.kind && <input type="hidden" name="kind" value={view.kind} />}
+        {view.category && (
+          <input type="hidden" name="category" value={view.category} />
+        )}
+        {sort !== "mine" && <input type="hidden" name="sort" value={sort} />}
         <div className="flex gap-2">
           <label htmlFor="q" className="sr-only">
             {t("searchLabel")}
@@ -176,10 +260,10 @@ export default async function FleetPage({
             <span className="max-sm:sr-only">{tCommon("search")}</span>
           </Button>
         </div>
-        <details open={filters > (view.q ? 1 : 0)}>
+        <details open={panelFilters > (view.q ? 1 : 0)}>
           <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
             <ChevronDown aria-hidden className="size-4" />
-            {t("view.filters", { count: filters })}
+            {t("view.filters", { count: panelFilters })}
           </summary>
           <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-4">
             <Field id="scope" label={t("view.show")}>
@@ -210,42 +294,6 @@ export default async function FleetPage({
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </Field>
-            <Field id="kind" label={t("view.kind")}>
-              <select
-                id="kind"
-                name="kind"
-                defaultValue={view.kind}
-                className={inputClass}
-              >
-                <option value="">{t("view.any")}</option>
-                {kindTypes.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {t(`kind.${kind}`)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field id="category" label={t("view.category")}>
-              <select
-                id="category"
-                name="category"
-                defaultValue={view.category}
-                className={inputClass}
-              >
-                <option value="">{t("view.any")}</option>
-                {vehicleKinds
-                  .filter((kind) => kind.categories.length > 0)
-                  .map((kind) => (
-                    <optgroup key={kind.type} label={t(`kind.${kind.type}`)}>
-                      {kind.categories.map((key) => (
-                        <option key={key} value={key}>
-                          {categoryLabel(key)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
               </select>
             </Field>
             <Field id="status" label={t("unit.status")}>
@@ -310,6 +358,8 @@ export default async function FleetPage({
         </details>
       </form>
 
+      <FilterChips chips={chips} />
+
       {fleet.length === 0 ? (
         <p className="rounded-lg border bg-card p-5 text-muted-foreground">
           {t("empty")}
@@ -320,108 +370,162 @@ export default async function FleetPage({
         </p>
       ) : (
         <>
-          {manage && (
-            <OrderBar
-              slug={slug}
-              custom={hasCustomOrder(everyProduct)}
-              filtered={filters > 0}
-            />
-          )}
+          <ListToolbar
+            slug={slug}
+            sort={sort}
+            sortHref={(next) => href({ sort: next })}
+            reorderHref={
+              manage && fleet.length > 1 ? `${base}?reorder=1` : null
+            }
+            doneHref={base}
+            reordering={reordering}
+            custom={hasCustomOrder(everyProduct)}
+          />
           <ul
             aria-label={t("list")}
-            className="divide-y overflow-hidden rounded-lg border bg-card"
+            className="divide-y rounded-lg border bg-card"
           >
-            {rows.map((row) => (
-              <li key={row.id} className="even:bg-accent/40">
-                {reorder && <MoveForms slug={slug} id={row.id} shown={lines} />}
-                <details
-                  data-fleet-product
-                  className="group"
-                  open={openAll && row.units.length > 0}
-                >
-                  <summary className="flex min-h-16 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none sm:px-4">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-md border bg-card text-muted-foreground">
-                      <KindIcon kind={row.kind} className="size-5" />
+            {rows.map((row) => {
+              const listing = manage ? (listings.get(row.id) ?? null) : null;
+              const firstLine = (
+                <>
+                  <span className={cell.icon}>
+                    <RowIcon
+                      type="vehicle"
+                      kind={row.kind}
+                      className="size-4"
+                    />
+                  </span>
+                  {/* One line; the full name is on the product page. */}
+                  <span className={cell.name} title={row.name}>
+                    {row.name}
+                  </span>
+                </>
+              );
+              const secondLine = (
+                <>
+                  <span className={cell.summary}>
+                    <span className="min-w-0 shrink-0 truncate max-sm:shrink">
+                      {row.retired && <>{t("listing.retired")} · </>}
+                      {t("vehicleCounts", {
+                        vehicles: row.vehicles,
+                        available: row.available,
+                      })}
                     </span>
-                    <span className="min-w-0 flex-1 basis-40">
-                      <span className="flex min-w-0 items-center gap-1">
-                        <span className="min-w-0 font-semibold">
-                          {row.name}
-                        </span>
-                        {/* The edit pencil, beside the title: opens the product. */}
+                    {/* Wide screens: the kind and categories, as far as they fit. */}
+                    <RowTags
+                      labels={[
+                        t(`kind.${row.kind}` as "kind.car"),
+                        ...row.categories.map(categoryLabel),
+                      ]}
+                    />
+                  </span>
+                  <span className={cell.mango}>
+                    <MangoStatus listing={listing} />
+                  </span>
+                </>
+              );
+
+              // Reorder mode: the line doesn't open and has no pencil; it
+              // has the arrows instead.
+              if (reordering)
+                return (
+                  <li key={row.id}>
+                    <MoveForms slug={slug} id={row.id} shown={lines} />
+                    <div data-list-row className={rowGrid({ reorder: true })}>
+                      {firstLine}
+                      {secondLine}
+                      <span className={cell.end}>
+                        <MoveButtons
+                          id={row.id}
+                          name={row.name}
+                          shown={lines}
+                        />
+                      </span>
+                    </div>
+                  </li>
+                );
+
+              return (
+                <li key={row.id}>
+                  <details
+                    data-fleet-product
+                    className="group"
+                    open={openAll && row.units.length > 0}
+                  >
+                    <summary
+                      data-list-row
+                      className={cn(
+                        rowGrid({ chevron: true }),
+                        "cursor-pointer list-none outline-none hover:bg-muted focus-visible:bg-muted [&::-webkit-details-marker]:hidden",
+                      )}
+                    >
+                      {firstLine}
+                      <span className={cell.pencil}>
                         <EditPencil
                           href={`/${slug}/products/${row.id}`}
                           name={row.name}
                         />
                       </span>
-                      <span className="block text-sm text-muted-foreground">
-                        {t("vehicleCounts", {
-                          vehicles: row.vehicles,
-                          available: row.available,
-                        })}
-                      </span>
-                    </span>
-                    {/* The same tags as on the Products list. */}
-                    <ProductTags
-                      name={row.name}
-                      retired={row.retired}
-                      listing={manage ? (listings.get(row.id) ?? null) : null}
-                      categories={categoriesOf.get(row.id) ?? []}
-                    />
-                    {manage && !row.retired && (
-                      <Link
-                        href={`${base}/units/new?product=${row.id}`}
+                      {secondLine}
+                      <ChevronDown
+                        aria-hidden
                         className={cn(
-                          buttonVariants({ variant: "outline" }),
-                          "-my-1 h-11 bg-card px-3",
+                          cell.end,
+                          "size-5 text-muted-foreground transition-transform group-open:rotate-180",
                         )}
-                      >
-                        <Plus aria-hidden />
-                        {t("addUnitRow")}
-                        <span className="sr-only">
-                          {": "}
-                          {row.name}
-                        </span>
-                      </Link>
+                      />
+                    </summary>
+                    {row.units.length === 0 ? (
+                      <p className="border-t px-4 py-3 text-sm text-muted-foreground">
+                        {t("noUnits")}
+                      </p>
+                    ) : (
+                      <ul className="divide-y border-t">
+                        {row.units.map((unit) => (
+                          <UnitRow
+                            key={unit.id}
+                            unit={unit}
+                            href={`${base}/units/${unit.id}`}
+                            distanceUnit={tenant.distanceUnit}
+                            locale={locale}
+                            detail={
+                              [
+                                unit.model_year,
+                                locations.length > 1
+                                  ? locationNames.get(unit.location_id)
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ") || undefined
+                            }
+                          />
+                        ))}
+                      </ul>
                     )}
-                    {reorder && (
-                      <MoveButtons id={row.id} name={row.name} shown={lines} />
+                    {/* "Add vehicle" is in the opened line, under its vehicles. */}
+                    {manage && !row.retired && (
+                      <div className="border-t px-3 py-2 sm:px-4">
+                        <Link
+                          href={`${base}/units/new?product=${row.id}`}
+                          className={cn(
+                            buttonVariants({ variant: "outline" }),
+                            "h-11 px-3",
+                          )}
+                        >
+                          <Plus aria-hidden />
+                          {t("addUnitRow")}
+                          <span className="sr-only">
+                            {": "}
+                            {row.name}
+                          </span>
+                        </Link>
+                      </div>
                     )}
-                    <ChevronDown
-                      aria-hidden
-                      className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                    />
-                  </summary>
-                  {row.units.length === 0 ? (
-                    <p className="border-t bg-card px-4 py-3 text-sm text-muted-foreground">
-                      {t("noUnits")}
-                    </p>
-                  ) : (
-                    <ul className="divide-y border-t bg-card">
-                      {row.units.map((unit) => (
-                        <UnitRow
-                          key={unit.id}
-                          unit={unit}
-                          href={`${base}/units/${unit.id}`}
-                          distanceUnit={tenant.distanceUnit}
-                          locale={locale}
-                          detail={
-                            [
-                              unit.model_year,
-                              locations.length > 1
-                                ? locationNames.get(unit.location_id)
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ") || undefined
-                          }
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </details>
-              </li>
-            ))}
+                  </details>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}
