@@ -33,6 +33,8 @@ type Fixture = TestTenant & {
   modelId: string;
   unitId: string;
   renewalId: string;
+  /** An item for sale, for the stock ledger. */
+  itemId: string;
 };
 
 let a: Fixture;
@@ -151,12 +153,34 @@ async function addFixtures(tenant: TestTenant): Promise<Fixture> {
       payload: { month: "2027-01", items: [] },
     }),
   );
+  const item = ok(
+    await service
+      .from("products")
+      .insert({
+        tenant_id: tenant.id,
+        type: "sale_item",
+        tracking: "consumable",
+        name: "Fixture item",
+      })
+      .select("id")
+      .single(),
+  )!;
+  ok(
+    await service.from("stock_movements").insert({
+      tenant_id: tenant.id,
+      product_id: item.id,
+      location_id: tenant.locationId,
+      kind: "received",
+      quantity: 10,
+    }),
+  );
   // audit_events: written by the triggers on the rows above.
   return {
     ...tenant,
     modelId: model.id,
     unitId: unit.id,
     renewalId: renewal.id,
+    itemId: item.id,
   };
 }
 
@@ -240,6 +264,13 @@ const payloads: Record<string, (t: Fixture, userId: string) => Row> = {
     dedupe_key: "forged",
     payload: {},
   }),
+  stock_movements: (t) => ({
+    tenant_id: t.id,
+    product_id: t.itemId,
+    location_id: t.locationId,
+    kind: "received",
+    quantity: 5,
+  }),
   audit_events: (t) => ({
     tenant_id: t.id,
     entity: "units",
@@ -263,6 +294,7 @@ const changes: Record<string, Row> = {
   unit_renewals: { provider: "Hijacked" },
   unit_renewal_costs: { cost: 999 },
   notification_outbox: { status: "cancelled" },
+  stock_movements: { note: "Hijacked" },
   audit_events: { action: "hijacked" },
 };
 
@@ -319,6 +351,7 @@ describe("every tenant table", () => {
       "notification_outbox",
       "product_year_bands",
       "products",
+      "stock_movements",
       "tenants",
       "unit_blocks",
       "unit_financials",
@@ -434,7 +467,11 @@ describe("reading", () => {
     const team = await visibleTenantIds(db, "memberships");
     expect(team).toHaveLength(roles.length);
     for (const table of ["locations", "products", "units", "unit_blocks"]) {
-      expect(await visibleTenantIds(db, table), table).toEqual([a.id]);
+      // Rows of this tenant only (products has two fixture rows since the
+      // stock ledger needed an item for sale).
+      expect([...new Set(await visibleTenantIds(db, table))], table).toEqual([
+        a.id,
+      ]);
     }
   });
 

@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 export type FormState = {
   ok?: boolean;
   errors?: Record<string, string>;
+  /** Numbers an error message names, e.g. { count: 3 }. */
+  values?: Record<string, string | number>;
   /** "Did you mean…": links offered with an error, e.g. matching presets. */
   suggestions?: { label: string; href: string }[];
   /** Another way to get it done, offered with an error, e.g. "retire". */
@@ -89,7 +91,7 @@ export function ActionForm({
     if (!key) return undefined;
     // Keys come from the server, so they are checked at run time.
     const known = key as "saveFailed";
-    return t.has(known) ? t(known) : t("saveFailed");
+    return t.has(known) ? t(known, state.values) : t("saveFailed");
   };
 
   return (

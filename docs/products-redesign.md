@@ -30,6 +30,8 @@
 | 18 | **Stage B direction (13 Nov 2026).** The create page opens with two choices, Vehicle and General. Vehicle: kind chips and name, with licence class, minimum age, buffers and categories. General: a type (Rental gear, Item for sale, Service or extra), no licence class, minimum age or buffers, and a quantity where it applies. The Products list gets All, Vehicles and General tabs | §4.1, §5.7 |
 | 19 | **No make or model on the platform (13 Nov 2026, second click-through). This supersedes every earlier make and model decision in this document** (decisions 3 and 17 where they speak of them, §4.1's vehicle form, §5.6's create form, and the unit and Fleet columns in §1.3 and §4.1). A product is known by its name on every platform screen: no make, model, engine size or transmission field, filter, column, grouping, count or label, including Add vehicle (one Product dropdown, A to Z), Fleet, Products, search, stickers and the CSV import (a product name per row). The database columns stay, nullable, for Moto Mangos matching. The only place the five details are asked is the Moto Mangos review form: make, model, engine size, transmission and "Year of your bike" (one year, required). The year range a list entry covers is set by the Moto Mangos admin at approval. The Moto Mangos panel reads top to bottom: logo; "List it on Moto Mangos"; "Select your make and model from the list"; "Don't see your bike above? Send us the details and we'll get it added", which opens the review form; then the listing switch and settings, usable once a model is selected or approved. Fleet is one line per product, A to Z, with vehicle and available counts and one search box. Buffers are entered in hours and stored in minutes. A product page has Duplicate, and Retire and Delete at its very bottom | §4.1, docs/PROGRESS.md |
 | 20 | **After the third click-through (13 Nov 2026).** The Moto Mangos panel shows only for the Motorbike kind (any of its categories); hidden for Off-road (ATV, UTV, Dirt bike), Car, Boat and Other. The list picker is two dropdowns, Make then Model with its years, and its button reads "Select". Listing quantities are headed "Set bike quantities per booking type" with a line each for Instant units, Request units and Walk-ins. A product is deleted, not retired, from its page, and only when it has no vehicles of any status; the retired status stays in the database. Fleet lines carry the Products list's tags; an edit pencil beside the title opens the product on both lists. **This supersedes §1.2's "retire, restore and delete rules apply to every type" as far as the screens go.** Manual ordering of products (drag, Move up and Move down, Reset to A–Z, one shared order per shop) is asked for and not built yet: see docs/PROGRESS.md | §4.1, docs/PROGRESS.md |
+| 21 | **Stage B confirmations (13 Nov 2026), built in PR 17.** General products hide and store no buffers (and no deposit). New product opens with Vehicle or General; General asks for a type (Rental gear, Item for sale, Service or extra), a name and a description, with a quantity per location for gear and items for sale and none for a service. The Products list has All, Vehicles and General tabs. A general product's page is Details, Stock and History: "Change quantity" is for owners and managers; "Mark damaged" and "Mark lost" for owners, managers and staff; a mechanic is refused on lost; only an owner or manager restores or removes a lost unit. **Tracked gear is one nameless row per unit with an optional label: this supersedes §1.3 and §2.4 where they say a tracked unit needs a label.** A product already on a Moto Mangos list entry has "Change model" and "Disconnect" (owners and managers, audited, bookings left untouched). Manual order, step one: one order per shop for Fleet and Products, Move up and Move down on each line, "Reset to A–Z"; dragging is a follow-up PR (§5.8) | §5.7, §5.8 |
+| 22 | **After the PR 17 click-through (14 Nov 2026): the Stock tab's states.** A unit of gear is in one of three states, each under its own heading on the Stock tab with one line of help and its own actions: **In use** ("Mark damaged", "Mark lost"), **Damaged** ("Back in use": it returns to the available count) and **Lost** ("Found, back in use" restores it; "Write off" removes it permanently). "Write off" replaces "Remove for good" and "Found, back in use" replaces "Back in stock". "Write off" asks first, saying it cannot be undone, that the unit leaves the product's stock counts, and that History keeps a record. History uses the buttons' words. Who may do what is unchanged, and so is the database | §5.7 |
 
 Decisions 9, 12 and 15 include Mark's second round of answers the same day (items for sale by stage, who may mark a unit lost, and the price-per-day mode).
 
@@ -169,7 +171,7 @@ Each migration is one logical change. All of them act on platform tables that ar
 | # | Migration (name after the timestamp) | What it does | Stage |
 | --- | --- | --- | --- |
 | 1 | `platform_products` | Rename `models` → `products`, `units.model_id` → `product_id`, `model_year_bands` → `product_year_bands`. Add `type` (existing rows: `vehicle`), `tracking` (`unit`), `units.product_type`, the composite key and the type checks. Rename policies, indexes and triggers to match. Re-create every function that names the old table or column, in the same file | A |
-| 2 | `platform_gear_units` | `units.label`, the `lost` status, the per-type unit checks, `set_stock_quantity()`, `set_quantity_out()` and `mark_units_lost()` (§2.3), the product-level advisory lock, `stock_movements` for items for sale | B |
+| 2 | `platform_products_stage_b` (`20261113000300`; planned as `platform_gear_units`) | `units.label`, the `lost` status, the per-type unit rules, `set_stock_quantity()`, `mark_units_damaged()` and `mark_units_repaired()` (planned as `set_quantity_out()`), `mark_units_lost()`, `resolve_lost_units()` (§2.3), the product-level advisory lock, `stock_movements` for items for sale; and, added by decision 21, `products.sort_position` with `move_product()` and `reset_product_order()`, and `change_listing_entry()` and `disconnect_listing()` | B |
 | 3 | `platform_product_listings` | Create the table, copy the five columns across, drop them from `products`, add `lead_time_hours`, re-point the guards and the review function | C |
 | 4 | `platform_product_pricing` | `product_pricing` (the deposit moves into it), `price_templates`, `price_template_days`, `tax_profiles`, `product_extras`, the wider currency lock | D |
 
@@ -513,9 +515,9 @@ Not in stage A: gear, services, quantities, the `lost` status (B); `product_list
 
 Not testable in stage A: anything with a non-vehicle product on screen (stage B), and the live push (done once, after stage C, by the runbook).
 
-### 5.7 Stage B plan: general products (not started)
+### 5.7 Stage B: general products (built 13 Nov 2026, PR 17)
 
-Mark's direction (decision 18). Written as a plan to approve, not built.
+Mark's direction (decision 18), confirmed point by point on 13 Nov 2026 (decision 21) and built on `platform/products-stage-b`. The plan as it was written follows; "As built" after it says where the build differs.
 
 **What the owner sees**
 
@@ -544,6 +546,78 @@ Mark's direction (decision 18). Written as a plan to approve, not built.
 3. Browser, phone and desktop: create one of each general type; the three list tabs; set a helmet quantity, mark 2 damaged and 1 lost as staff, confirm the loss as owner; a tracked camera with labels; a mechanic can't mark lost; vehicles behave exactly as before (the Stage A suite unchanged).
 4. The Stage A demo data carried again, counts before and after.
 
+**As built** (migration `20261113000300_platform_products_stage_b`; the Stage A migration is untouched)
+
+- **Unit rules per type.** A vehicle unit keeps its rule (a plate, or "plate pending") as the check `units_check`, now for vehicles only, and takes no label. The gear half (no plate, plate pending, frame or engine number, year or odometer) is a trigger, `units_gear_fields`, not a check: it runs after the row's foreign keys, so a unit that claims a type its product doesn't have is still refused by the key first, which Stage A's tests assert. A label is optional, unique in its product ignoring case and spacing (`units_label_idx`), and only on a product tracked unit by unit (`units_label_guard`). Switching gear back to counted clears its labels and is refused while a unit has purchase details.
+- **Lost.** `units_guard` is re-created with the status: staff may set it from active or maintenance; a mechanic or driver is refused (`role_not_allowed`); every way out of lost is for owners and managers. A unit can't be marked lost while a booking, hold or transfer on it has not ended; its downtime ends at that moment. `unit_blocks_guard` is re-created so a lost unit takes no new block. The status is in the database for every unit; **the screens offer it for gear only in this stage** (a vehicle's status control is unchanged).
+- **A general product stores no buffers and no deposit** (`products_general_fields_check`).
+- **Stock functions**, all run as the caller, so RLS and the guards stay the real rule: `set_stock_quantity(product, location, n)` (owners and managers; gear up to 1,000 in one place, an item for sale up to 100,000); `mark_units_damaged(product, location, n, until)` and `mark_units_repaired(product, location, n)` (owners, managers, staff and mechanics); `mark_units_lost(product, location, n)` (owners, managers, staff); `resolve_lost_units(product, location, n, 'restore' | 'remove')` (owners and managers); `create_general_product(...)` (the product and its first quantities in one transaction); `product_stock(tenant)` (counts per product and location, so a shop with 600 helmets doesn't send 600 rows to the screen). Each writes one named audit event on the product (`stock_adjust`, `units_damaged`, `units_repaired`, `units_lost`, `lost_restored`, `lost_removed`).
+- **Lowering a quantity** removes only units that no block holds now or later, unlabelled ones first. With too few free it refuses (`units_blocked`) and names the lowest quantity that could be set. A unit with bookings on record is retired, not deleted, so its history stays (nothing has bookings until Phase 3; tested with a hand-made block).
+- **Locks.** Product-and-location locks first (advisory namespace `1a02`, sorted by key), then the per-unit locks (`1a01`, the one `unit_blocks_guard` takes, sorted by key): `lock_product_stock()` and `lock_units()`. Every stock function takes them in that order. The manual order has its own lock per shop (`1a03`).
+- **Items for sale: `stock_movements`.** Signed quantities; `received`, `adjusted`, and from Phase 3 `sold` and `returned`. Members read; owners and managers add `received` and `adjusted`; nobody updates or deletes (no grant, no policy). Who did it is set in the database from `auth.uid()`. What is on hand can't go below zero. An item for sale with stock on hand can't be deleted (`product_has_stock`); at zero it goes, and its ledger with it.
+- **Screens.** As decision 21. Counted gear has "Change quantity", "Mark damaged" (with an optional "back in use on"), "Back in use", "Mark lost" and, for lost units, "Found, back in use" and "Write off" (decision 22; first built as "Back in stock" and "Remove for good"). Tracked gear has "Change quantity" and one line per unit with its label and the same actions as buttons on the line. An item for sale has its count on hand and its stock history. A service has Details and History only.
+
+**The Stock tab's three states** (decision 22, 14 Nov 2026; wording and layout only, no database change)
+
+| State | What it means | Actions | Who |
+| --- | --- | --- | --- |
+| **In use** | Available to rent | "Mark damaged" (with an optional "back in use on") | Owner, manager, staff, mechanic |
+| | | "Mark lost" | Owner, manager, staff |
+| **Damaged** | Not available to rent; still counted in stock | "Back in use": it returns to the available count | Owner, manager, staff, mechanic |
+| | | "Mark lost" (tracked gear: on the unit's line; counted gear: "Mark lost" takes a damaged unit when no other is free) | Owner, manager, staff |
+| **Lost** | Not available to rent; not counted in stock | "Found, back in use": restores it | Owner, manager |
+| | | "Write off": removes it permanently, after a confirmation | Owner, manager |
+
+- "Change quantity" (owners and managers) sits above the three states: it adds units in use, or removes units in use that are free.
+- Each state is a headed part of the Stock tab with its count ("Damaged (2)") and one line of help. Damaged and Lost appear once something is in them. Counted gear asks "how many" under each heading; tracked gear lists its units under the heading of the state each is in.
+- "Write off" asks: "Write off? This cannot be undone. The unit leaves this product's stock counts for good and can't be marked found again. The History keeps a record."
+- **History in the buttons' words.** Counted gear: "marked 2 damaged", "put 2 back in use", "marked 1 lost", "marked 1 found, back in use", "wrote off 1". Tracked gear, one line per unit: "marked unit GoPro 3 damaged", "put unit GoPro 3 back in use", "marked unit GoPro 3 lost", "marked unit GoPro 3 found, back in use", "wrote off unit GoPro 3". A written-off unit's row is deleted, but its lines stay in History with its label: they are read from the audit trail by the product the unit belonged to (`lib/history.ts` `gearUnitHistory`), not from the unit rows that are left.
+- The database is as it was. The functions keep their names (`resolve_lost_units(..., 'restore' | 'remove')`) and the audit actions theirs (`lost_restored`, `lost_removed`); only the words on screen changed.
+
+**Moto Mangos: "Change model" and "Disconnect"** (decision 21)
+
+- Shown on the panel of a product that is on an approved list entry; owners and managers only (the panel itself is theirs). "Change model" opens the same Make, then Model dropdowns with a Select button; "Disconnect" asks first.
+- `change_listing_entry(product, entry)` moves the product to another approved entry; the listing switch and its quantities stay. `disconnect_listing(product)` switches the listing off, sets its quantities to zero and clears the entry with the make, model, engine size and transmission copied from it. It is refused while a request for the product is still waiting for review. Each writes a named audit event (`listing_change_model`, `listing_disconnect`) beside the row's own, and both show in the product's History.
+- **Existing bookings made through Moto Mangos: left exactly as they are.** Neither function touches a unit or a block, so every booked vehicle stays booked for its dates and stays in the fleet. Each answers with the number of bookings on the product's vehicles that have not ended; the panel shows that number above the two actions, and the confirmation says "Bookings already made stay as they are." The other choice, refusing while bookings exist, would leave a shop unable to come off Moto Mangos for as long as one booking was outstanding. Tested with hand-made booking blocks (orders arrive in Phase 3). **For Phase 3:** an order must keep its own copy of what the customer booked (the list entry's make, model and years), because the product may point at another entry, or none, by pickup day.
+
+**Manual order, step one** (decision 21)
+
+- `products.sort_position`, per shop. No position on any product means A to Z (the default). `move_product(product, target, 'before' | 'after', current_order)` puts one product just before or after another of the same shop; `reset_product_order(tenant)` clears every position. Owners and managers only; everyone else reads the saved order.
+- A shop still on A to Z has nothing saved to move within, so the first move saves the order on screen (the server works it out; the browser doesn't send it) with the one change. From then on a new product goes to the bottom (`products_sort_bottom`).
+- Fleet and the Products list read the one order; general products take part in it. On Fleet, which shows vehicles only, "Move up" puts a product before the line above it, passing over any general product that sits between them.
+- "Move up" and "Move down" are plain buttons on each line (44 px), "Reset to A–Z" sits above the list while the shop has its own order, and all three are gone while a search or filter is on (a line says why). The All, Vehicles and General tabs count as views, like Fleet, not as filters.
+- `move_product` already takes "before or after any product", which is what a drop needs: dragging (§5.8) adds no database work.
+
+
+### 5.8 Dragging to reorder: proposal for a follow-up PR (not built)
+
+Not built in PR 17, by instruction. This is the proposal; the library needs Mark's approval first (root `CLAUDE.md`: ask before adding a dependency).
+
+**Library: dnd-kit.** Checked on 13 Nov 2026 against the npm registry, GitHub and Bundlephobia.
+
+| | |
+| --- | --- |
+| Packages | `@dnd-kit/core` 6.3.1 and `@dnd-kit/sortable` 10.0.0 (they bring `@dnd-kit/utilities` 3.2.2 and `@dnd-kit/accessibility` 3.1.1; these four depend on nothing else but `tslib`) |
+| Licence | MIT, all of them |
+| Size | `core` 14.2 kB and `sortable` 3.7 kB, minified and gzipped (Bundlephobia): about 18 kB. Loaded only on Fleet and the Products list, only for owners and managers, and it can be fetched when a drag is first started |
+| Maintenance | The repository (`clauderic/dnd-kit`) is active: last push 31 Oct 2026, not archived, about 17,800 stars, 152 open issues. **But the two packages above were last released on 4 and 5 Dec 2024.** The author's work since then goes into a rewrite, `@dnd-kit/react` (0.5.3, 31 Oct 2026), which is still 0.x |
+| React 19 | The classic packages ask for `react >= 16.8`, which our 19.3 satisfies on paper. Not installed or run here: to confirm in the PR's first hour |
+
+**Recommended:** the classic packages (`core` + `sortable`). Their API has been stable for two years and they include a keyboard sensor and screen-reader announcements. The risk is that they get no more fixes; it is small here because the use is one sortable list and the Move up and Move down buttons stay as the fallback. The rewrite is the better choice once it reaches 1.0; choosing it today means building on an API that may still change.
+
+**How long-press sits beside the taps and links on a line**
+
+- **A drag handle, and only the handle.** Each line gets a grip button (44 px) at its start. Dragging starts from the handle and nowhere else, so everything a line already does is untouched: a tap on a Fleet line still opens and closes it, the title and the pencil still open the product, "+ Vehicle" and the arrows still work.
+- **Phone:** press and hold the handle for a quarter of a second, then drag (dnd-kit's touch sensor with a 250 ms delay and 5 px tolerance). A quick tap on the handle does nothing. A finger that moves before the quarter second is a scroll, as anywhere else on the page. The handle switches off text selection and the long-press menu for itself only.
+- **Desktop:** no long-press. Press the handle and move 8 px to start; a plain click does nothing.
+- **Keyboard and screen reader:** focus the handle, Space to pick up, arrows to move, Space to drop, Escape to cancel, with spoken announcements (built into the library). Move up and Move down stay for anyone who prefers them and for a browser without JavaScript.
+- **A Fleet line is a `<summary>`.** A button inside it doesn't toggle the line: PR 17's arrows sit there already and its browser test checks the line stays as it was.
+- **On drop:** one call to `move_product(product, target, before | after)`, which exists. The list shows the new order at once and goes back if the server refuses.
+- **Same rules as the buttons:** owners and managers only; off while a search or filter is on.
+
+**Tests.** Mouse drag at desktop width; keyboard drag (the dependable one); one touch long-press drag at phone width, which is the test most likely to be flaky and is why this was split out; and that a tap on a line, the pencil and "+ Vehicle" still do what they did.
+
+**Size of the work.** About one session, most of it the touch test.
 
 ## 6. The brief and this design side by side
 

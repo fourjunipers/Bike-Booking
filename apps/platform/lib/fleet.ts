@@ -404,6 +404,7 @@ export function dbErrorKey(
   if (error.code === "23P01") return "blockOverlap";
   if (message.includes("units_plate_idx")) return "plateExists";
   if (message.includes("products_name_idx")) return "nameExists";
+  if (message.includes("units_label_idx")) return "labelExists";
   if (message.includes("products_own_make_model_idx")) return "ownModelExists";
   // Engine size outside 1 to 20000 cc, on a model or on the catalog entry made from it.
   if (/(products|bike_catalog)_cc_check/.test(message)) return "ccRange";
@@ -424,6 +425,20 @@ export function dbErrorKey(
     "model_has_active_units",
     "model_retired",
     "specs_required",
+    // Products, stage B: stock, the manual order, the Moto Mangos panel.
+    "units_blocked",
+    "not_enough_free",
+    "not_enough_damaged",
+    "not_enough_lost",
+    "quantity_out_of_range",
+    "until_in_past",
+    "label_needs_tracking",
+    "tracked_units_have_records",
+    "stock_below_zero",
+    "product_has_stock",
+    "not_on_list",
+    "same_model",
+    "request_pending",
   ])
     if (message.includes(known)) return known;
   if (message.includes("time zone")) return "timezoneOwnerOnly";

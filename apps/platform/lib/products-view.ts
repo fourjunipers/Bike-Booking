@@ -1,3 +1,8 @@
+import {
+  orderProducts,
+  type ProductsTab,
+  type Stock,
+} from "./general-products";
 import { listingStatus, type ListingStatus } from "./vehicle-kinds";
 
 /**
@@ -72,7 +77,8 @@ export type ProductInput = {
   id: string;
   name: string;
   type: string;
-  vehicle_type: string;
+  /** Null for a general product. */
+  vehicle_type: string | null;
   categories: string[];
   photos: string[];
   retired_at: string | null;
@@ -81,6 +87,10 @@ export type ProductInput = {
   /** The status of the list entry it is on, if any. */
   entry_status: string | null;
   units: { status: string }[];
+  /** Its place in the shop's own order, if the shop has one. */
+  sort_position?: number | null;
+  /** A general product's stock (gear and items for sale). */
+  stock?: Stock;
 };
 
 export type ProductRow = ProductInput & {
@@ -95,10 +105,15 @@ export type ProductRow = ProductInput & {
 const plain = (value: string) =>
   value.toLowerCase().replace(/\s+/g, " ").trim();
 
-/** Every product as a row, then the ones the view asks for, by name. */
+/**
+ * Every product as a row, then the ones the tab and the view ask for, in the
+ * shop's order (its own, or A to Z). The kind, category and Moto Mangos
+ * filters are about vehicles: with one on, a general product is left out.
+ */
 export function buildProductsView(
   products: ProductInput[],
   view: ProductsView,
+  tab: ProductsTab = "all",
 ): { rows: ProductRow[]; total: number } {
   const rows = products.map((product) => {
     const past = product.units.filter(
@@ -108,11 +123,16 @@ export function buildProductsView(
       ...product,
       inFleet: product.units.length - past,
       past,
-      listing: listingStatus(product, product.entry_status),
+      listing: listingStatus(
+        { ...product, vehicle_type: product.vehicle_type ?? "" },
+        product.entry_status,
+      ),
     };
   });
   const words = plain(view.q).split(" ").filter(Boolean);
   const shown = rows.filter((row) => {
+    if (tab === "vehicles" && row.type !== "vehicle") return false;
+    if (tab === "general" && row.type === "vehicle") return false;
     const retired = row.retired_at !== null;
     if (view.scope === "current" && retired) return false;
     if (view.scope === "retired" && !retired) return false;
@@ -123,6 +143,10 @@ export function buildProductsView(
     const haystack = plain(row.name);
     return words.every((word) => haystack.includes(word));
   });
-  shown.sort((a, b) => a.name.localeCompare(b.name));
+  // The order is the whole shop's: a filtered list keeps each row's place.
+  const place = new Map(
+    orderProducts(rows).map((row, index) => [row.id, index]),
+  );
+  shown.sort((a, b) => place.get(a.id)! - place.get(b.id)!);
   return { rows: shown, total: rows.length };
 }

@@ -278,7 +278,24 @@
     "model_retired": "This product is retired. Restore it first.",
     "specs_required": "Give the make, model, engine size, transmission and year first.",
     "invalidHours": "Enter the hours as a number, like 2 or 0.5 (168 at most).",
-    "productHasVehicles": "This product still has vehicles. Remove all its vehicles first."
+    "productHasVehicles": "This product still has vehicles. Remove all its vehicles first.",
+    "invalidQuantity": "Enter a whole number.",
+    "units_blocked": "{count, plural, one {# unit is} other {# units are}} damaged or booked, so the quantity can’t go below {count}.",
+    "notEnoughToLose": "Only {count} can be marked lost: the rest are booked.",
+    "not_enough_free": "Only {count} are free to mark damaged.",
+    "not_enough_damaged": "Only {count} are damaged.",
+    "not_enough_lost": "Only {count} are lost.",
+    "quantity_out_of_range": "Enter a quantity from 0 to 1,000 (up to 100,000 for an item for sale).",
+    "until_in_past": "Choose a time in the future.",
+    "label_needs_tracking": "Switch on “Track each unit on its own” first.",
+    "tracked_units_have_records": "These units have purchase details, so they stay tracked one by one.",
+    "stock_below_zero": "Stock can’t go below zero.",
+    "productHasStock": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
+    "product_has_stock": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
+    "labelExists": "Another unit of this product already has that label.",
+    "not_on_list": "This product isn’t on the Moto Mangos list.",
+    "same_model": "It is already on that one. Choose a different one.",
+    "request_pending": "Its request is still waiting for review."
   },
   "Fleet": {
     "title": "Fleet",
@@ -341,7 +358,8 @@
       "active": "Active",
       "maintenance": "Maintenance",
       "retired": "Retired",
-      "sold": "Sold"
+      "sold": "Sold",
+      "lost": "Lost"
     },
     "transmission": {
       "automatic": "Automatic",
@@ -561,7 +579,14 @@
       "quantitiesTitle": "Set bike quantities per booking type",
       "instantHelp": "Future bookings that receive instant approval",
       "requestHelp": "Future bookings that require your approval",
-      "walkinsHelp": "Bookings that are ready for immediate pickup today (overrides the booking buffer)"
+      "walkinsHelp": "Bookings that are ready for immediate pickup today (overrides the booking buffer)",
+      "changeModel": "Change model",
+      "changeModelHelp": "Pick the make and model this product should be listed as. Your listing and its quantities stay as they are.",
+      "changeModelLegend": "Select the new make and model",
+      "disconnect": "Disconnect",
+      "disconnectHelp": "Takes this product off Moto Mangos: the listing is switched off and its place on the list is cleared.",
+      "disconnectConfirm": "Disconnect this product from Moto Mangos? Its listing is switched off and its list entry is cleared. Bookings already made stay as they are.",
+      "upcomingBookings": "{count, plural, one {# upcoming booking on this product’s vehicles stays} other {# upcoming bookings on this product’s vehicles stay}} exactly as booked if you change the model or disconnect."
     },
     "editModel": "Edit product",
     "addUnitRow": "Add vehicle",
@@ -638,7 +663,7 @@
       "vehicle": "Vehicle",
       "gear": "Rental gear",
       "sale_item": "Item for sale",
-      "service": "Service"
+      "service": "Service or extra"
     },
     "stock": "{count, plural, =0 {No vehicles in the fleet} one {# vehicle in the fleet} other {# vehicles in the fleet}}",
     "stockPast": "{count} sold or retired",
@@ -646,7 +671,8 @@
       "label": "Sections of this product",
       "details": "Details",
       "units": "Units",
-      "history": "History"
+      "history": "History",
+      "stock": "Stock"
     },
     "added": "Product saved. Add its vehicles on the Units tab.",
     "readOnly": "You can view this product but not change it.",
@@ -659,14 +685,28 @@
       "formerMember": "Someone no longer in the team",
       "on": {
         "products": "this product",
-        "units": "vehicle {name}"
+        "units": "vehicle {name}",
+        "gearUnits": "unit {name}"
       },
       "action": {
         "insert": "{who} added {what}",
         "update": "{who} changed {what}",
         "delete": "{who} deleted {what}",
         "clamp_booking_counts": "Booking counts were lowered on {what} because a vehicle left the fleet",
-        "other": "{who}: {action} on {what}"
+        "other": "{who}: {action} on {what}",
+        "stock_adjust": "{who} changed the quantity of {what}",
+        "units_damaged": "{who} marked {count} damaged on {what}",
+        "units_repaired": "{who} put {count} back in use on {what}",
+        "units_lost": "{who} marked {count} lost on {what}",
+        "lost_restored": "{who} marked {count} found, back in use on {what}",
+        "lost_removed": "{who} wrote off {count} on {what}",
+        "listing_change_model": "{who} moved {what} to another Moto Mangos list entry",
+        "listing_disconnect": "{who} disconnected {what} from Moto Mangos",
+        "unit_damaged": "{who} marked {what} damaged",
+        "unit_repaired": "{who} put {what} back in use",
+        "unit_lost": "{who} marked {what} lost",
+        "unit_found": "{who} marked {what} found, back in use",
+        "unit_written_off": "{who} wrote off {what}"
       },
       "change": "{field}: {from} → {to}",
       "empty": "(empty)",
@@ -688,10 +728,125 @@
         "current_odometer_km": "Odometer (km)",
         "colour": "Colour",
         "model_year": "Year",
-        "notes": "Notes"
-      }
+        "notes": "Notes",
+        "quantity": "Quantity",
+        "label": "Label"
+      },
+      "introGeneral": "Who changed what on this product, newest first.",
+      "unlabelled": "without a label"
     },
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "tab": {
+      "label": "Which products",
+      "all": "All",
+      "vehicles": "Vehicles",
+      "general": "General"
+    },
+    "inStock": "{inStock} in stock",
+    "inStockLost": "{inStock} in stock, {lost} lost",
+    "noStock": "No stock: it is a service",
+    "addedGeneral": "Product saved.",
+    "delete": "Delete product",
+    "deleteTitle": "Delete this product",
+    "deleteConfirm": "Delete this product? This can't be undone.",
+    "deleteBlocked": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
+    "order": {
+      "up": "Move up",
+      "down": "Move down",
+      "reset": "Reset to A–Z",
+      "custom": "Shown in your own order.",
+      "filtered": "Clear the search and filters to change the order.",
+      "resetConfirm": "Reset to A–Z? Your own order of products is cleared, on Fleet and on the Products list."
+    },
+    "choice": {
+      "legend": "What are you adding?",
+      "vehicle": "Vehicle",
+      "vehicleHelp": "A motorbike, car, boat or anything else with its own plate and records.",
+      "general": "General",
+      "generalHelp": "Rental gear, items for sale, services and extras."
+    },
+    "general": {
+      "typeLegend": "What type of product is it?",
+      "typeHelp": {
+        "gear": "Lent out and returned: helmets, cameras, phone holders.",
+        "sale_item": "Sold, not returned: stickers, shirts, hats.",
+        "service": "Charged for, with no stock: cover, delivery, licence help."
+      },
+      "name": "Product name",
+      "nameHelp": "One product per size for now: add Helmet S, Helmet M and Helmet L as three products.",
+      "namePlaceholder": "e.g. Helmet M",
+      "description": "Description",
+      "trackUnits": "Track each unit on its own",
+      "trackUnitsHelp": "Each unit gets its own line, and a label if you want one. Leave it off to count them only.",
+      "quantity": "Quantity",
+      "quantityAt": "Quantity at {location}",
+      "quantityHelp": "How many you have. You can change it later on the Stock tab.",
+      "serviceNote": "A service has no quantity: it is always available.",
+      "pricesLater": "Prices come in a later stage, and selling items comes with orders.",
+      "save": "Add product"
+    },
+    "stockTab": {
+      "counts": "Stock at this location",
+      "inStock": "{count} in stock",
+      "available": "{count} available now",
+      "damaged": "{count} damaged",
+      "lost": "{count} lost",
+      "onHand": "{count} on hand",
+      "quantity": "Quantity",
+      "quantityHelpGear": "Raising it adds units. Lowering it removes units that are free.",
+      "quantityHelpSale": "What you have on hand now. The change is kept in the stock history.",
+      "changeQuantity": "Change quantity",
+      "markDamaged": "Mark damaged",
+      "damagedHowMany": "How many are damaged",
+      "until": "Back in use on (optional)",
+      "untilHelp": "Leave blank if you don’t know yet. Time zone: {zone}.",
+      "backInUse": "Back in use",
+      "repairedHowMany": "How many are back in use",
+      "markLost": "Mark lost",
+      "lostHowMany": "How many are lost",
+      "lostConfirm": "Mark as lost? It is no longer available to rent or counted in your stock. An owner or manager can mark it found or write it off.",
+      "lostWaiting": "An owner or manager marks it found or writes it off.",
+      "units": "Units",
+      "unit": "Unit {number}",
+      "noUnits": "No units here yet. Set the quantity to add some.",
+      "label": "Label (optional)",
+      "labelPlaceholder": "e.g. GoPro 3",
+      "saveLabel": "Save label",
+      "status": {
+        "damaged": "Damaged",
+        "lost": "Lost",
+        "inUse": "In use"
+      },
+      "ledger": "Stock history",
+      "ledgerIntro": "Every change to what is on hand, newest first.",
+      "ledgerNone": "No stock recorded yet.",
+      "kind": {
+        "received": "Received",
+        "adjusted": "Adjusted",
+        "sold": "Sold",
+        "returned": "Returned"
+      },
+      "serviceNote": "A service has no stock: it is always available.",
+      "state": {
+        "inUse": {
+          "title": "In use ({count})",
+          "help": "In use: available to rent. Mark a unit damaged while it is cleaned or repaired, or lost if it is missing."
+        },
+        "damaged": {
+          "title": "Damaged ({count})",
+          "help": "Damaged: not available to rent, but still counted in your stock. Mark it back in use when it is ready."
+        },
+        "lost": {
+          "title": "Lost ({count})",
+          "help": "Lost: not available to rent and not counted in your stock. Mark it found to put it back in use, or write it off to remove it permanently."
+        }
+      },
+      "found": "Found, back in use",
+      "foundHowMany": "How many were found",
+      "writeOff": "Write off",
+      "writeOffHowMany": "How many to write off",
+      "writeOffConfirm": "Write off? This cannot be undone. The unit leaves this product’s stock counts for good and can’t be marked found again. The History keeps a record."
+    }
   },
   "Locations": {
     "title": "Locations",

@@ -13,6 +13,104 @@ What's done, open decisions and known issues, across both apps. Update this at t
 
 Build order after the 10 Nov 2026 review (docs/platform/SPEC.md › Review decisions): 0 → 1a → 2 → 3 → 3M → 1b → 4 onward.
 
+## Products, stage B (branch `platform/products-stage-b`, 13 Nov 2026)
+
+General products: rental gear, items for sale, services. Built to `docs/products-redesign.md` §5.7 with the owner's twelve confirmations of 13 Nov 2026 (decision 21 there). Platform only: nothing in `apps/marketplace`. On staging; **not on live**. `docs/platform/SPEC.md` does not have this yet (the owner maintains it).
+
+**What changed**
+
+- **One new migration, `20261113000300_platform_products_stage_b`.** The Stage A migration is untouched. It adds: unit rules per type; the unit status `lost`; `products_general_fields_check` (a general product stores no buffers and no deposit); the stock functions; the two lock helpers; the table `stock_movements`; `products.sort_position` with `move_product()` and `reset_product_order()`; and `change_listing_entry()` and `disconnect_listing()`. Details in `docs/products-redesign.md` §5.7 "As built".
+- **Create page:** "New product" opens with two choices, Vehicle and General. Vehicle is the form as it was. General asks for the type (Rental gear, Item for sale, Service or extra), a name and a description; gear and items for sale get a quantity per location, a service none. No kind, licence class, minimum age, buffers or deposit on it.
+- **Products list:** All, Vehicles and General tabs. A general row shows its type and stock ("18 in stock, 2 lost"; a dash for a service), with the same edit pencil and tag area as every other line. The kind, category and Moto Mangos filters are on All and Vehicles only.
+- **General product page:** Details, Stock and History. Stock is the quantity per location. "Change quantity": owners and managers. "Mark damaged" and "Back in use": owners, managers, staff and mechanics. "Mark lost": owners, managers and staff; a mechanic is refused. "Found, back in use" and "Write off" for a lost unit: owners and managers (first built as "Back in stock" and "Remove for good"; renamed in the second round, below). Tracked gear ("Track each unit on its own") shows one line per unit with an optional label and the same actions on the line. An item for sale shows what is on hand and its stock history. A service has Details and History only.
+- **Moto Mangos panel:** a product on an approved list entry has "Change model" (the same Make, then Model dropdowns and a Select button) and "Disconnect" (asks first; switches the listing off and clears the entry). Owners and managers only; both audited and in the product's History.
+- **Manual order, step one:** one order per shop, shared by Fleet and the Products list. "Move up" and "Move down" on each line, "Reset to A–Z" (asks first) above the list while the shop has its own order. A to Z by default; a new product goes to the bottom of a custom order; owners and managers only, everyone else sees the saved order; the buttons are gone while a search or filter is on. General products take part. No dragging: proposed as a follow-up in `docs/products-redesign.md` §5.8 (dnd-kit; the library needs the owner's approval).
+- **Wording:** 123 new texts in English and Thai (the second round changed or added 24 and removed 8); the Thai ones are listed in `docs/platform/thai-review-products.md` under "Stage B" for Korn or BSR's admin. `Products.type.service` changed from "Service" to "Service or extra".
+
+**Existing bookings made through Moto Mangos, when a model is changed or disconnected: left exactly as they are.** Neither function touches a vehicle or a block, so a booked vehicle stays booked for its dates. The panel says how many bookings on the product's vehicles have not ended, and the Disconnect confirmation says they stay. Refusing while bookings exist was the other choice; it would stop a shop coming off Moto Mangos while one booking was outstanding. Orders don't exist until Phase 3, so this is tested with hand-made booking blocks. **To carry into Phase 3:** an order keeps its own copy of what the customer booked (make, model, years), because the product may point at another list entry, or none, by pickup day.
+
+**Decided here without being asked** (say if any should change)
+
+- **A mechanic may mark gear damaged.** The instruction lists "Mark damaged" for owners, managers and staff and says a mechanic is refused on lost. The design's table (§4.2) and the database's downtime rule let a mechanic mark damage, so only "Mark lost" is kept from mechanics. One line in `lib/roles.ts` and one in each function if it should be staff only.
+- **"Lost" is on screen for gear only.** The database takes the status for any unit; a vehicle's status control is unchanged in this stage.
+- **Disconnect** also clears the make, model, engine size and transmission that were copied from the list entry, sets the listing quantities to zero, and is refused while a request for the product is still waiting for review. **Change model** keeps the listing switch and its quantities.
+- **A general product stores no deposit either** (the instruction named buffers). The deposit is per vehicle in the design.
+- **Limits:** 1,000 units of one gear product in one location; 100,000 of an item for sale.
+- **Lowering a quantity** removes free units, unlabelled ones first, and refuses with the lowest quantity it could reach ("2 units are damaged or booked, so the quantity can't go below 2").
+- **Deleting:** a gear product goes once its quantity is 0 and no lost unit is left; an item for sale once nothing is on hand (its stock history goes with it).
+- **"Mark damaged" can take a "back in use on" time**, and there is a "Back in use" action to undo it. Damage is stored as downtime, as for a vehicle.
+- **The first move saves the whole shop's order** as it is on screen, with the one change. On Fleet, which shows vehicles only, a move passes over any general product that sits between two lines.
+- **Tabs are views, not filters:** the order can be changed on All, Vehicles and General. A search or any filter turns the buttons off.
+- **A to Z is now the same on both lists** (numbers in order, case ignored). The Products list sorted slightly differently before ("PCX 10" came before "PCX 2").
+- **A service, for someone who doesn't set the shop up,** shows its description and "You can view this product but not change it."
+- **No "Duplicate" on a general product**, and **no demo general products in the seed**: the click-through adds them.
+- **Not built, though the design mentions it:** a `sku` column for items for sale (§5.5), and categories for gear (§1.2). Neither was in the confirmations.
+- **Names:** the migration is `platform_products_stage_b` (the design said `platform_gear_units`; it now carries the order and the Moto Mangos functions too). `set_quantity_out()` became `mark_units_damaged()` and `mark_units_repaired()`.
+
+**Stage A's tests**
+
+- Stage A's browser tests (`e2e/products.spec.ts`, `e2e/fleet.spec.ts` and the rest) and unit tests are unchanged and pass.
+- Stage A's database tests are unchanged and pass, with one file touched: `tests/db/tenant-isolation.test.ts`. That harness fails by design until a new table has a fixture, so `stock_movements` got its fixture, payload and change, and the table list one more name. The fixture needs a second product per shop (an item for sale), so one existing assertion, "still shows members their own tenant", now compares the distinct shop ids it sees instead of the exact list. Nothing else in it changed.
+- `tests/db/default-grants.test.ts` gained a block, as asked: `stock_movements` is select and insert for members and nothing for signed-out visitors, and each of the 21 new functions is listed with who may run it.
+- **The loosened assertion still catches a leak, checked by opening one.** On the local database, a policy letting any signed-in user read every row was added to `products`, then `units`, then `stock_movements`, and `product_stock()` was made to skip row-level security, one at a time. Each made tests fail (7, 8, 6 and 2 of the 67 in the two files), "still shows members their own tenant" among them for products and units; with the leaks removed all 67 pass.
+- Two of Stage A's database tests shaped the migration: "a unit can't claim a type its product doesn't have" expects the foreign key's refusal, so the gear half of the unit rule is a trigger that runs after the keys (`units_gear_fields`), not a check; and "nothing is named after models" is why the function is `change_listing_entry`.
+
+**Tests (all passing locally, 13 Nov 2026)**
+
+- Database: 227, unchanged by the second round (185 before; 40 new in `products-stage-b.test.ts`, 2 in `default-grants.test.ts`). Run on a database built from scratch with all 56 migrations, and again on one migrated from Stage A with demo data. New: unit rules per type; quantity up and down by role; the refusal when units are blocked; damaged and lost by role; restore and remove; the ledger (append-only, never below zero, who did it); the manual order (role, per-shop isolation, persistence, new at the bottom, reset); change model and disconnect (role, isolation, audit, bookings untouched); another shop refused everywhere; and the stock ledger and stock counts shop against shop for every role, reading and writing (owner's request, 13 Nov). Races: twelve writers, six lowering a quantity while six block units, three rounds; two people setting different quantities at once; twelve staff marking the last free helmet damaged.
+- Unit: platform 175 (145 before; 30 new in `lib/general-products.test.ts`, 8 of them in the second round), marketplace 202, core 86.
+- Playwright: 81 passed at 375 px and 1280 px, 3 skipped (the two timing measurements, and the desktop twin of the manual-order test). New, at both widths: Vehicle or General and one product of each general type; the three list tabs; staff mark 2 damaged and 1 lost, a mechanic isn't offered "Mark lost", a driver nothing, the owner confirms the loss; tracked gear with labels; Change model and Disconnect; the manual order on the Products list and on Fleet, kept after a reload, new product at the bottom, off under a search, read-only for staff, Reset to A–Z.
+- `npm run typecheck && npm run lint && npm test` from the root: clean.
+
+**Second round, after the owner's click-through of PR 17 (14 Nov 2026)**
+
+Everything passed except the Stock tab, where the owner could not tell how "Remove for good" and "Back in use" related. Changed, wording and layout only:
+
+- **Three states, each under its own heading** with its count and one line of help: In use, Damaged, Lost. The actions that belong to a state sit under its heading; Damaged and Lost appear once something is in them. Tracked gear lists each unit under the heading of the state it is in.
+- **Labels.** Damaged: "Back in use". Lost: "Found, back in use" (was "Back in stock") and "Write off" (was "Remove for good"). The owner's suggested wording was used as given.
+- **Help lines.** "In use: available to rent. Mark a unit damaged while it is cleaned or repaired, or lost if it is missing." "Damaged: not available to rent, but still counted in your stock. Mark it back in use when it is ready." "Lost: not available to rent and not counted in your stock. Mark it found to put it back in use, or write it off to remove it permanently."
+- **"Write off" asks first:** "Write off? This cannot be undone. The unit leaves this product's stock counts for good and can't be marked found again. The History keeps a record."
+- **History uses the buttons' words**: "marked 2 damaged", "put 2 back in use", "marked 1 lost", "marked 1 found, back in use", "wrote off 1"; and for tracked gear one line per unit ("wrote off unit GoPro 3").
+- **Permissions: exactly as they were. Database: not changed.** No migration, nothing pushed to staging. Function names and audit action names are as built; only the words shown changed.
+
+What the round found and fixed beside the wording:
+
+- **A tracked unit that was written off had no line left in History.** Its row is deleted, and History looked units up by the rows that exist. History now reads a tracked product's unit lines from the audit trail by product, so a written-off unit keeps its lines and its label. The same change puts "Mark damaged" and "Back in use" on a tracked unit into History, which were not shown before.
+- **A screen-reader fault introduced and caught in this round:** the Damaged and Lost headings shared an id with a field below them, so each part was announced as "2" or "1". The browser test that looks parts up by name failed on it; the ids are now distinct.
+
+Decided here without being asked:
+
+- **"Mark lost" stays under In use for counted gear** and takes a damaged unit only when no other is free, as before. For tracked gear it is also on a damaged unit's own line.
+- **The unit's state chip on a tracked line reads "In use"** (was "Available"), to match the heading.
+- **The confirmation says the unit "leaves this product's stock counts"**: a lost unit is already out of "in stock", so what it leaves is the "lost" count. Say if the sentence should name that.
+- **Thai for "Write off" is ตัดจำหน่าย**, the accounting term. It is flagged in the Thai review file as the word to check first.
+
+Tests in this round: 8 new unit tests (the labels, the three help lines, the confirmation, History's words, and tracked-unit history from audit rows); the two Stock browser tests rewritten around the three states, checking each heading, its help line, exactly which buttons sit under it for each role, the confirmation text, and History. Docker Desktop was not running at the start of the day; it was started and the local database rebuilt from scratch (56 migrations) and seeded before the runs.
+
+**Demo data carried across.** A database at Stage A (55 migrations) was seeded with the three demo shops, given two listed products and three downtime blocks, and migrated. Per shop, before and after: products 5 / 11 / 0, vehicles 150 / 20 / 0, year bands 15, listed 2, blocks 3, renewals 8, purchase records 20, audit rows 177 / 86 / 5, and checksums over every product (id, name, make, model, list entry, categories, listing, type, tracking, buffers, deposit, retired), every vehicle (id, product, plate, status, type, odometer, frame, year) and every block: identical. All 16 products are still vehicle / unit and all 170 units vehicle units.
+
+**On staging, not on live (13 Nov 2026).** Staging records 56 of 56. Live stays at 53 of 53 and gets PR 13's, Stage A's and this migration only from `main`, by the runbook, after stage C.
+
+- Pushed from this branch on the owner's instruction with `supabase db push --db-url`, after a dry run that listed exactly one pending migration (`20261113000300`).
+- Staging's data came through unchanged: the same counts and checksums before and after (big-fleet 9 products and 150 vehicles, bsr 20 and 26, saigon-scooters none; year bands, listings, blocks, renewals, purchase records and audit rows the same). All 29 products are vehicle / unit and all 176 units vehicle units.
+- **Staging matches a fresh build:** its `platform` and `platform_private` schemas, dumped with their grants, are line for line identical to a database built from the migration files (3,655 lines each).
+- The demo seed was not re-run: it did not change.
+- Until this PR merges, the platform site's main deploy runs Stage A's code against staging. That works: the migration only adds to what Stage A reads.
+
+**Not truly tested**
+
+- The full browser suite ran on a local production build with a local database, and in CI; not against the Netlify preview.
+- A real phone: phone width in a desktop browser only. Thai wording: key and placeholder parity only.
+- Anything that needs an order: a booking made through Moto Mangos is a hand-made block here.
+- The live push: not done, by instruction.
+
+**Found on the way**
+
+- Ports 3300 and 3310, which the browser tests and an earlier session used, were held by servers from other checkouts. The tests ran against this checkout's own server on port 3320.
+- One write of `messages/en.json` failed once with "Invalid argument" (the folder is in OneDrive) and worked on the second try. Both files were checked afterwards.
+
+**Next:** the owner's click-through of the preview; then stage C (`product_listings` and the Moto Mangos tab), and dragging (§5.8) if the library is approved.
+
 ## Products, stage A (branch `platform/products-stage-a`, 13 Nov 2026)
 
 The first build stage of the products redesign. The design and the owner's decisions are in `docs/products-redesign.md` (PR #15, docs only). Platform only: nothing in `apps/marketplace`, nothing pushed to staging or live. `docs/platform/SPEC.md` does not have this yet (the owner maintains it).

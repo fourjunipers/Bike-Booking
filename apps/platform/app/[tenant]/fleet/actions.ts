@@ -211,9 +211,17 @@ export async function deleteModel(
     .eq("id", field(formData, "id"))
     .select("id");
   // A vehicle points at its product, so the database refuses while any
-  // remain, retired and sold ones included.
-  if (error?.code === "23503")
-    return { errors: { form: "productHasVehicles" } };
+  // remain, retired and sold ones included. The same holds for a gear
+  // product's units, and an item for sale with stock on hand is kept too.
+  if (error?.code === "23503" || error?.message?.includes("product_has_stock"))
+    return {
+      errors: {
+        form:
+          field(formData, "general") === "1"
+            ? "productHasStock"
+            : "productHasVehicles",
+      },
+    };
   if (error || data.length !== 1)
     return { errors: { form: dbErrorKey(error) } };
   refresh(slug);
