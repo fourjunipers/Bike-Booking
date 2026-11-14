@@ -18,7 +18,7 @@ import {
   stockWording,
   type StockLine,
 } from "./general-products";
-import { buildHistory, type AuditRow } from "./history";
+import { buildHistory, gearUnitHistory, type AuditRow } from "./history";
 import {
   buildProductsView,
   defaultProductsView,
@@ -487,5 +487,193 @@ describe("refusals and wording", () => {
     });
     expect(en.Fleet.motoMangos.changeModel).toBe("Change model");
     expect(en.Fleet.motoMangos.disconnect).toBe("Disconnect");
+  });
+});
+
+describe("the Stock tab's three states, in the same words everywhere", () => {
+  const tab = en.Products.stockTab;
+  const actions = en.Products.history.action;
+
+  it("names each action for what happens", () => {
+    expect(tab.markDamaged).toBe("Mark damaged");
+    expect(tab.backInUse).toBe("Back in use");
+    expect(tab.markLost).toBe("Mark lost");
+    expect(tab.found).toBe("Found, back in use");
+    expect(tab.writeOff).toBe("Write off");
+    // The old labels are gone, from every text.
+    const all = JSON.stringify({ en, th });
+    for (const old of ["Remove for good", "Back in stock"])
+      expect(all).not.toContain(old);
+    expect(Object.keys(tab)).not.toContain("restore");
+    expect(Object.keys(tab)).not.toContain("remove");
+    expect(Object.keys(tab)).not.toContain("removeConfirm");
+  });
+
+  it("has one line of help under each state's heading, in both languages", () => {
+    expect(Object.keys(tab.state)).toEqual(["inUse", "damaged", "lost"]);
+    expect(tab.state.inUse.help).toMatch(/^In use: available to rent\./);
+    expect(tab.state.damaged.help).toMatch(/^Damaged: not available to rent/);
+    expect(tab.state.lost.help).toBe(
+      "Lost: not available to rent and not counted in your stock. Mark it found to put it back in use, or write it off to remove it permanently.",
+    );
+    for (const state of ["inUse", "damaged", "lost"] as const) {
+      expect(th.Products.stockTab.state[state].help).toBeTruthy();
+      expect(th.Products.stockTab.state[state].title).toContain("{count}");
+    }
+  });
+
+  it("Write off says it can't be undone, what it changes, and that History keeps a record", () => {
+    expect(tab.writeOffConfirm).toMatch(/cannot be undone/);
+    expect(tab.writeOffConfirm).toMatch(/leaves this product’s stock counts/);
+    expect(tab.writeOffConfirm).toMatch(/History keeps a record/);
+    expect(th.Products.stockTab.writeOffConfirm).toBeTruthy();
+  });
+
+  it("History uses the buttons' words, for counted gear and for one unit", () => {
+    expect(actions.units_damaged).toContain("marked {count} damaged");
+    expect(actions.units_repaired).toContain("back in use");
+    expect(actions.units_lost).toContain("marked {count} lost");
+    expect(actions.lost_restored).toContain("found, back in use");
+    expect(actions.lost_removed).toContain("wrote off {count}");
+    expect(actions.unit_damaged).toBe("{who} marked {what} damaged");
+    expect(actions.unit_repaired).toBe("{who} put {what} back in use");
+    expect(actions.unit_lost).toBe("{who} marked {what} lost");
+    expect(actions.unit_found).toBe("{who} marked {what} found, back in use");
+    expect(actions.unit_written_off).toBe("{who} wrote off {what}");
+  });
+});
+
+describe("history of tracked gear, one unit at a time", () => {
+  let n = 0;
+  const at = (minute: number) =>
+    `2026-11-14T00:${String(minute).padStart(2, "0")}:00Z`;
+  const row = (
+    entity: string,
+    entity_id: string,
+    action: string,
+    minute: number,
+    before: unknown,
+    after: unknown,
+  ): AuditRow => ({
+    id: ++n,
+    entity,
+    entity_id,
+    action,
+    actor: "u",
+    before,
+    after,
+    at: at(minute),
+  });
+  const unit = { product_id: "p", status: "active", label: null };
+
+  it("turns unit and downtime rows into the buttons' actions, and keeps a written-off unit's name", () => {
+    const { rows, names } = gearUnitHistory([
+      row("units", "u1", "insert", 0, null, unit),
+      row("units", "u1", "update", 1, { label: null }, { label: "GoPro 3" }),
+      // Mark damaged, Back in use.
+      row("unit_blocks", "b1", "insert", 2, null, {
+        unit_id: "u1",
+        kind: "downtime",
+      }),
+      row(
+        "unit_blocks",
+        "b1",
+        "update",
+        3,
+        { period: "[a,)" },
+        { period: "[a,b)" },
+      ),
+      // Damaged again, then lost: the downtime ends with it, in the same moment.
+      row("unit_blocks", "b2", "insert", 4, null, {
+        unit_id: "u1",
+        kind: "downtime",
+      }),
+      row(
+        "unit_blocks",
+        "b2",
+        "update",
+        5,
+        { period: "[c,)" },
+        { period: "[c,d)" },
+      ),
+      row("units", "u1", "update", 5, { status: "active" }, { status: "lost" }),
+      // Found, lost again, written off.
+      row("units", "u1", "update", 6, { status: "lost" }, { status: "active" }),
+      row("units", "u1", "update", 7, { status: "active" }, { status: "lost" }),
+      row(
+        "units",
+        "u1",
+        "delete",
+        8,
+        { ...unit, status: "lost", label: "GoPro 3" },
+        null,
+      ),
+    ]);
+    expect(rows.map((r) => [r.action, r.entity, r.entity_id])).toEqual([
+      ["update", "units", "u1"],
+      ["unit_damaged", "units", "u1"],
+      ["unit_repaired", "units", "u1"],
+      ["unit_damaged", "units", "u1"],
+      ["unit_lost", "units", "u1"],
+      ["unit_found", "units", "u1"],
+      ["unit_lost", "units", "u1"],
+      ["unit_written_off", "units", "u1"],
+    ]);
+    expect(names.get("u1")).toBe("GoPro 3");
+    // The label change reads "Label: (empty) → GoPro 3".
+    expect(buildHistory(rows)[0].changes).toEqual([
+      { field: "label", from: null, to: "GoPro 3" },
+    ]);
+  });
+
+  it("leaves units added or removed by a quantity change to that change's own line", () => {
+    const { rows } = gearUnitHistory([
+      row("units", "u1", "insert", 0, null, unit),
+      row("units", "u2", "insert", 0, null, unit),
+      // Lowered from 2 to 1: a unit that was never lost is simply gone.
+      row("unit_blocks", "b9", "insert", 1, null, {
+        unit_id: "u2",
+        kind: "downtime",
+      }),
+      row(
+        "unit_blocks",
+        "b9",
+        "delete",
+        2,
+        { unit_id: "u2", kind: "downtime" },
+        null,
+      ),
+      row("units", "u2", "delete", 2, unit, null),
+    ]);
+    expect(rows.map((r) => r.action)).toEqual(["unit_damaged"]);
+  });
+
+  it("a lost unit with bookings on record is retired, and that reads as written off too", () => {
+    const { rows } = gearUnitHistory([
+      row("units", "u1", "update", 1, { status: "active" }, { status: "lost" }),
+      row(
+        "units",
+        "u1",
+        "update",
+        2,
+        { status: "lost" },
+        { status: "retired" },
+      ),
+    ]);
+    expect(rows.map((r) => r.action)).toEqual([
+      "unit_lost",
+      "unit_written_off",
+    ]);
+  });
+
+  it("ignores blocks that aren't downtime and block changes it can't place", () => {
+    const { rows } = gearUnitHistory([
+      row("unit_blocks", "b1", "insert", 1, null, {
+        unit_id: "u1",
+        kind: "allocation",
+      }),
+      row("unit_blocks", "b2", "update", 2, { period: "x" }, { period: "y" }),
+    ]);
+    expect(rows).toEqual([]);
   });
 });

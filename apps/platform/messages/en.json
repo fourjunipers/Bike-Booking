@@ -290,8 +290,8 @@
     "label_needs_tracking": "Switch on “Track each unit on its own” first.",
     "tracked_units_have_records": "These units have purchase details, so they stay tracked one by one.",
     "stock_below_zero": "Stock can’t go below zero.",
-    "productHasStock": "This product still has stock. Set its quantity to 0 and remove any lost units first.",
-    "product_has_stock": "This product still has stock. Set its quantity to 0 and remove any lost units first.",
+    "productHasStock": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
+    "product_has_stock": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
     "labelExists": "Another unit of this product already has that label.",
     "not_on_list": "This product isn’t on the Moto Mangos list.",
     "same_model": "It is already on that one. Choose a different one.",
@@ -698,10 +698,15 @@
         "units_damaged": "{who} marked {count} damaged on {what}",
         "units_repaired": "{who} put {count} back in use on {what}",
         "units_lost": "{who} marked {count} lost on {what}",
-        "lost_restored": "{who} put {count} lost back in stock on {what}",
-        "lost_removed": "{who} removed {count} lost for good from {what}",
+        "lost_restored": "{who} marked {count} found, back in use on {what}",
+        "lost_removed": "{who} wrote off {count} on {what}",
         "listing_change_model": "{who} moved {what} to another Moto Mangos list entry",
-        "listing_disconnect": "{who} disconnected {what} from Moto Mangos"
+        "listing_disconnect": "{who} disconnected {what} from Moto Mangos",
+        "unit_damaged": "{who} marked {what} damaged",
+        "unit_repaired": "{who} put {what} back in use",
+        "unit_lost": "{who} marked {what} lost",
+        "unit_found": "{who} marked {what} found, back in use",
+        "unit_written_off": "{who} wrote off {what}"
       },
       "change": "{field}: {from} → {to}",
       "empty": "(empty)",
@@ -744,7 +749,7 @@
     "delete": "Delete product",
     "deleteTitle": "Delete this product",
     "deleteConfirm": "Delete this product? This can't be undone.",
-    "deleteBlocked": "This product still has stock. Set its quantity to 0 and remove any lost units first.",
+    "deleteBlocked": "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
     "order": {
       "up": "Move up",
       "down": "Move down",
@@ -799,15 +804,8 @@
       "repairedHowMany": "How many are back in use",
       "markLost": "Mark lost",
       "lostHowMany": "How many are lost",
-      "lostConfirm": "Mark as lost? It leaves your stock now. An owner or manager can bring it back or remove it.",
-      "lostTitle": "Lost units",
-      "lostHelp": "Found again: put them back in stock. Gone for good: remove them, which lowers your quantity.",
-      "lostWaiting": "An owner or manager decides what happens to lost units.",
-      "restore": "Back in stock",
-      "restoreHowMany": "How many were found",
-      "remove": "Remove for good",
-      "removeHowMany": "How many are gone for good",
-      "removeConfirm": "Remove for good? This lowers your quantity and can’t be undone.",
+      "lostConfirm": "Mark as lost? It is no longer available to rent or counted in your stock. An owner or manager can mark it found or write it off.",
+      "lostWaiting": "An owner or manager marks it found or writes it off.",
       "units": "Units",
       "unit": "Unit {number}",
       "noUnits": "No units here yet. Set the quantity to add some.",
@@ -815,9 +813,9 @@
       "labelPlaceholder": "e.g. GoPro 3",
       "saveLabel": "Save label",
       "status": {
-        "available": "Available",
         "damaged": "Damaged",
-        "lost": "Lost"
+        "lost": "Lost",
+        "inUse": "In use"
       },
       "ledger": "Stock history",
       "ledgerIntro": "Every change to what is on hand, newest first.",
@@ -828,7 +826,26 @@
         "sold": "Sold",
         "returned": "Returned"
       },
-      "serviceNote": "A service has no stock: it is always available."
+      "serviceNote": "A service has no stock: it is always available.",
+      "state": {
+        "inUse": {
+          "title": "In use ({count})",
+          "help": "In use: available to rent. Mark a unit damaged while it is cleaned or repaired, or lost if it is missing."
+        },
+        "damaged": {
+          "title": "Damaged ({count})",
+          "help": "Damaged: not available to rent, but still counted in your stock. Mark it back in use when it is ready."
+        },
+        "lost": {
+          "title": "Lost ({count})",
+          "help": "Lost: not available to rent and not counted in your stock. Mark it found to put it back in use, or write it off to remove it permanently."
+        }
+      },
+      "found": "Found, back in use",
+      "foundHowMany": "How many were found",
+      "writeOff": "Write off",
+      "writeOffHowMany": "How many to write off",
+      "writeOffConfirm": "Write off? This cannot be undone. The unit leaves this product’s stock counts for good and can’t be marked found again. The History keeps a record."
     }
   },
   "Locations": {

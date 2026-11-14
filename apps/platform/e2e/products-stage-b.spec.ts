@@ -38,6 +38,11 @@ const productRow = (page: Page, name: string) =>
   products(page)
     .locator("> li")
     .filter({ has: page.getByRole("link", { name, exact: true }) });
+/** One state's part of the Stock tab: "In use", "Damaged" or "Lost". */
+const stateOf = (page: Page, state: "In use" | "Damaged" | "Lost") =>
+  page.getByRole("region", { name: new RegExp(`^${state} \\(\\d+\\)$`) });
+const WRITE_OFF_QUESTION =
+  "Write off? This cannot be undone. The unit leaves this product’s stock counts for good and can’t be marked found again. The History keeps a record.";
 /** The counts of a location on the Stock tab. */
 const counts = (page: Page) =>
   page.getByRole("list", { name: "Stock at this location" });
@@ -248,7 +253,7 @@ test("new product: Vehicle or General; one of each general type; the three list 
   });
   await page.getByRole("button", { name: "Delete product" }).click();
   expect(said).toBe(
-    "This product still has stock. Set its quantity to 0 and remove any lost units first.",
+    "This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first.",
   );
   // Editing: the type is fixed; the name and description change.
   await expect(page.getByRole("radio")).toHaveCount(0);
@@ -320,15 +325,44 @@ test("stock: staff mark helmets damaged and lost, a mechanic can't mark lost, an
     "2 damaged",
     "1 lost",
   ]);
-  expect(question).toContain("Mark as lost?");
-  // Staff can't bring it back or remove it.
-  await expect(
-    staff.page.getByText(
-      "An owner or manager decides what happens to lost units.",
-    ),
-  ).toBeVisible();
-  for (const gone of ["Back in stock", "Remove for good"])
+  expect(question).toBe(
+    "Mark as lost? It is no longer available to rent or counted in your stock. An owner or manager can mark it found or write it off.",
+  );
+  // Each state has its heading, a line saying what it means, and its own
+  // actions under it.
+  await expect(stateOf(staff.page, "In use")).toContainText(
+    "In use: available to rent. Mark a unit damaged while it is cleaned or repaired, or lost if it is missing.",
+  );
+  await expect(stateOf(staff.page, "In use").getByRole("heading")).toHaveText(
+    "In use (18)",
+  );
+  for (const action of ["Mark damaged", "Mark lost"])
+    await expect(
+      stateOf(staff.page, "In use").getByRole("button", { name: action }),
+    ).toBeVisible();
+  await expect(stateOf(staff.page, "Damaged")).toContainText(
+    "Damaged: not available to rent, but still counted in your stock. Mark it back in use when it is ready.",
+  );
+  await expect(stateOf(staff.page, "Damaged").getByRole("heading")).toHaveText(
+    "Damaged (2)",
+  );
+  await expect(stateOf(staff.page, "Damaged").getByRole("button")).toHaveText([
+    "Back in use",
+  ]);
+  await expect(stateOf(staff.page, "Lost").getByRole("heading")).toHaveText(
+    "Lost (1)",
+  );
+  await expect(stateOf(staff.page, "Lost")).toContainText(
+    "Lost: not available to rent and not counted in your stock. Mark it found to put it back in use, or write it off to remove it permanently.",
+  );
+  // Staff can't mark it found or write it off.
+  await expect(stateOf(staff.page, "Lost")).toContainText(
+    "An owner or manager marks it found or writes it off.",
+  );
+  for (const gone of ["Found, back in use", "Write off"])
     await expect(staff.page.getByRole("button", { name: gone })).toHaveCount(0);
+  for (const old of ["Back in stock", "Remove for good"])
+    await expect(staff.page.getByText(old)).toHaveCount(0);
   await noSidewaysScroll(staff.page);
   await staff.close();
 
@@ -338,9 +372,14 @@ test("stock: staff mark helmets damaged and lost, a mechanic can't mark lost, an
     mechanic.page.getByRole("button", { name: "Mark damaged" }),
   ).toBeVisible();
   await expect(
-    mechanic.page.getByRole("button", { name: "Back in use" }),
+    mechanic.page.getByRole("button", { name: "Back in use", exact: true }),
   ).toBeVisible();
-  for (const gone of ["Mark lost", "Change quantity", "Remove for good"])
+  for (const gone of [
+    "Mark lost",
+    "Change quantity",
+    "Found, back in use",
+    "Write off",
+  ])
     await expect(mechanic.page.getByRole("button", { name: gone })).toHaveCount(
       0,
     );
@@ -356,6 +395,7 @@ test("stock: staff mark helmets damaged and lost, a mechanic can't mark lost, an
     "Back in use",
     "Mark lost",
     "Change quantity",
+    "Write off",
   ])
     await expect(driver.page.getByRole("button", { name: gone })).toHaveCount(
       0,
@@ -379,30 +419,62 @@ test("stock: staff mark helmets damaged and lost, a mechanic can't mark lost, an
   await expect(
     counts(page).getByText("20 in stock", { exact: true }),
   ).toBeVisible();
-  // Confirming the loss removes the unit for good.
+  // The lost unit's two actions sit under "Lost", and nowhere else.
+  const lost = stateOf(page, "Lost");
+  await expect(lost.getByRole("button")).toHaveText([
+    "Found, back in use",
+    "Write off",
+  ]);
+  // "Write off" asks first, saying it can't be undone and what it changes.
+  let writeOff = "";
+  page.once("dialog", (dialog) => {
+    writeOff = dialog.message();
+    void dialog.dismiss();
+  });
+  await page.getByLabel("How many to write off").fill("1");
+  await page.getByRole("button", { name: "Write off" }).click();
+  expect(writeOff).toBe(WRITE_OFF_QUESTION);
+  await expect(lost.getByRole("heading")).toHaveText("Lost (1)");
   page.once("dialog", (dialog) => void dialog.accept());
-  await page.getByLabel("How many are gone for good").fill("1");
-  await page.getByRole("button", { name: "Remove for good" }).click();
+  await page.getByRole("button", { name: "Write off" }).click();
   await expect(counts(page).getByRole("listitem")).toHaveText([
     "20 in stock",
     "18 available now",
     "2 damaged",
   ]);
+  await expect(stateOf(page, "Lost")).toHaveCount(0);
+  // A damaged unit goes back in use: it returns to the available count.
   await page.getByLabel("How many are back in use").fill("2");
-  await page.getByRole("button", { name: "Back in use" }).click();
+  await page.getByRole("button", { name: "Back in use", exact: true }).click();
   await expect(counts(page).getByRole("listitem")).toHaveText([
     "20 in stock",
     "20 available now",
   ]);
+  await expect(stateOf(page, "Damaged")).toHaveCount(0);
+  // A lost unit that turns up: "Found, back in use" restores it.
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByLabel("How many are lost").fill("1");
+  await page.getByRole("button", { name: "Mark lost" }).click();
+  await expect(stateOf(page, "Lost").getByRole("heading")).toHaveText(
+    "Lost (1)",
+  );
+  await page.getByLabel("How many were found").fill("1");
+  await page.getByRole("button", { name: "Found, back in use" }).click();
+  await expect(counts(page).getByRole("listitem")).toHaveText([
+    "20 in stock",
+    "20 available now",
+  ]);
+  await noSidewaysScroll(page);
 
-  // History: who did what, with how many.
+  // History: who did what, with how many, in the buttons' words.
   await productTabs(page).getByRole("link", { name: "History" }).click();
   for (const line of [
     /changed the quantity of this product/,
     /marked 2 damaged on this product/,
     /marked 1 lost on this product/,
-    /removed 1 lost for good from this product/,
+    /wrote off 1 on this product/,
     /put 2 back in use on this product/,
+    /marked 1 found, back in use on this product/,
   ])
     await expect(page.getByText(line).first()).toBeVisible();
   await expect(page.getByText("Quantity: 20 → 21")).toBeVisible();
@@ -429,30 +501,30 @@ test("tracked gear: one line per unit with an optional label", async ({
   });
   const stockUrl = `${url}?tab=stock`;
   await page.goto(stockUrl);
-  const units = page.getByRole("list", { name: "Units" });
-  const unit = (label: string): Locator =>
-    units.locator("> li").filter({ hasText: label });
-  // One nameless line per unit.
-  await expect(units.locator("> li")).toHaveCount(2);
-  await expect(unit("Unit 1")).toContainText("Available");
-  await expect(unit("Unit 2")).toContainText("Available");
+  const units = page.locator("li[data-gear-unit]");
+  const unit = (label: string): Locator => units.filter({ hasText: label });
+  /** A unit's line, under the heading of the state it should be in. */
+  const unitIn = (
+    target: Page,
+    state: "In use" | "Damaged" | "Lost",
+    label: string,
+  ) => stateOf(target, state).locator("li[data-gear-unit]", { hasText: label });
+  // One nameless line per unit, under "In use".
+  await expect(units).toHaveCount(2);
+  await expect(unitIn(page, "In use", "Unit 1")).toBeVisible();
+  await expect(unitIn(page, "In use", "Unit 2")).toBeVisible();
+  await expect(stateOf(page, "In use").getByRole("heading")).toHaveText(
+    "In use (2)",
+  );
 
   // A label is optional: one unit gets one, the other stays without.
   const label = `GoPro ${tag}`;
-  await units
-    .locator("> li")
-    .first()
-    .getByLabel("Label (optional)")
-    .fill(label);
-  await units
-    .locator("> li")
-    .first()
-    .getByRole("button", { name: "Save label" })
-    .click();
-  await expect(unit(label)).toContainText("Available");
-  await expect(units.locator("> li")).toHaveCount(2);
+  await units.first().getByLabel("Label (optional)").fill(label);
+  await units.first().getByRole("button", { name: "Save label" }).click();
+  await expect(unitIn(page, "In use", label)).toBeVisible();
+  await expect(units).toHaveCount(2);
   // No two alike.
-  const other = units.locator("> li").filter({ hasNotText: label });
+  const other = units.filter({ hasNotText: label });
   await other.getByLabel("Label (optional)").fill(label.toUpperCase());
   await other.getByRole("button", { name: "Save label" }).click();
   await expect(
@@ -466,31 +538,88 @@ test("tracked gear: one line per unit with an optional label", async ({
     demo.bsrStaff,
     new URL(stockUrl).pathname + "?tab=stock",
   );
-  const staffUnits = staff.page.getByRole("list", { name: "Units" });
-  const staffUnit = staffUnits.locator("> li").filter({ hasText: label });
+  const staffUnit = staff.page
+    .locator("li[data-gear-unit]")
+    .filter({ hasText: label });
   await expect(staff.page.getByLabel("Label (optional)")).toHaveCount(0);
+  // In use: "Mark damaged" and "Mark lost".
+  await expect(staffUnit.getByRole("button")).toHaveText([
+    `Mark damaged: ${label}`,
+    `Mark lost: ${label}`,
+  ]);
   await staffUnit
     .getByRole("button", { name: `Mark damaged: ${label}` })
     .click();
-  await expect(staffUnit).toContainText("Damaged");
+  // Damaged: it moves under "Damaged", with "Back in use" and "Mark lost".
+  await expect(unitIn(staff.page, "Damaged", label)).toBeVisible();
+  await expect(staffUnit.getByRole("button")).toHaveText([
+    `Back in use: ${label}`,
+    `Mark lost: ${label}`,
+  ]);
+  await staffUnit
+    .getByRole("button", { name: `Back in use: ${label}` })
+    .click();
+  await expect(unitIn(staff.page, "In use", label)).toBeVisible();
+  await staffUnit
+    .getByRole("button", { name: `Mark damaged: ${label}` })
+    .click();
+  await expect(unitIn(staff.page, "Damaged", label)).toBeVisible();
   staff.page.once("dialog", (dialog) => void dialog.accept());
   await staffUnit.getByRole("button", { name: `Mark lost: ${label}` }).click();
-  await expect(staffUnit).toContainText("Lost");
-  await expect(
-    staffUnit.getByRole("button", { name: /Back in stock|Remove for good/ }),
-  ).toHaveCount(0);
+  // Lost: under "Lost", and nothing staff can do to it.
+  await expect(unitIn(staff.page, "Lost", label)).toBeVisible();
+  await expect(staffUnit.getByRole("button")).toHaveCount(0);
+  await expect(stateOf(staff.page, "Lost")).toContainText(
+    "An owner or manager marks it found or writes it off.",
+  );
   await staff.close();
 
-  // The owner brings it back.
+  // The owner: a lost unit has "Found, back in use" and "Write off".
   await page.goto(stockUrl);
-  await expect(unit(label)).toContainText("Lost");
+  await expect(unitIn(page, "Lost", label)).toBeVisible();
+  await expect(
+    unit(label).getByRole("button", { name: new RegExp(`: ${label}$`) }),
+  ).toHaveText([`Found, back in use: ${label}`, `Write off: ${label}`]);
   await unit(label)
-    .getByRole("button", { name: `Back in stock: ${label}` })
+    .getByRole("button", { name: `Found, back in use: ${label}` })
     .click();
-  await expect(unit(label)).toContainText("Available");
+  await expect(unitIn(page, "In use", label)).toBeVisible();
   await expect(
     counts(page).getByText("2 in stock", { exact: true }),
   ).toBeVisible();
+  // Lost again, and written off: the confirmation, then the unit is gone.
+  page.once("dialog", (dialog) => void dialog.accept());
+  await unit(label)
+    .getByRole("button", { name: `Mark lost: ${label}` })
+    .click();
+  await expect(unitIn(page, "Lost", label)).toBeVisible();
+  let writeOff = "";
+  page.once("dialog", (dialog) => {
+    writeOff = dialog.message();
+    void dialog.accept();
+  });
+  await unit(label)
+    .getByRole("button", { name: `Write off: ${label}` })
+    .click();
+  await expect(unit(label)).toHaveCount(0);
+  expect(writeOff).toBe(WRITE_OFF_QUESTION);
+  await expect(units).toHaveCount(1);
+  await expect(
+    counts(page).getByText("1 in stock", { exact: true }),
+  ).toBeVisible();
+  await expect(stateOf(page, "Lost")).toHaveCount(0);
+
+  // History keeps the record, in the buttons' words, written-off unit included.
+  await productTabs(page).getByRole("link", { name: "History" }).click();
+  for (const line of [
+    `marked unit ${label} damaged`,
+    `put unit ${label} back in use`,
+    `marked unit ${label} lost`,
+    `marked unit ${label} found, back in use`,
+    `wrote off unit ${label}`,
+  ])
+    await expect(page.getByText(line).first()).toBeVisible();
+  await page.goto(stockUrl);
 
   await setQuantity(page, "0");
   await expect(

@@ -515,3 +515,62 @@ export async function countUpcomingBookings(
   if (error) throw error;
   return count ?? 0;
 }
+
+/**
+ * The audit rows behind a tracked gear product's units: the units themselves
+ * (found by the product they were added to or removed from, so a unit that
+ * was written off is still here) and their downtime. lib/history
+ * gearUnitHistory turns them into lines. Empty for roles that may not read
+ * the audit log (RLS).
+ */
+export async function getGearUnitAudit(
+  tenantId: string,
+  productId: string,
+  limit: number,
+): Promise<AuditRow[]> {
+  const supabase = await createClient();
+  const columns = "id, entity, entity_id, action, actor, before, after, at";
+  const audit = () =>
+    supabase
+      .from("audit_events")
+      .select(columns)
+      .eq("tenant_id", tenantId)
+      .order("at", { ascending: false })
+      .limit(limit);
+  // Added or removed: these rows hold the whole unit, its product included.
+  const ends = await audit()
+    .eq("entity", "units")
+    .in("action", ["insert", "delete"])
+    .or(
+      `after->>product_id.eq.${productId},before->>product_id.eq.${productId}`,
+    );
+  if (ends.error) throw ends.error;
+  const unitIds = [...new Set(ends.data.map((row) => row.entity_id))].slice(
+    0,
+    150,
+  );
+  if (unitIds.length === 0) return [];
+  const list = `(${unitIds.join(",")})`;
+  const [changes, blocks] = await Promise.all([
+    audit()
+      .eq("entity", "units")
+      .eq("action", "update")
+      .in("entity_id", unitIds),
+    audit()
+      .eq("entity", "unit_blocks")
+      .in("action", ["insert", "delete"])
+      .or(`after->>unit_id.in.${list},before->>unit_id.in.${list}`),
+  ]);
+  if (changes.error) throw changes.error;
+  if (blocks.error) throw blocks.error;
+  const blockIds = [...new Set(blocks.data.map((row) => row.entity_id))];
+  const ended =
+    blockIds.length === 0
+      ? { data: [], error: null }
+      : await audit()
+          .eq("entity", "unit_blocks")
+          .eq("action", "update")
+          .in("entity_id", blockIds);
+  if (ended.error) throw ended.error;
+  return [...ends.data, ...changes.data, ...blocks.data, ...ended.data];
+}

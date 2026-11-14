@@ -405,7 +405,10 @@ export function LostForm({ target }: { target: StockTarget }) {
   );
 }
 
-/** Lost units: back in stock, or removed for good. Owners and managers. */
+/**
+ * Lost units: "Found, back in use" puts them back; "Write off" removes them
+ * for good, after a confirmation. Owners and managers.
+ */
 export function ResolveLostForms({ target }: { target: StockTarget }) {
   const t = useTranslations("Products.stockTab");
   return (
@@ -414,17 +417,17 @@ export function ResolveLostForms({ target }: { target: StockTarget }) {
         target={target}
         action={resolveLost}
         name="restore"
-        label={t("restoreHowMany")}
-        submitLabel={t("restore")}
+        label={t("foundHowMany")}
+        submitLabel={t("found")}
         hidden={{ resolve: "restore" }}
       />
       <StockForm
         target={target}
         action={resolveLost}
         name="remove"
-        label={t("removeHowMany")}
-        submitLabel={t("remove")}
-        confirm={t("removeConfirm")}
+        label={t("writeOffHowMany")}
+        submitLabel={t("writeOff")}
+        confirm={t("writeOffConfirm")}
         destructive
         hidden={{ resolve: "remove" }}
       />
@@ -482,7 +485,10 @@ function LabelField({
   );
 }
 
-/** One button on a unit's row: damaged, back in use, lost, restore or remove. */
+/**
+ * One button on a unit's row: Mark damaged, Back in use, Mark lost, Found,
+ * back in use ("restore") or Write off ("remove").
+ */
 export function UnitButton({
   slug,
   unit,

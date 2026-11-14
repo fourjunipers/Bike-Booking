@@ -178,7 +178,6 @@ Words to look at first, because many lines use them:
 | `Products.delete` | Delete product | ลบสินค้า |
 | `Products.deleteTitle` | Delete this product | ลบสินค้านี้ |
 | `Products.deleteConfirm` | Delete this product? This can't be undone. | ลบสินค้านี้หรือไม่? ไม่สามารถย้อนกลับได้ |
-| `Products.deleteBlocked` | This product still has stock. Set its quantity to 0 and remove any lost units first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และนำชิ้นที่สูญหายออกก่อน |
 | `Products.tabs.stock` | Stock | สต็อก |
 | `Products.order.up` | Move up | เลื่อนขึ้น |
 | `Products.order.down` | Move down | เลื่อนลง |
@@ -225,22 +224,12 @@ Words to look at first, because many lines use them:
 | `Products.stockTab.repairedHowMany` | How many are back in use | กลับมาใช้ได้กี่ชิ้น |
 | `Products.stockTab.markLost` | Mark lost | ทำเครื่องหมายว่าสูญหาย |
 | `Products.stockTab.lostHowMany` | How many are lost | สูญหายกี่ชิ้น |
-| `Products.stockTab.lostConfirm` | Mark as lost? It leaves your stock now. An owner or manager can bring it back or remove it. | ทำเครื่องหมายว่าสูญหายหรือไม่? จะออกจากสต็อกทันที เจ้าของหรือผู้จัดการนำกลับมาหรือนำออกได้ |
-| `Products.stockTab.lostTitle` | Lost units | ชิ้นที่สูญหาย |
-| `Products.stockTab.lostHelp` | Found again: put them back in stock. Gone for good: remove them, which lowers your quantity. | หากพบแล้ว: นำกลับเข้าสต็อก หากหายถาวร: นำออก ซึ่งจะลดจำนวนของร้าน |
-| `Products.stockTab.lostWaiting` | An owner or manager decides what happens to lost units. | เจ้าของหรือผู้จัดการเป็นผู้ตัดสินใจเรื่องชิ้นที่สูญหาย |
-| `Products.stockTab.restore` | Back in stock | นำกลับเข้าสต็อก |
-| `Products.stockTab.restoreHowMany` | How many were found | พบแล้วกี่ชิ้น |
-| `Products.stockTab.remove` | Remove for good | นำออกถาวร |
-| `Products.stockTab.removeHowMany` | How many are gone for good | หายถาวรกี่ชิ้น |
-| `Products.stockTab.removeConfirm` | Remove for good? This lowers your quantity and can’t be undone. | นำออกถาวรหรือไม่? จำนวนของร้านจะลดลงและไม่สามารถย้อนกลับได้ |
 | `Products.stockTab.units` | Units | รายชิ้น |
 | `Products.stockTab.unit` | Unit {number} | ชิ้นที่ {number} |
 | `Products.stockTab.noUnits` | No units here yet. Set the quantity to add some. | ยังไม่มีชิ้นที่นี่ ตั้งจำนวนเพื่อเพิ่ม |
 | `Products.stockTab.label` | Label (optional) | ป้ายชื่อ (ไม่บังคับ) |
 | `Products.stockTab.labelPlaceholder` | e.g. GoPro 3 | เช่น GoPro 3 |
 | `Products.stockTab.saveLabel` | Save label | บันทึกป้ายชื่อ |
-| `Products.stockTab.status.available` | Available | พร้อมใช้ |
 | `Products.stockTab.status.damaged` | Damaged | ชำรุด |
 | `Products.stockTab.status.lost` | Lost | สูญหาย |
 | `Products.stockTab.ledger` | Stock history | ประวัติสต็อก |
@@ -258,8 +247,6 @@ Words to look at first, because many lines use them:
 | `Products.history.action.units_damaged` | {who} marked {count} damaged on {what} | {who} ทำเครื่องหมายว่าชำรุด {count} ชิ้นใน{what} |
 | `Products.history.action.units_repaired` | {who} put {count} back in use on {what} | {who} นำ {count} ชิ้นกลับมาใช้ใน{what} |
 | `Products.history.action.units_lost` | {who} marked {count} lost on {what} | {who} ทำเครื่องหมายว่าสูญหาย {count} ชิ้นใน{what} |
-| `Products.history.action.lost_restored` | {who} put {count} lost back in stock on {what} | {who} นำชิ้นที่สูญหาย {count} ชิ้นกลับเข้าสต็อกใน{what} |
-| `Products.history.action.lost_removed` | {who} removed {count} lost for good from {what} | {who} นำชิ้นที่สูญหาย {count} ชิ้นออกถาวรจาก{what} |
 | `Products.history.action.listing_change_model` | {who} moved {what} to another Moto Mangos list entry | {who} ย้าย{what}ไปยังรายการอื่นของ Moto Mangos |
 | `Products.history.action.listing_disconnect` | {who} disconnected {what} from Moto Mangos | {who} ยกเลิกการเชื่อมต่อ{what}กับ Moto Mangos |
 | `Products.history.field.quantity` | Quantity | จำนวน |
@@ -283,9 +270,45 @@ Words to look at first, because many lines use them:
 | `FormErrors.label_needs_tracking` | Switch on “Track each unit on its own” first. | เปิด “ติดตามแยกทีละชิ้น” ก่อน |
 | `FormErrors.tracked_units_have_records` | These units have purchase details, so they stay tracked one by one. | ชิ้นเหล่านี้มีข้อมูลการซื้อ จึงต้องติดตามแยกทีละชิ้นต่อไป |
 | `FormErrors.stock_below_zero` | Stock can’t go below zero. | สต็อกต่ำกว่าศูนย์ไม่ได้ |
-| `FormErrors.productHasStock` | This product still has stock. Set its quantity to 0 and remove any lost units first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และนำชิ้นที่สูญหายออกก่อน |
-| `FormErrors.product_has_stock` | This product still has stock. Set its quantity to 0 and remove any lost units first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และนำชิ้นที่สูญหายออกก่อน |
 | `FormErrors.labelExists` | Another unit of this product already has that label. | มีชิ้นอื่นของสินค้านี้ใช้ป้ายชื่อนี้แล้ว |
 | `FormErrors.not_on_list` | This product isn’t on the Moto Mangos list. | สินค้านี้ไม่ได้อยู่ในรายการของ Moto Mangos |
 | `FormErrors.same_model` | It is already on that one. Choose a different one. | สินค้านี้ใช้รายการนั้นอยู่แล้ว กรุณาเลือกรายการอื่น |
 | `FormErrors.request_pending` | Its request is still waiting for review. | คำขอยังรอการตรวจอยู่ |
+
+### Stage B, second round: the Stock tab's states (14 Nov 2026)
+
+After the owner's click-through. A unit of gear has three states, each under its own heading with one line of help: In use, Damaged, Lost. "Back in stock" became "Found, back in use" and "Remove for good" became "Write off"; History uses the same words. These lines replace the ones they changed in the table above (`Products.stockTab.restore`, `remove`, `removeConfirm`, `lostTitle`, `lostHelp` and `status.available` are gone).
+
+| English | Thai used | Note |
+| --- | --- | --- |
+| In use | ใช้งานได้ | A unit that can be rented; the opposite of damaged or lost |
+| Back in use | กลับมาใช้ได้ | A damaged unit that is ready again |
+| Found, back in use | พบแล้ว กลับมาใช้ได้ | A lost unit that turned up |
+| Write off | ตัดจำหน่าย | The accounting word for removing a lost item for good. Check it reads naturally for shop staff |
+
+| Key | English | Thai |
+| --- | --- | --- |
+| `Products.stockTab.state.inUse.title` | In use ({count}) | ใช้งานได้ ({count}) |
+| `Products.stockTab.state.inUse.help` | In use: available to rent. Mark a unit damaged while it is cleaned or repaired, or lost if it is missing. | ใช้งานได้: พร้อมให้เช่า ทำเครื่องหมายว่าชำรุดระหว่างทำความสะอาดหรือซ่อม หรือสูญหายหากหาไม่พบ |
+| `Products.stockTab.state.damaged.title` | Damaged ({count}) | ชำรุด ({count}) |
+| `Products.stockTab.state.damaged.help` | Damaged: not available to rent, but still counted in your stock. Mark it back in use when it is ready. | ชำรุด: ยังให้เช่าไม่ได้ แต่ยังนับอยู่ในสต็อก เมื่อพร้อมแล้วให้กด “กลับมาใช้ได้” |
+| `Products.stockTab.state.lost.title` | Lost ({count}) | สูญหาย ({count}) |
+| `Products.stockTab.state.lost.help` | Lost: not available to rent and not counted in your stock. Mark it found to put it back in use, or write it off to remove it permanently. | สูญหาย: ให้เช่าไม่ได้และไม่นับในสต็อก หากพบแล้วให้กด “พบแล้ว กลับมาใช้ได้” หรือตัดจำหน่ายเพื่อนำออกถาวร |
+| `Products.stockTab.status.inUse` | In use | ใช้งานได้ |
+| `Products.stockTab.found` | Found, back in use | พบแล้ว กลับมาใช้ได้ |
+| `Products.stockTab.foundHowMany` | How many were found | พบแล้วกี่ชิ้น |
+| `Products.stockTab.writeOff` | Write off | ตัดจำหน่าย |
+| `Products.stockTab.writeOffHowMany` | How many to write off | ตัดจำหน่ายกี่ชิ้น |
+| `Products.stockTab.writeOffConfirm` | Write off? This cannot be undone. The unit leaves this product’s stock counts for good and can’t be marked found again. The History keeps a record. | ตัดจำหน่ายหรือไม่? ไม่สามารถย้อนกลับได้ ชิ้นนี้จะออกจากยอดสต็อกของสินค้านี้ถาวร และทำเครื่องหมายว่าพบแล้วไม่ได้อีก ประวัติจะยังเก็บบันทึกไว้ |
+| `Products.stockTab.lostConfirm` | Mark as lost? It is no longer available to rent or counted in your stock. An owner or manager can mark it found or write it off. | ทำเครื่องหมายว่าสูญหายหรือไม่? จะให้เช่าไม่ได้และไม่นับในสต็อกอีก เจ้าของหรือผู้จัดการทำเครื่องหมายว่าพบแล้วหรือตัดจำหน่ายได้ |
+| `Products.stockTab.lostWaiting` | An owner or manager marks it found or writes it off. | เจ้าของหรือผู้จัดการเป็นผู้ทำเครื่องหมายว่าพบแล้วหรือตัดจำหน่าย |
+| `Products.deleteBlocked` | This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และทำเครื่องหมายว่าพบแล้วหรือตัดจำหน่ายชิ้นที่สูญหายก่อน |
+| `FormErrors.productHasStock` | This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และทำเครื่องหมายว่าพบแล้วหรือตัดจำหน่ายชิ้นที่สูญหายก่อน |
+| `FormErrors.product_has_stock` | This product still has stock. Set its quantity to 0, and mark any lost units found or write them off, first. | สินค้านี้ยังมีสต็อกอยู่ กรุณาตั้งจำนวนเป็น 0 และทำเครื่องหมายว่าพบแล้วหรือตัดจำหน่ายชิ้นที่สูญหายก่อน |
+| `Products.history.action.lost_restored` | {who} marked {count} found, back in use on {what} | {who} ทำเครื่องหมายว่าพบแล้ว กลับมาใช้ได้ {count} ชิ้นใน{what} |
+| `Products.history.action.lost_removed` | {who} wrote off {count} on {what} | {who} ตัดจำหน่าย {count} ชิ้นใน{what} |
+| `Products.history.action.unit_damaged` | {who} marked {what} damaged | {who} ทำเครื่องหมายว่า{what}ชำรุด |
+| `Products.history.action.unit_repaired` | {who} put {what} back in use | {who} นำ{what}กลับมาใช้ได้ |
+| `Products.history.action.unit_lost` | {who} marked {what} lost | {who} ทำเครื่องหมายว่า{what}สูญหาย |
+| `Products.history.action.unit_found` | {who} marked {what} found, back in use | {who} ทำเครื่องหมายว่าพบ{what}แล้ว กลับมาใช้ได้ |
+| `Products.history.action.unit_written_off` | {who} wrote off {what} | {who} ตัดจำหน่าย{what} |

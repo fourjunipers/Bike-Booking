@@ -142,3 +142,103 @@ export function historyValue(
   const text = String(value);
   return text.length > 80 ? `${text.slice(0, 77)}…` : text;
 }
+
+// Tracked gear ---------------------------------------------------------------------------
+
+/**
+ * What happened to the units of a tracked gear product, in the words of the
+ * buttons that did it. The audit trail holds rows of two tables: a unit
+ * (marked lost, found, written off, given a label) and its downtime (marked
+ * damaged, put back in use). This turns them into one line each:
+ *   unit_damaged      "Mark damaged"
+ *   unit_repaired     "Back in use"
+ *   unit_lost         "Mark lost"
+ *   unit_found        "Found, back in use"
+ *   unit_written_off  "Write off" (the unit's row is gone; its line stays)
+ * A unit added or removed by a quantity change is left to that change's own
+ * line ("Quantity: 2 → 3"). Also answers with each unit's label, so a unit
+ * that was written off still has its name.
+ */
+export function gearUnitHistory(rows: AuditRow[]): {
+  rows: AuditRow[];
+  names: Map<string, string | null>;
+} {
+  const oldestFirst = [...rows].sort(
+    (a, b) => a.at.localeCompare(b.at) || a.id - b.id,
+  );
+  const names = new Map<string, string | null>();
+  /** Which unit a downtime block is on, learnt when it is added or removed. */
+  const blockUnit = new Map<string, string>();
+  const out: AuditRow[] = [];
+  const say = (row: AuditRow, unit: string, action: string, extra = {}) =>
+    out.push({
+      id: row.id,
+      entity: "units",
+      entity_id: unit,
+      action,
+      actor: row.actor,
+      before: null,
+      after: null,
+      at: row.at,
+      ...extra,
+    });
+
+  for (const row of oldestFirst) {
+    const before = record(row.before);
+    const after = record(row.after);
+    if (row.entity === "units") {
+      const unit = row.entity_id;
+      if ("label" in after) names.set(unit, (after.label as string) ?? null);
+      else if (!names.has(unit) && "label" in before)
+        names.set(unit, (before.label as string) ?? null);
+      if (row.action === "delete") {
+        if (before.status === "lost") say(row, unit, "unit_written_off");
+      } else if (row.action === "update") {
+        if (after.status === "lost") say(row, unit, "unit_lost");
+        else if (before.status === "lost" && after.status === "active")
+          say(row, unit, "unit_found");
+        else if (before.status === "lost" && after.status === "retired")
+          say(row, unit, "unit_written_off");
+        if ("label" in after)
+          say(row, unit, "update", {
+            before: { label: before.label ?? null },
+            after: { label: after.label ?? null },
+          });
+      }
+    } else if (row.entity === "unit_blocks") {
+      const full = row.action === "delete" ? before : after;
+      if (row.action !== "update") {
+        if (full.kind !== "downtime" || typeof full.unit_id !== "string")
+          continue;
+        blockUnit.set(row.entity_id, full.unit_id);
+      }
+      const unit = blockUnit.get(row.entity_id);
+      if (!unit) continue;
+      say(
+        row,
+        unit,
+        row.action === "insert" ? "unit_damaged" : "unit_repaired",
+      );
+    }
+  }
+
+  // Marking a unit lost, or removing it, ends its downtime in the same
+  // moment: that is not someone putting it back in use.
+  const gone = new Set(
+    oldestFirst
+      .filter(
+        (row) =>
+          row.entity === "units" &&
+          (row.action === "delete" || record(row.after).status === "lost"),
+      )
+      .map((row) => `${row.entity_id} ${row.at}`),
+  );
+  return {
+    rows: out.filter(
+      (row) =>
+        row.action !== "unit_repaired" ||
+        !gone.has(`${row.entity_id} ${row.at}`),
+    ),
+    names,
+  };
+}

@@ -1,20 +1,27 @@
 import { getTranslations } from "next-intl/server";
 import { Panel } from "@/components/action-form";
-import { getMemberNames, getProductHistory } from "@/lib/fleet-data";
-import { buildHistory, historyValue } from "@/lib/history";
+import {
+  getGearUnitAudit,
+  getMemberNames,
+  getProductHistory,
+} from "@/lib/fleet-data";
+import { buildHistory, gearUnitHistory, historyValue } from "@/lib/history";
 import { formatInstant } from "@/lib/shop-time";
 import { humanizeKey } from "@/lib/vehicle-kinds";
 
 /**
  * Who changed what on a product and its units, newest first (owners and
  * managers: the audit log's own rule). A vehicle product names its vehicles
- * by plate; tracked gear names its units by label.
+ * by plate. Tracked gear names its units by label and says what was done to
+ * each in the words of the Stock tab's buttons ("marked unit GoPro 3 lost",
+ * "wrote off unit GoPro 3"); a unit that was written off keeps its lines.
  */
 export async function HistoryTab({
   tenantId,
   productId,
   units,
   unitsAre,
+  trackedGear,
   timezone,
   locale,
 }: {
@@ -23,11 +30,13 @@ export async function HistoryTab({
   /** The units whose own changes belong in this history, with a name each. */
   units: { id: string; name: string | null }[];
   unitsAre: "vehicles" | "gear";
+  /** Gear tracked unit by unit: each unit's own lines are added. */
+  trackedGear?: boolean;
   timezone: string;
   locale: string;
 }) {
   const limit = 100;
-  const [t, tFleet, rows, names] = await Promise.all([
+  const [t, tFleet, productRows, names, unitRows] = await Promise.all([
     getTranslations("Products.history"),
     getTranslations("Fleet"),
     getProductHistory(
@@ -37,12 +46,18 @@ export async function HistoryTab({
       limit,
     ),
     getMemberNames(tenantId),
+    trackedGear ? getGearUnitAudit(tenantId, productId, limit) : [],
   ]);
+  const gear = gearUnitHistory(unitRows);
+  const rows = [...productRows, ...gear.rows]
+    .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id)
+    .slice(0, limit);
   const entries = buildHistory(rows);
   const unnamed = unitsAre === "vehicles" ? tFleet("noPlate") : t("unlabelled");
-  const unitNames = new Map(
-    units.map((unit) => [unit.id, unit.name ?? unnamed]),
-  );
+  const unitNames = new Map([
+    ...[...gear.names].map(([id, name]) => [id, name ?? unnamed] as const),
+    ...units.map((unit) => [unit.id, unit.name ?? unnamed] as const),
+  ]);
   const words = { empty: t("empty"), yes: t("yes"), no: t("no") };
   const fieldLabel = (field: string) =>
     t.has(`field.${field}` as "field.name")

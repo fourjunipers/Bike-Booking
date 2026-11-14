@@ -48,9 +48,12 @@ type GeneralProduct = {
  * - Details (owners and managers): name and description; for gear, whether
  *   each unit is tracked on its own; delete at the very bottom.
  * - Stock (gear and items for sale; everyone reads): the quantity per
- *   location. "Change quantity" is for owners and managers; "Mark damaged"
+ *   location, then a unit's three states, each under a heading with a line
+ *   saying what it means: In use ("Mark damaged", "Mark lost"), Damaged
+ *   ("Back in use") and Lost ("Found, back in use", "Write off"). "Change
+ *   quantity" is for owners and managers; "Mark damaged" and "Back in use"
  *   for everyone who works on units; "Mark lost" for owners, managers and
- *   staff; only an owner or manager restores or removes a lost unit.
+ *   staff; only an owner or manager marks a lost unit found or writes it off.
  * - History (owners and managers).
  * No Moto Mangos panel, no buffers, no deposit, no licence class.
  */
@@ -192,16 +195,11 @@ export async function GeneralProductPage({
           tenantId={tenant.id}
           productId={product.id}
           // Counted gear is nameless rows: the product's own events tell the
-          // story ("quantity 20 → 25"). Tracked units add theirs.
-          units={
-            tracked
-              ? (await getGearUnits(tenant.id, product.id)).map((unit) => ({
-                  id: unit.id,
-                  name: unit.label,
-                }))
-              : []
-          }
+          // story ("quantity 20 → 25", "wrote off 1"). Tracked units add
+          // theirs, one line per unit.
+          units={[]}
           unitsAre="gear"
+          trackedGear={tracked}
           timezone={tenant.timezone}
           locale={locale}
         />
@@ -211,8 +209,10 @@ export async function GeneralProductPage({
 }
 
 const chip = "rounded-full px-2 py-0.5 text-xs font-medium";
+/** The three states of a unit of gear, in the order the Stock tab shows them. */
+const stateNames = ["inUse", "damaged", "lost"] as const;
 const chipClass = {
-  available:
+  inUse:
     "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
   damaged: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
   lost: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
@@ -258,7 +258,20 @@ async function StockTab({
       {locations.map((location) => {
         const stock = stockOf(lines, product.id, location.id);
         const target = { slug, id: product.id, location: location.id };
-        const here = units.filter((unit) => unit.location_id === location.id);
+        // Tracked gear: this location's units, each with its state and the
+        // name its line and buttons use.
+        const named = units
+          .filter((unit) => unit.location_id === location.id)
+          .map((unit, index) => ({
+            unit,
+            name: unit.label ?? t("unit", { number: index + 1 }),
+            state:
+              unit.status === "lost"
+                ? ("lost" as const)
+                : unit.damaged
+                  ? ("damaged" as const)
+                  : ("inUse" as const),
+          }));
         return (
           <section
             key={location.id}
@@ -281,7 +294,7 @@ async function StockTab({
                 <li className={cn(chip, "bg-foreground text-background")}>
                   {t("inStock", { count: stock.inStock })}
                 </li>
-                <li className={cn(chip, chipClass.available)}>
+                <li className={cn(chip, chipClass.inUse)}>
                   {t("available", { count: stock.available })}
                 </li>
                 {stock.damaged > 0 && (
@@ -297,138 +310,147 @@ async function StockTab({
               </ul>
             )}
 
-            <div className="mt-4 grid gap-5 sm:grid-cols-2">
-              {manage && (
+            {manage && (
+              <div className="mt-4">
                 <QuantityForm
                   target={target}
                   type={type}
                   current={stock.inStock}
                 />
-              )}
-              {/* Counted gear: how many. Tracked gear: on each unit's line below. */}
-              {type === "gear" && !tracked && work && stock.available > 0 && (
-                <DamagedForm target={target} zone={location.timezone} />
-              )}
-              {type === "gear" && !tracked && work && stock.damaged > 0 && (
-                <RepairedForm target={target} />
-              )}
-              {type === "gear" && !tracked && lose && stock.inStock > 0 && (
-                <LostForm target={target} />
-              )}
-            </div>
-
-            {type === "gear" && !tracked && stock.lost > 0 && (
-              <div className="mt-5 border-t pt-4">
-                <h3 className="font-medium">{t("lostTitle")}</h3>
-                {manage ? (
-                  <>
-                    <p className="mt-1 mb-3 text-sm text-muted-foreground">
-                      {t("lostHelp")}
-                    </p>
-                    <ResolveLostForms target={target} />
-                  </>
-                ) : (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("lostWaiting")}
-                  </p>
-                )}
               </div>
             )}
 
-            {tracked && (
-              <div className="mt-5 border-t pt-4">
-                <h3 className="font-medium">{t("units")}</h3>
-                {here.length === 0 ? (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("noUnits")}
-                  </p>
-                ) : (
-                  <ul
-                    aria-label={t("units")}
-                    className="mt-2 divide-y rounded-md border"
+            {/* Gear: three states, each under its own heading with a line
+                saying what it means and the actions that belong to it.
+                Counted gear asks "how many"; tracked gear lists its units. */}
+            {type === "gear" &&
+              stateNames.map((state) => {
+                const count =
+                  state === "inUse"
+                    ? stock.inStock - stock.damaged
+                    : stock[state];
+                // Damaged and Lost appear once something is in them.
+                if (state !== "inUse" && count === 0) return null;
+                const rows = named.filter((unit) => unit.state === state);
+                // Its own id: the forms below have fields named after the states.
+                const heading = `state-${state}-${location.id}`;
+                return (
+                  <section
+                    key={state}
+                    aria-labelledby={heading}
+                    data-stock-state={state}
+                    className="mt-5 border-t pt-4"
                   >
-                    {here.map((unit, index) => {
-                      const state =
-                        unit.status === "lost"
-                          ? "lost"
-                          : unit.damaged
-                            ? "damaged"
-                            : "available";
-                      const name =
-                        unit.label ?? t("unit", { number: index + 1 });
-                      return (
-                        <li key={unit.id} className="space-y-3 p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">{name}</span>
-                            <span className={cn(chip, chipClass[state])}>
-                              {t(`status.${state}`)}
-                            </span>
-                          </div>
-                          {manage && (
-                            <UnitLabelForm
-                              slug={slug}
-                              unit={unit.id}
-                              label={unit.label ?? ""}
-                            />
-                          )}
-                          <div className="flex flex-wrap gap-2">
-                            {state === "available" && work && (
-                              <UnitButton
+                    <h3 id={heading} className="font-medium">
+                      {t(`state.${state}.title`, { count })}
+                    </h3>
+                    <p className="mt-1 mb-3 text-sm text-muted-foreground">
+                      {t(`state.${state}.help`)}
+                      {state === "lost" && !manage && ` ${t("lostWaiting")}`}
+                    </p>
+
+                    {!tracked && state === "inUse" && (
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        {work && stock.available > 0 && (
+                          <DamagedForm
+                            target={target}
+                            zone={location.timezone}
+                          />
+                        )}
+                        {lose && stock.inStock > 0 && (
+                          <LostForm target={target} />
+                        )}
+                      </div>
+                    )}
+                    {!tracked && state === "damaged" && work && (
+                      <RepairedForm target={target} />
+                    )}
+                    {!tracked && state === "lost" && manage && (
+                      <ResolveLostForms target={target} />
+                    )}
+
+                    {tracked && rows.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {t("noUnits")}
+                      </p>
+                    )}
+                    {tracked && rows.length > 0 && (
+                      <ul
+                        aria-labelledby={heading}
+                        className="divide-y rounded-md border"
+                      >
+                        {rows.map(({ unit, name }) => (
+                          <li
+                            key={unit.id}
+                            data-gear-unit
+                            className="space-y-3 p-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium">{name}</span>
+                              <span className={cn(chip, chipClass[state])}>
+                                {t(`status.${state}`)}
+                              </span>
+                            </div>
+                            {manage && (
+                              <UnitLabelForm
                                 slug={slug}
                                 unit={unit.id}
-                                change="damaged"
-                                label={`${t("markDamaged")}: ${name}`}
+                                label={unit.label ?? ""}
                               />
                             )}
-                            {state === "damaged" && work && (
-                              <UnitButton
-                                slug={slug}
-                                unit={unit.id}
-                                change="repaired"
-                                label={`${t("backInUse")}: ${name}`}
-                              />
-                            )}
-                            {state !== "lost" && lose && (
-                              <UnitButton
-                                slug={slug}
-                                unit={unit.id}
-                                change="lost"
-                                label={`${t("markLost")}: ${name}`}
-                                confirm={t("lostConfirm")}
-                                destructive
-                              />
-                            )}
-                            {state === "lost" && manage && (
-                              <>
+                            <div className="flex flex-wrap gap-2">
+                              {state === "inUse" && work && (
                                 <UnitButton
                                   slug={slug}
                                   unit={unit.id}
-                                  change="restore"
-                                  label={`${t("restore")}: ${name}`}
+                                  change="damaged"
+                                  label={`${t("markDamaged")}: ${name}`}
                                 />
+                              )}
+                              {state === "damaged" && work && (
                                 <UnitButton
                                   slug={slug}
                                   unit={unit.id}
-                                  change="remove"
-                                  label={`${t("remove")}: ${name}`}
-                                  confirm={t("removeConfirm")}
+                                  change="repaired"
+                                  label={`${t("backInUse")}: ${name}`}
+                                />
+                              )}
+                              {state !== "lost" && lose && (
+                                <UnitButton
+                                  slug={slug}
+                                  unit={unit.id}
+                                  change="lost"
+                                  label={`${t("markLost")}: ${name}`}
+                                  confirm={t("lostConfirm")}
                                   destructive
                                 />
-                              </>
-                            )}
-                            {state === "lost" && !manage && (
-                              <p className="text-sm text-muted-foreground">
-                                {t("lostWaiting")}
-                              </p>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
+                              )}
+                              {state === "lost" && manage && (
+                                <>
+                                  <UnitButton
+                                    slug={slug}
+                                    unit={unit.id}
+                                    change="restore"
+                                    label={`${t("found")}: ${name}`}
+                                  />
+                                  <UnitButton
+                                    slug={slug}
+                                    unit={unit.id}
+                                    change="remove"
+                                    label={`${t("writeOff")}: ${name}`}
+                                    confirm={t("writeOffConfirm")}
+                                    destructive
+                                  />
+                                </>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                );
+              })}
           </section>
         );
       })}
