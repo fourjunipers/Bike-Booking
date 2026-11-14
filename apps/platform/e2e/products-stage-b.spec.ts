@@ -4,7 +4,8 @@
  * list's All, Vehicles and General tabs; a general product's Details, Stock
  * and History; quantity, damaged and lost by role; tracked gear with labels;
  * "Change model" and "Disconnect" on the Moto Mangos panel; and the manual
- * order (Move up, Move down, Reset to A–Z) shared by Fleet and Products.
+ * order (Reorder mode: Move up, Move down, Reset to A–Z) shared by Fleet
+ * and Products.
  * Phone and desktop widths.
  *
  * Runs against local Supabase or a deploy preview on staging, again and
@@ -227,9 +228,13 @@ test("new product: Vehicle or General; one of each general type; the three list 
   const box = (await pencil.boundingBox())!;
   expect(Math.round(box.width)).toBeGreaterThanOrEqual(44);
   expect(Math.round(box.height)).toBeGreaterThanOrEqual(44);
-  // Kind, category and Moto Mangos are about vehicles.
-  for (const gone of ["Kind of vehicle", "Category", "Moto Mangos"])
-    await expect(page.getByLabel(gone, { exact: true })).toHaveCount(0);
+  // Moto Mangos is about vehicles; the chips are the general types.
+  await expect(page.getByLabel("Moto Mangos", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation", { name: "Show only" }).getByRole("link", {
+      name: "Scooter",
+    }),
+  ).toHaveCount(0);
   // The search stays on the tab.
   await page.getByLabel("Find a product").fill(tag);
   await page.getByRole("button", { name: "Search" }).click();
@@ -239,7 +244,7 @@ test("new product: Vehicle or General; one of each general type; the three list 
   await listTabs(page).getByRole("link", { name: "Vehicles" }).click();
   await expect(productRow(page, "Honda PCX 160")).toBeVisible();
   await expect(productRow(page, helmet)).toHaveCount(0);
-  await expect(page.getByLabel("Kind of vehicle")).toBeAttached();
+  await expect(page.getByLabel("Moto Mangos", { exact: true })).toBeAttached();
   // Fleet is vehicles only.
   await page.goto(`/bsr/fleet?q=${tag}`);
   await expect(page.locator("details[data-fleet-product]")).toHaveCount(0);
@@ -710,7 +715,7 @@ test("Moto Mangos: a product on a list entry can change its model or disconnect"
   await deleteProduct(page, url);
 });
 
-test("manual order: Move up, Move down and Reset to A–Z, one order for Fleet and Products", async ({
+test("manual order: Reorder mode with Move up, Move down and Reset to A–Z, one order for Fleet and Products", async ({
   page,
   browser,
 }, testInfo) => {
@@ -745,26 +750,37 @@ test("manual order: Move up, Move down and Reset to A–Z, one order for Fleet a
   /** This run's products, in the order the page shows them. */
   const mine = async (target: Page = page) =>
     (
-      await products(target).locator("> li a.font-semibold").allInnerTexts()
+      await products(target)
+        .locator("> li .font-semibold[title]")
+        .allInnerTexts()
     ).filter((name) => name.startsWith(tag));
   const fleetNames = async () =>
     (
       await page
-        .locator("details[data-fleet-product] > summary span.font-semibold")
+        .getByRole("list", { name: "Vehicles by product" })
+        .locator("[data-list-row] .font-semibold[title]")
         .allInnerTexts()
     ).filter((name) => name.startsWith(tag));
   const reset = page.getByRole("button", { name: "Reset to A–Z" });
+  const reorder = page.getByRole("link", { name: "Reorder" });
+  const done = page.getByRole("link", { name: "Done" });
 
-  // Default: A to Z, and nothing to reset.
-  await page.goto(`/${shop}/products`);
+  // Default: A to Z, and nothing to reset. The arrows and Reset to A–Z are
+  // in Reorder mode only (owner, 14 Nov 2026).
+  await page.goto(`/${shop}/products?reorder=1`);
   if (await reset.isVisible()) {
     page.once("dialog", (dialog) => void dialog.accept());
     await reset.click();
   }
   await expect(reset).toHaveCount(0);
+  await done.click();
   await expect
     .poll(() => mine())
     .toEqual([names.a, names.b, names.c, names.gear]);
+  await expect(
+    page.getByRole("button", { name: /^Move (up|down): / }),
+  ).toHaveCount(0);
+  await reorder.click();
   // The top line can't go up and the bottom line can't go down.
   const lines = products(page).locator("> li");
   await expect(
@@ -781,7 +797,6 @@ test("manual order: Move up, Move down and Reset to A–Z, one order for Fleet a
 
   // Move down on the first: saved, and kept after a reload.
   await down.click();
-  await expect(page.getByText("Shown in your own order.")).toBeVisible();
   await expect
     .poll(() => mine())
     .toEqual([names.b, names.a, names.c, names.gear]);
@@ -790,22 +805,32 @@ test("manual order: Move up, Move down and Reset to A–Z, one order for Fleet a
     .poll(() => mine())
     .toEqual([names.b, names.a, names.c, names.gear]);
   await expect(reset).toBeVisible();
+  // Done: the same order, without the arrows; "My order" is the sort.
+  await done.click();
+  await expect
+    .poll(() => mine())
+    .toEqual([names.b, names.a, names.c, names.gear]);
+  await expect(
+    page
+      .getByRole("navigation", { name: "Sort" })
+      .getByRole("link", { name: "My order" }),
+  ).toHaveAttribute("aria-current", "true");
 
   // Fleet shows the same order (its vehicles), and moves there show here.
   await page.goto(`/${shop}/fleet`);
   await expect.poll(fleetNames).toEqual([names.b, names.a, names.c]);
-  // The arrows sit on a line that opens and closes on a tap: pressing one
-  // moves the product and leaves the line as it was.
+  await reorder.click();
+  await page.getByRole("button", { name: `Move up: ${names.c}` }).click();
+  await expect.poll(fleetNames).toEqual([names.b, names.c, names.a]);
+  // While reordering a line doesn't open; after Done a tap opens it again.
+  await expect(page.locator("details[data-fleet-product]")).toHaveCount(0);
+  await done.click();
   const lineC = page.locator("details[data-fleet-product]", {
     has: page.getByText(names.c, { exact: true }),
   });
   const isOpen = () =>
     lineC.evaluate((line) => (line as HTMLDetailsElement).open);
   const wasOpen = await isOpen();
-  await page.getByRole("button", { name: `Move up: ${names.c}` }).click();
-  await expect.poll(fleetNames).toEqual([names.b, names.c, names.a]);
-  expect(await isOpen()).toBe(wasOpen);
-  // A tap on the line itself still opens it.
   await lineC.locator("summary span.font-semibold").click();
   expect(await isOpen()).toBe(!wasOpen);
   await noSidewaysScroll(page);
@@ -814,6 +839,7 @@ test("manual order: Move up, Move down and Reset to A–Z, one order for Fleet a
     .poll(() => mine())
     .toEqual([names.b, names.c, names.a, names.gear]);
   // General products take part in the same order.
+  await reorder.click();
   await page.getByRole("button", { name: `Move up: ${names.gear}` }).click();
   await expect
     .poll(() => mine())
@@ -836,26 +862,30 @@ test("manual order: Move up, Move down and Reset to A–Z, one order for Fleet a
     .poll(() => mine())
     .toEqual([names.b, names.c, names.gear, names.a, first]);
 
-  // Off while a search or filter is on.
-  await page.goto(`/${shop}/products?q=${tag}`);
-  await expect(
-    page.getByRole("button", { name: /^Move (up|down): / }),
-  ).toHaveCount(0);
-  await expect(reset).toHaveCount(0);
-  await expect(
-    page.getByText("Clear the search and filters to change the order."),
-  ).toBeVisible();
-  await page.goto(`/${shop}/fleet?q=${tag}`);
-  await expect(
-    page.getByRole("button", { name: /^Move (up|down): / }),
-  ).toHaveCount(0);
+  // No reordering on a search, a filter or another sort: the arrows stay
+  // off even when asked for in the address.
+  for (const path of [
+    `products?q=${tag}&reorder=1`,
+    "products?sort=az&reorder=1",
+    `fleet?q=${tag}&reorder=1`,
+  ]) {
+    await page.goto(`/${shop}/${path}`);
+    await expect(
+      page.getByRole("button", { name: /^Move (up|down): / }),
+    ).toHaveCount(0);
+    await expect(reset).toHaveCount(0);
+  }
 
-  // Staff see the saved order and can't change it.
+  // Staff see the saved order and can't change it: no Reorder at all.
   const staff = await as(browser, demo.both, `/${shop}/products`);
   await expect(products(staff.page)).toBeVisible();
   await expect
     .poll(() => mine(staff.page))
     .toEqual([names.b, names.c, names.gear, names.a, first]);
+  await expect(staff.page.getByRole("link", { name: "Reorder" })).toHaveCount(
+    0,
+  );
+  await staff.page.goto(`/${shop}/products?reorder=1`);
   await expect(
     staff.page.getByRole("button", { name: /^Move (up|down): / }),
   ).toHaveCount(0);
@@ -866,7 +896,7 @@ test("manual order: Move up, Move down and Reset to A–Z, one order for Fleet a
 
   // Desktop width: the same buttons; then back to A to Z.
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto(`/${shop}/products`);
+  await page.goto(`/${shop}/products?reorder=1`);
   await page.getByRole("button", { name: `Move down: ${names.b}` }).click();
   await expect
     .poll(() => mine())
