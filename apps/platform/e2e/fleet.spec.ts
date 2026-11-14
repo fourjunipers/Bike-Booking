@@ -1356,11 +1356,12 @@ test("fleet: New product at the top, Add vehicle in each opened line with one Pr
   expect(offered.filter((label) => /Wave/.test(label))).toEqual([]);
 
   // The kind filter (from an address; the chips offer only what the shop
-  // has): this shop has motorbikes only.
+  // has): the shop's own products are motorbikes. Another test may add a
+  // car to this shop meanwhile, so check the motorbikes are filtered out
+  // rather than that the list is empty.
   await page.goto("/bsr/fleet?kind=car");
-  await expect(
-    page.getByText("No vehicles match these filters."),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fleet" })).toBeVisible();
+  await expect(fleetLine(page, "Honda PCX 160")).toHaveCount(0);
   await page.goto("/bsr/fleet?kind=motorbike");
   await expect(fleetLine(page, "Honda PCX 160")).toBeVisible();
   // The category chip finds a product by any of its categories.
